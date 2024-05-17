@@ -29,7 +29,7 @@ library(units)
 
 - Saturated thickness (`D`): 100 ft
 - Permeability (`K`): 0.001 ft/sec
-- Drainable porosity of the aquifer (V): 0.2
+- Drainable porosity of the aquifer (`V`): 0.2
 
 ```{r}
 D <- set_units(100, "ft")
@@ -77,7 +77,7 @@ drawdown_df <- drawdown_df %>%
 
 For reference, the total drawdown should be equal to the pumping rate over the time period, 1 cusec over five years or `r round(pumping_rate * t/1e6, 0)` million ft^3^. The water drained from the aquifer is `sum(volumetric_drawdown)`, equal to `r round(sum(drawdown_df$volumetric_drawdown)/1e6,0)` million ft^3^.
 
-The flow towards the well can be calculated as $q = 2 \pi r K \frac{\partial h}{\partial r}$ (the typical negative sign in Darcy's law is removed because we are calculating flow in the direction of negative r). We can run this calculation and plot flow towards the aquifer. Note that closer to the pump this calculation suffers from discretization of the domain causing the flowrate to diverge from 1 ft^3^/s.
+The flow towards the well can be calculated as $q = 2 \pi r D K \frac{\partial h}{\partial r}$ (the typical negative sign in Darcy's law is removed because we are calculating flow in the direction of negative r). We can run this calculation and plot flow towards the aquifer.
 
 ```{r}
 drawdown_df <- drawdown_df %>% 
@@ -85,3 +85,5 @@ drawdown_df <- drawdown_df %>%
 
 ggplot(drawdown_df, aes(r, flow_towards_well)) + geom_line()
 ```
+
+Note that closer to the pumping well this calculation suffers from coarse discretization of the domain causing the flowrate to diverge from 1 ft^3^/s. You can verify this yourself by, for instance, changing the radius to ` r <- set_units(seq(1, 5, length.out = 200), "ft")` and re-running the calculations.
