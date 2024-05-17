@@ -1,0 +1,19 @@
+---
+title: "Stream-depletion-and-aquifer-drawdown"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Stream-depletion-and-aquifer-drawdown}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(isw)
+```
