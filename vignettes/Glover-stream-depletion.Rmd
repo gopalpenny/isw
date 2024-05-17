@@ -1,0 +1,87 @@
+---
+title: "Glover stream depletion model"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Glover-stream-depletion}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+This vignette illustrates key elements of the `isw` package.
+
+This idealized model assumes the wells are screened over the saturated thickness of the aquifer, the stream fully penetrates the aquifer, all flow is horizontal, and the transmissivity is uniform and insensitive to changes in water level.
+
+Note that `isw` uses the `units` package to keep track of dimensionality, therefore we can begin by loading both packages. The `set_units` function can be used to specify units objects.
+
+```{r setup, message=FALSE}
+library(isw)
+library(units)
+```
+
+ Let's first consider an aquifer with the following characteristics:
+
+- Saturated thickness (`D`): 100 ft
+- Permeability (`K`): 0.001 ft/sec
+- Drainable porosity of the aquifer (V): 0.2
+
+```{r}
+D <- set_units(100, "ft")
+K <- set_units(0.001, "ft/sec")
+t <- set_units(5, "year")
+V <- 0.2 # unitless
+```
+
+Now we estimate drawdown at multiple distances from a pumping well. To do that, we use the function `get_aquifer_drawdown_ratio`. This function gives the change in water level per unit pumping, assuming homogeneous aquifer of infinite extent and no boundaries (i.e., no streams). Let's get this ratio a distances ranging from 1 ft to 2 miles, after 2 years of pumping.
+
+
+```{r}
+r <- set_units(seq(1, 5280*10, length.out = 200), "ft")
+t <- set_units(5, "year")
+aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(r, K, D, V, t)
+```
+
+For simplicity, let's assume the well was pumping 1 cusec over those two years. The change in water level is calculated as `aquifer_drawdown_ratio` multiplied by the pumping rate.
+
+```{r}
+pumping_rate <- set_units(1, "ft^3/sec")
+aquifer_drawdown <- aquifer_drawdown_ratio * pumping_rate
+```
+
+We can then plot the drawdown as a function of pumping using `ggplot.`
+
+```{r}
+library(ggplot2)
+drawdown_df <- data.frame(radius = r,
+                          drawdown = aquifer_drawdown)
+
+ggplot(drawdown_df, aes(radius, drawdown)) +
+  geom_line()
+```
+
+As a check, to give confidence in this calculation, we can calculate the volume of water drained from the aquifer as drawdown times the drainable porosity for circular bands around the well. For simplicity, we use the `dplyr` package to calculate this value
+
+```{r message = FALSE}
+library(dplyr)
+dr <- r[2] - r[1]
+drawdown_df <- drawdown_df %>% 
+  mutate(d_area = dr * 2 * pi * r,
+         volumetric_drawdown = drawdown * d_area * V)
+```
+
+For reference, the total drawdown should be equal to the pumping rate over the time period, 1 cusec over five years or `r round(pumping_rate * t/1e6, 0)` million ft^3^. The water drained from the aquifer is `sum(volumetric_drawdown)`, equal to `r round(sum(drawdown_df$volumetric_drawdown)/1e6,0)` million ft^3^.
+
+The flow towards the well can be calculated as $q = 2 \pi r K \frac{\partial h}{\partial r}$ (the typical negative sign in Darcy's law is removed because we are calculating flow in the direction of negative r). We can run this calculation and plot flow towards the aquifer. Note that closer to the pump this calculation suffers from discretization of the domain causing the flowrate to diverge from 1 ft^3^/s.
+
+```{r}
+drawdown_df <- drawdown_df %>% 
+  mutate(flow_towards_well = 2 * pi * r * D * K * (drawdown - lag(drawdown)) / dr)
+
+ggplot(drawdown_df, aes(r, flow_towards_well)) + geom_line()
+```
