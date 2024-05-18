@@ -17,3 +17,123 @@ knitr::opts_chunk$set(
 ```{r setup}
 library(isw)
 ```
+
+
+```{r}
+library(patchwork)
+library(expint)
+library(units)
+library(png)
+library(tidyverse)
+
+out_path <- ggp::fig_set_output("glover_stream_depletion")
+
+# well_config_img <- readPNG("ISW/pumping_observation_wells.png")
+
+# example from Glover
+x1 <- c(1, 5, 10, 25, 50) * 1e3 # ft
+D <- 200 # ft
+K <- 0.001 # ft/sec
+t_sec <- as.numeric(set_units(set_units(1, "year"),"sec")) # sec in a year
+V <- 0.2
+
+r <- x1 # ft
+get_s_ratio(r, K, D, V, t_sec)
+get_s_ratio(r, K, D, V, t_sec*2)
+
+
+
+# get stream depletion and effect on head at observation well
+# x1 - distance of pumping well to stream
+# x2 - distance of observation well to stream
+# y - distance between pumping and observation well (parallel to stream)
+# other variables from Glover (1954)
+get_depletion_of_well <- function(x1, x2, y, K, D, V, t) {
+  
+  r_w <- sqrt(y^2 + (x2-x1)^2) # ft
+  r_wi <- sqrt(y^2 + (x2+x1)^2) # ft
+  
+  q_fraction <- get_q_fraction(x1, K, D, V, t) # %
+  ds_w <- get_s_ratio(r_w, K, D, V, t) # ft / flowrate
+  dw_wi <- -get_s_ratio(r_wi, K, D, V, t) # ft / flowrate
+  return(list(q_fraction = q_fraction, s_ratio = ds_w + dw_wi))
+}
+
+x2 <- 1e3 # ft
+y <- 1e3 # ft
+get_depletion_of_well(x1, x2, y, K, D, V, t_sec)
+
+df <- crossing(x1 = seq(0, 4, by = 0.02) * 5280, 
+               y = seq(0, 3, by = 0.02) * 5280, 
+               nesting(t = c(t_sec*2, t_sec*5, t_sec * 10), years = c(2, 5, 10))) %>%
+  mutate(x2 = 5280/2, K = K, D = D, V = V,
+         years = factor(years, levels = c(2, 5, 10), labels = paste(c(2, 5, 10), "years")))
+
+# df <- df %>%
+#   dplyr::filter(t == t_sec/2 | ((x1 %in% (seq(0, 4, by = 0.1) * 5280)) & y %in% (seq(0, 3, by = 0.1) * 5280)))
+
+# df %>% dplyr::filter(t == t_sec) #%>% pull(x1) %>% unique()
+
+
+df2 <- df %>% 
+  bind_cols(as_tibble(get_depletion_of_well(df$x1 + 10, x2 = 5280/2, df$y + 10, K, D, V, df$t))) %>%
+  mutate(x1 = replace(x1, x1 <= 10, 0),
+         y = replace(y, y <= 10, 0))
+
+# df2 %>% dplyr::select(x1, y, t, s_ratio) %>% pivot_wider(names_from = "t", values_from = "s_ratio")
+
+p_q_fraction <- ggplot(df2) + 
+  geom_line(aes(x1/5280, q_fraction, color = years)) +
+  labs(x = "East-West distance (x1, mi) from pumping well to river",
+       y = "Fraction of well abstraction\nfrom stream depletion") +
+  ylim(c(0, 1)) +
+  scale_color_discrete("Years after\npumping initiates") +
+  ggp::t_manu()
+# p_q_fraction
+
+p_drawdown <- ggplot(df2 %>% dplyr::filter(s_ratio <= -1/100/12)) + 
+  geom_raster(aes(x1/5280,y/5280, fill = -log(-s_ratio))) +
+  # geom_point(data = df2 %>% dplyr::filter(s_ratio <= -1/100/12, t == t_sec*10),
+  #            aes(x1/5280,y/5280, color = -log(-s_ratio))) +
+  scale_fill_viridis_c("Drawdown\n(ft) per cusec\npumping", limits = -log(c(16, 1/100/12)), breaks = -log(c(1/64/12, 1/16/12, 1/3/12, 1/12, 1/4, 1, 4, 16)), labels = c("1/64 in","1/16 in","1/4 in","1 in", "4 in", "1 ft", "4 ft", "16 ft")) + 
+  scale_color_viridis_c("Drawdown\n(ft) per cusec\npumping", breaks = -log(c(1/64/12, 1/16/12, 1/3/12, 1/12, 1/4, 1, 4, 16)), labels = c("1/64 in","1/16 in","1/4 in","1 in", "4 in", "1 ft", "4 ft", "16 ft")) + 
+  scale_size_continuous("Stream\ndepletion\nfraction") +
+  # ggtitle() +
+  labs(x = "East-West distance (x1, mi) from pumping well to river",
+       y = "North-South distance (y, mi)\nfrom pumping well to observation well") +
+  geom_vline(data = data.frame(x = c(0.25, 0.5, 1, 2, 3)), aes(xintercept = x, linetype = as.factor(x)), alpha = 0.4)+
+  scale_linetype_manual(values = c("dotted", "dashed", "twodash", "longdash", "solid")) +
+  guides(linetype = "none") +
+  facet_wrap(~years, ncol = 1) + ggp::t_manu()
+
+# ggplot() + 
+#   geom_vline(data = NULL, aes(xintercept = c(0.25, 0.5, 1, 2, 3)* 5280))
+# p_q_fraction / 
+
+
+transects_data <- df2 %>% dplyr::filter(x1 %in% (c(0.24, 0.5, 1, 2, 3)*5280))
+p_drawdown_transects <- ggplot(transects_data) + #, t %in% (c(2, 5) * t_sec))) + 
+  geom_line(data = transects_data %>% dplyr::filter(years == "5 years") %>% dplyr::select(-years),
+            aes(-s_ratio, y/5280, linetype = as.factor(x1/5280)), alpha = 0.15) + 
+  geom_line(aes(-s_ratio, y/5280, color = years, linetype = as.factor(x1/5280))) + 
+  scale_color_discrete("Years after\npumping initiates") +
+  scale_x_continuous("Drawdown (ft) per cusec pumping", limits = c(0, 2.5)) + facet_wrap(~years, ncol = 1) +
+  scale_linetype_manual("Distance\nfrom well\nto river\n(x1, mi)",values = c("dotted", "dashed", "twodash", "longdash", "solid"), labels = c(0.25, 0.5, 1, 2, 3)) +
+  guides(color = "none") +
+  ggp::t_manu() %+replace% theme(axis.title.y = element_blank())
+
+
+p_well_config <- ggplot2::ggplot() + ggplot2::annotation_custom(grid::rasterGrob(well_config_img,
+                                                                width=ggplot2::unit(1,"npc"),
+                                                                height=ggplot2::unit(1,"npc")),
+                                               -Inf, Inf, -Inf, Inf) 
+
+p_depletion_x <- p_q_fraction + p_well_config +
+  p_drawdown + p_drawdown_transects + 
+  plot_layout(widths = c(3, 2), heights = c(1, 3)) +
+  plot_annotation(title = paste0("Stream depletion and aquifer drawdown at observation well (x2 = 1/2 mile, ",D," ft aq. depth)"))
+
+ggsave(paste0("stream_depletion_drawdown_aq",D,"ft.png"), p_depletion_x, path = out_path, width = 8, height = 8)
+set_units(set_units(1, "ft^3 / sec"), "acre * ft/year")
+```
+

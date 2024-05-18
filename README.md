@@ -30,18 +30,6 @@ library(isw)
 Consider the following configuration of stream, pumping well, and
 observation well.
 
-``` r
-library(png)
-well_config_img <- readPNG("fig/pumping_observation_wells.png")
-# grid::grid.raster(well_config_img)
-
-p_well_config <- ggplot2::ggplot() + ggplot2::annotation_custom(grid::rasterGrob(well_config_img,
-                                                                width=ggplot2::unit(1,"npc"),
-                                                                height=ggplot2::unit(1,"npc")),
-                                               -Inf, Inf, -Inf, Inf) + ggplot2::coord_equal()
-p_well_config
-```
-
 <img src="man/figures/README-unnamed-chunk-2-1.png" width="100%" />
 
 Stream depletion and aquifer drawdown in this scenario can be modeled
