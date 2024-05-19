@@ -4,9 +4,13 @@
 \alias{get_aquifer_drawdown_ratio}
 \title{Drawdown for single well without boundaries}
 \usage{
-get_aquifer_drawdown_ratio(r, K, D, V, t)
+get_stream_depletion_fraction(df, ...)
+
+get_stream_depletion_fraction(r = r, K = K, D = D, V = V, t = t)
 }
 \arguments{
+\item{df}{\code{data.frame} with columns specifying all parameters}
+
 \item{r}{Distance between pumping and observation well}
 
 \item{K}{Saturated hydraulic conductivity}
@@ -15,7 +19,8 @@ get_aquifer_drawdown_ratio(r, K, D, V, t)
 
 \item{V}{Drainable porosity of aquifer}
 
-\item{t}{Time from pumping onset at which to calculate stream depletion fraction}
+\item{t}{Time from pumping onset at which to calculate stream depletion
+fraction}
 }
 \description{
 This function estimates the ratio of water level drawdown to pumping rate
@@ -33,9 +38,16 @@ D <- set_units(100, "ft")
 K <- set_units(0.001, "ft/sec")
 t <- set_units(5, "year")
 V <- 0.2 # unitless
-aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(r, K, D, V, t)
+aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(r = r, K = K, D = D, V = V, t = t)
 
 # Drawdown per cusec pumping:
 change_in_waterlevel_per_cusec <- aquifer_drawdown_ratio * set_units(1, "ft^3/sec")
 change_in_waterlevel_per_cusec
+
+
+# Specifying parameters as named data.frame columns
+library(tibble) # simplifies specifying data.frames with units objects
+df <- tibble(r = r, K = K, D = D, V = V, t = t)
+aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(df)
+aquifer_drawdown_ratio
 }

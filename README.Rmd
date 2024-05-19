@@ -64,7 +64,7 @@ D <- set_units(100, "ft")
 K <- set_units(0.001, "ft/sec")
 t <- set_units(5, "year")
 V <- 0.2 # unitless
-get_depletion_from_pumping(x1, x2, y, K, D, V, t)
+get_depletion_from_pumping(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t))
 ```
 
 For details of this function, check `?get_depletion_from_pumping`.

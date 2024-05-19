@@ -44,7 +44,7 @@ D <- set_units(100, "ft")
 K <- set_units(0.001, "ft/sec")
 t <- set_units(5, "year")
 V <- 0.2 # unitless
-get_depletion_from_pumping(x1, x2, y, K, D, V, t)
+get_depletion_from_pumping(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t))
 #>   stream_depletion_fraction aquifer_drawdown_ratio
 #> 1                 0.9365474    -1.2707109 [s/ft^2]
 #> 2                 0.6905933    -0.5705381 [s/ft^2]

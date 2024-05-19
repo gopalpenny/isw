@@ -44,7 +44,7 @@ Now we estimate drawdown at multiple distances from a pumping well. To do that, 
 ```{r}
 r <- set_units(seq(1, 5280*10, length.out = 200), "ft")
 t <- set_units(5, "year")
-aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(r, K, D, V, t)
+aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(r = r, K = K, D = D, V = V, t = t)
 ```
 
 For simplicity, let's assume the well was pumping 1 cusec over those two years. The change in water level is calculated as `aquifer_drawdown_ratio` multiplied by the pumping rate.

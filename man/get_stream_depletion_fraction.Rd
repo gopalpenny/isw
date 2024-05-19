@@ -4,9 +4,13 @@
 \alias{get_stream_depletion_fraction}
 \title{Glover model of stream depletion fraction}
 \usage{
-get_stream_depletion_fraction(x1, K, D, V, t)
+get_stream_depletion_fraction(df)
+
+get_stream_depletion_fraction(x1 = x1, K = K, D = D, V = V, t = t)
 }
 \arguments{
+\item{df}{\code{data.frame} with columns specifying all parameters}
+
 \item{x1}{Distance between well and river}
 
 \item{K}{Saturated hydraulic conductivity}
@@ -15,11 +19,17 @@ get_stream_depletion_fraction(x1, K, D, V, t)
 
 \item{V}{Drainable porosity of aquifer}
 
-\item{t}{Time from pumping onset at which to calculate stream depletion fraction}
+\item{t}{Time from pumping onset at which to calculate stream depletion
+fraction}
 }
 \description{
-This function estimates stream depletion at time `t` as a fraction of pumping
-from an individual pumping well. See Glover (1954).
+This function estimates stream depletion at time `t` as a
+  fraction of pumping from an individual pumping well. See Glover (1954).
+
+  The function requires variables \code{x1}, \code{K}, \code{D}, \code{V},
+  \code{t}. These variables can be specified as columns of \code{df}, or as
+  named variables in the function call. If \code{df} is specified, the named
+  variables are ignored.
 }
 \details{
 Glover model of stream depletion, including image well
@@ -32,6 +42,14 @@ D <- set_units(100, "ft")
 K <- set_units(0.001, "ft/sec")
 t <- set_units(5, "year")
 V <- 0.2 # unitless
-stream_depletion_fraction <- get_stream_depletion_fraction(x1, K, D, V, t) # \% percentage
+
+# Specifying parameters as numeric or vector inputs
+stream_depletion_fraction <- get_stream_depletion_fraction(x1 = x1, K = K, D = D, V = V, t = t)
+stream_depletion_fraction
+
+# Specifying parameters as named data.frame columns
+library(tibble) # simplifies specifying data.frames with units objects
+df <- tibble(x1 = x1, K = K, D = D, V = V, t = t)
+stream_depletion_fraction <- get_stream_depletion_fraction(df)
 stream_depletion_fraction
 }

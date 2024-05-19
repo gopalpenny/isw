@@ -4,9 +4,14 @@
 \alias{get_depletion_from_pumping}
 \title{Get stream depletion and changes in water level from pumping}
 \usage{
-get_depletion_from_pumping(x1, x2, y, K, D, V, t)
+get_stream_depletion_fraction(df, ...)
+
+get_stream_depletion_fraction(x1 = x1, x2 = x2, y = y, K = K, D = D, V
+  = V, t = t)
 }
 \arguments{
+\item{df}{\code{data.frame} with columns specifying all parameters}
+
 \item{x1}{Distance of pumping well to stream}
 
 \item{x2}{Distance of observation well to stream}
@@ -19,21 +24,22 @@ get_depletion_from_pumping(x1, x2, y, K, D, V, t)
 
 \item{V}{Drainable porosity of aquifer}
 
-\item{t}{Time from pumping onset at which to calculate stream depletion fraction}
+\item{t}{Time from pumping onset at which to calculate stream depletion
+fraction}
 }
 \value{
 A `data.frame` with two columns: `stream_depletion_fraction` and
-`aquifer_drawdown_fraction`. To calculate stream depletion and changes
-in water level, multiply these values by the pumping rate.
+  `aquifer_drawdown_fraction`. To calculate stream depletion and changes in
+  water level, multiply these values by the pumping rate.
 }
 \description{
 This function estimates stream depletion fraction (using
-`get_stream_depletion_fraction`) and changes in water level at an observation
-well (`get_aquifer_drawdown_ratio`) due to abstraction from a pumping
-well at time `t` after pumping initiates. Like
-`get_stream_depletion_fraction`, and unlike `get_aquifer_drawdown_ratio`,
-The function accounts for a the effect of the stream as a constant head
-boundary. See Glover (1954).
+  `get_stream_depletion_fraction`) and changes in water level at an
+  observation well (`get_aquifer_drawdown_ratio`) due to abstraction from a
+  pumping well at time `t` after pumping initiates. Like
+  `get_stream_depletion_fraction`, and unlike `get_aquifer_drawdown_ratio`,
+  The function accounts for a the effect of the stream as a constant head
+  boundary. See Glover (1954).
 }
 \details{
 Get stream depletion and changes in water level from pumping
@@ -47,5 +53,12 @@ D <- set_units(100, "ft")
 K <- set_units(0.001, "ft/sec")
 t <- set_units(5, "year")
 V <- 0.2 # unitless
-get_depletion_from_pumping(x1, x2, y, K, D, V, t)
+depletion_from_pumping <- get_depletion_from_pumping(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t)
+depletion_from_pumping
+
+# Specifying parameters as named data.frame columns
+library(tibble) # simplifies specifying data.frames with units objects
+df <- tibble(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t)
+depletion_from_pumping <- get_depletion_from_pumping(df)
+depletion_from_pumping
 }
