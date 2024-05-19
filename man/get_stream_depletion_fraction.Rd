@@ -4,9 +4,14 @@
 \alias{get_stream_depletion_fraction}
 \title{Glover model of stream depletion fraction}
 \usage{
-get_stream_depletion_fraction(df)
-
-get_stream_depletion_fraction(x1 = x1, K = K, D = D, V = V, t = t)
+get_stream_depletion_fraction(
+  df,
+  x1 = NULL,
+  K = NULL,
+  D = NULL,
+  V = NULL,
+  t = NULL
+)
 }
 \arguments{
 \item{df}{\code{data.frame} with columns specifying all parameters}

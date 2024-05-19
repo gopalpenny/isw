@@ -1,6 +1,7 @@
 # testing for glover model
 
 suppressMessages(library(units))
+suppressMessages(library(tibble))
 
 
 x1 <- set_units(c(1, 5, 10) * 1e3, "ft")
@@ -17,6 +18,11 @@ test_that("get_stream_depletion_fraction generates correct results for numeric/v
   expect_equal(round(stream_depletion_fraction, 5), c(0.93655, 0.69059, 0.42597))
 })
 
+stream_depletion_fraction_df <- get_stream_depletion_fraction(tibble(x1 = x1, K = K, D = D, V = V, t = t)) # % percentage
+test_that("get_stream_depletion_fraction generates correct results for data.frame input",{
+  expect_equal(round(stream_depletion_fraction, 5), round(stream_depletion_fraction_df, 5))
+})
+
 
 r <- set_units(c(1, 5, 10) * 1e3, "ft")
 aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(r = r, K = K, D = D, V = V, t = t)
@@ -26,6 +32,12 @@ aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(r = r, K = K, D = D, V = V,
 
 test_that("get_aquifer_drawdown_ratio generates correct results for numeric/vector input",{
   expect_equal(round(aquifer_drawdown_ratio, 5), set_units(c(-4.12237, -1.62017, -0.6887),"sec/ft^2"))
+})
+
+
+aquifer_drawdown_ratio_df <- get_aquifer_drawdown_ratio(tibble(r = r, K = K, D = D, V = V, t = t))
+test_that("get_aquifer_drawdown_ratio generates correct results for data.frame input",{
+  expect_equal(round(aquifer_drawdown_ratio, 5), round(aquifer_drawdown_ratio_df, 5))
 })
 
 
@@ -48,4 +60,14 @@ pumping_depletion_prep <-
 test_that("get_depletion_from_pumping generates correct results for numeric/vector input",{
   expect_equal(pumping_depletion, pumping_depletion_prep)
 })
+
+
+pumping_depletion_df <- get_depletion_from_pumping(tibble(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t)) %>%
+  dplyr::mutate(dplyr::across(dplyr::everything(), function(x) round(as.numeric(x), 4)))
+pumping_depletion_df$aquifer_drawdown_ratio <-
+  set_units(pumping_depletion_df$aquifer_drawdown_ratio, "sec/ft^2")
+test_that("get_depletion_from_pumping generates correct results for data.frame input",{
+  expect_equal(pumping_depletion, pumping_depletion_df)
+})
+
 

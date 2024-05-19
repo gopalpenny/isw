@@ -15,7 +15,8 @@ Suggests:
     testthat (>= 3.0.0),
     units,
     ggplot2,
-    dplyr
+    dplyr,
+    tibble
 Depends:
     expint
 Config/testthat/edition: 3

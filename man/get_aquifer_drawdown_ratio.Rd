@@ -4,9 +4,14 @@
 \alias{get_aquifer_drawdown_ratio}
 \title{Drawdown for single well without boundaries}
 \usage{
-get_stream_depletion_fraction(df, ...)
-
-get_stream_depletion_fraction(r = r, K = K, D = D, V = V, t = t)
+get_aquifer_drawdown_ratio(
+  df,
+  r = NULL,
+  K = NULL,
+  D = NULL,
+  V = NULL,
+  t = NULL
+)
 }
 \arguments{
 \item{df}{\code{data.frame} with columns specifying all parameters}

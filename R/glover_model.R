@@ -32,8 +32,6 @@ prob_integral <- function(Z) {
 #'   named variables in the function call. If \code{df} is specified, the named
 #'   variables are ignored.
 #' @importFrom stats pnorm
-#' @usage get_stream_depletion_fraction(df)
-#' @usage get_stream_depletion_fraction(x1 = x1, K = K, D = D, V = V, t = t)
 #' @export
 #' @examples
 #' # Reproduce example from Glover
@@ -55,11 +53,13 @@ prob_integral <- function(Z) {
 #' stream_depletion_fraction
 get_stream_depletion_fraction <- function(df, x1 = NULL, K = NULL, D = NULL, V = NULL, t = NULL) {
   if (!missing(df)) { # if df is specified, replace NULL parameters with df columns
-    if (!("data.frame" %in% class(df))) {
-      stop("df must be a data.frame object")
-    }
-    for (var in c("x1","K","D","V","t")) {
-      assign(var, df[[var]])
+    if (!is.null(df)) {
+      if (!("data.frame" %in% class(df))) {
+        stop("df must be a data.frame object")
+      }
+      for (var in c("x1","K","D","V","t")) {
+        assign(var, df[[var]])
+      }
     }
   }
   alpha <- K * D / V
@@ -79,8 +79,6 @@ get_stream_depletion_fraction <- function(df, x1 = NULL, K = NULL, D = NULL, V =
 #'
 #' @inheritParams get_stream_depletion_fraction
 #' @param r Distance between pumping and observation well
-#' @usage get_stream_depletion_fraction(df, ...)
-#' @usage get_stream_depletion_fraction(r = r, K = K, D = D, V = V, t = t)
 #' @description
 #' This function estimates the ratio of water level drawdown to pumping rate
 #' at an observation well at time `t` after pumping initiates from an individual
@@ -109,11 +107,13 @@ get_stream_depletion_fraction <- function(df, x1 = NULL, K = NULL, D = NULL, V =
 #' aquifer_drawdown_ratio
 get_aquifer_drawdown_ratio <- function(df, r = NULL, K = NULL, D = NULL, V = NULL, t = NULL) {
   if (!missing(df)) { # if df is specified, replace NULL parameters with df columns
-    if (!("data.frame" %in% class(df))) {
-      stop("df must be a data.frame object")
-    }
-    for (var in c("r","K","D","V","t")) {
-      assign(var, df[[var]])
+    if (!is.null(df)) {
+      if (!("data.frame" %in% class(df))) {
+        stop("df must be a data.frame object")
+      }
+      for (var in c("r","K","D","V","t")) {
+        assign(var, df[[var]])
+      }
     }
   }
   alpha <- K * D / V
@@ -138,9 +138,6 @@ get_aquifer_drawdown_ratio <- function(df, r = NULL, K = NULL, D = NULL, V = NUL
 #' @param x2 Distance of observation well to stream
 #' @param y Distance between pumping and observation well (parallel to stream)
 #' @inheritParams get_stream_depletion_fraction
-#' @usage get_stream_depletion_fraction(df, ...)
-#' @usage get_stream_depletion_fraction(x1 = x1, x2 = x2, y = y, K = K, D = D, V
-#'   = V, t = t)
 #' @export
 #' @description This function estimates stream depletion fraction (using
 #'   `get_stream_depletion_fraction`) and changes in water level at an
@@ -161,7 +158,13 @@ get_aquifer_drawdown_ratio <- function(df, r = NULL, K = NULL, D = NULL, V = NUL
 #' K <- set_units(0.001, "ft/sec")
 #' t <- set_units(5, "year")
 #' V <- 0.2 # unitless
-#' depletion_from_pumping <- get_depletion_from_pumping(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t)
+#' depletion_from_pumping <- get_depletion_from_pumping(x1 = x1,
+#'                                                      x2 = x2,
+#'                                                      y = y,
+#'                                                      K = K,
+#'                                                      D = D,
+#'                                                      V = V,
+#'                                                      t = t)
 #' depletion_from_pumping
 #'
 #' # Specifying parameters as named data.frame columns
@@ -171,11 +174,13 @@ get_aquifer_drawdown_ratio <- function(df, r = NULL, K = NULL, D = NULL, V = NUL
 #' depletion_from_pumping
 get_depletion_from_pumping <- function(df, x1 = NULL, x2 = NULL, y = NULL, K = NULL, D = NULL, V = NULL, t = NULL) {
   if (!missing(df)) { # if df is specified, replace NULL parameters with df columns
-    if (!("data.frame" %in% class(df))) {
-      stop("df must be a data.frame object")
-    }
-    for (var in c("x1","x2","y","K","D","V","t")) {
-      assign(var, df[[var]])
+    if (!is.null(df)) {
+      if (!("data.frame" %in% class(df))) {
+        stop("df must be a data.frame object")
+      }
+      for (var in c("x1","x2","y","K","D","V","t")) {
+        assign(var, df[[var]])
+      }
     }
   }
 
