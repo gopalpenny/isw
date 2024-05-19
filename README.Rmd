@@ -39,7 +39,9 @@ library(isw)
 
 Consider the following configuration of stream, pumping well, and observation well.
 
-```{r fig.width = 3, fig.height = 2, echo = FALSE}
+![Spatial relationships among pumping well, observation well, and stream.](fig/pumping_observation_wells_sm.png)
+
+```{r include = FALSE, fig.width = 3, fig.height = 2, echo = FALSE}
 library(png)
 well_config_img <- readPNG("fig/pumping_observation_wells.png")
 # grid::grid.raster(well_config_img)
@@ -64,8 +66,17 @@ D <- set_units(100, "ft")
 K <- set_units(0.001, "ft/sec")
 t <- set_units(5, "year")
 V <- 0.2 # unitless
-get_depletion_from_pumping(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t))
+get_depletion_from_pumping(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t)
 ```
+
+The variables can also be specified as named columns of a `data.frame` or `tibble`. While either can be used, `tibble` package is used below because it works more seamlessly with `units` objects.
+
+```{r}
+library(tibble)
+df <- tibble(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t)
+get_depletion_from_pumping(df)
+```
+
 
 For details of this function, check `?get_depletion_from_pumping`.
 

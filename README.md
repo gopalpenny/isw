@@ -25,12 +25,18 @@ This is a basic example which shows you how to solve a common problem:
 
 ``` r
 library(isw)
+#> Loading required package: expint
 ```
 
 Consider the following configuration of stream, pumping well, and
 observation well.
 
-<img src="man/figures/README-unnamed-chunk-2-1.png" width="100%" />
+<figure>
+<img src="fig/pumping_observation_wells_sm.png"
+alt="Spatial relationships among pumping well, observation well, and stream." />
+<figcaption aria-hidden="true">Spatial relationships among pumping well,
+observation well, and stream.</figcaption>
+</figure>
 
 Stream depletion and aquifer drawdown in this scenario can be modeled
 using the function `get_depletion_from_pumping` in this package.
@@ -44,7 +50,21 @@ D <- set_units(100, "ft")
 K <- set_units(0.001, "ft/sec")
 t <- set_units(5, "year")
 V <- 0.2 # unitless
-get_depletion_from_pumping(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t))
+get_depletion_from_pumping(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t)
+#>   stream_depletion_fraction aquifer_drawdown_ratio
+#> 1                 0.9365474    -1.2707109 [s/ft^2]
+#> 2                 0.6905933    -0.5705381 [s/ft^2]
+#> 3                 0.4259739    -0.2299550 [s/ft^2]
+```
+
+The variables can also be specified as named columns of a `data.frame`
+or `tibble`. While either can be used, `tibble` package is used below
+because it works more seamlessly with `units` objects.
+
+``` r
+library(tibble)
+df <- tibble(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t)
+get_depletion_from_pumping(df)
 #>   stream_depletion_fraction aquifer_drawdown_ratio
 #> 1                 0.9365474    -1.2707109 [s/ft^2]
 #> 2                 0.6905933    -0.5705381 [s/ft^2]
