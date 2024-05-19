@@ -31,12 +31,7 @@ library(isw)
 Consider the following configuration of stream, pumping well, and
 observation well.
 
-<figure>
-<img src="fig/pumping_observation_wells_sm.png"
-alt="Spatial relationships among pumping well, observation well, and stream." />
-<figcaption aria-hidden="true">Spatial relationships among pumping well,
-observation well, and stream.</figcaption>
-</figure>
+![](man/figures/pumping_observation_wells_sm.png)
 
 Stream depletion and aquifer drawdown in this scenario can be modeled
 using the function `get_depletion_from_pumping` in this package.

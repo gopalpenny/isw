@@ -39,18 +39,18 @@ library(isw)
 
 Consider the following configuration of stream, pumping well, and observation well.
 
-![Spatial relationships among pumping well, observation well, and stream.](fig/pumping_observation_wells_sm.png)
+![](man/figures/pumping_observation_wells_sm.png)
 
 ```{r include = FALSE, fig.width = 3, fig.height = 2, echo = FALSE}
-library(png)
-well_config_img <- readPNG("fig/pumping_observation_wells.png")
-# grid::grid.raster(well_config_img)
-
-p_well_config <- ggplot2::ggplot() + ggplot2::annotation_custom(grid::rasterGrob(well_config_img,
-                                                                width=ggplot2::unit(1,"npc"),
-                                                                height=ggplot2::unit(1,"npc")),
-                                               -Inf, Inf, -Inf, Inf) + ggplot2::coord_equal()
-p_well_config
+# library(png)
+# well_config_img <- readPNG("man/figures/pumping_observation_wells_sm.png")
+# # grid::grid.raster(well_config_img)
+# 
+# p_well_config <- ggplot2::ggplot() + ggplot2::annotation_custom(grid::rasterGrob(well_config_img,
+#                                                                 width=ggplot2::unit(1,"npc"),
+#                                                                 height=ggplot2::unit(1,"npc")),
+#                                                -Inf, Inf, -Inf, Inf) + ggplot2::coord_equal()
+# p_well_config
 ```
 
 
