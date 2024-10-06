@@ -75,9 +75,9 @@ drawdown_df <- drawdown_df %>%
          volumetric_drawdown = drawdown * d_area * V)
 ```
 
-For reference, the total drawdown should be equal to the pumping rate over the time period, 1 cusec over five years or `r round(pumping_rate * t/1e6, 0)` million ft^3^. The water drained from the aquifer is `sum(volumetric_drawdown)`, equal to `r round(sum(drawdown_df$volumetric_drawdown)/1e6,0)` million ft^3^.
+In an aquifer with no recharge, the total volumetric drawdown should be equal to the pumping rate over the time period, 1 cusec over five years or `r round(pumping_rate * t/1e6, 0)` million ft^3^. The water drained from the aquifer can be calculated using `sum(volumetric_drawdown)`, which gives a result of `r round(sum(drawdown_df$volumetric_drawdown)/1e6,0)` million ft^3^. 
 
-The flow towards the well can be calculated as $q = 2 \pi r D K \frac{\partial h}{\partial r}$ (the typical negative sign in Darcy's law is removed because we are calculating flow in the direction of negative r). We can run this calculation and plot flow towards the aquifer.
+The total radial flow towards the well can be calculated as $q = 2 \pi r D K \frac{\partial h}{\partial r}$ (the typical negative sign in Darcy's law is removed because we are calculating flow in the direction of negative r). We can run this calculation and plot flow towards the aquifer.
 
 ```{r}
 drawdown_df <- drawdown_df %>% 

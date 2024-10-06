@@ -16,7 +16,8 @@ Suggests:
     units,
     ggplot2,
     dplyr,
-    tibble
+    tibble,
+    patchwork
 Depends:
     expint
 Config/testthat/edition: 3

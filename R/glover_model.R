@@ -52,6 +52,7 @@ prob_integral <- function(Z) {
 #' stream_depletion_fraction <- get_stream_depletion_fraction(df)
 #' stream_depletion_fraction
 get_stream_depletion_fraction <- function(df, x1 = NULL, K = NULL, D = NULL, V = NULL, t = NULL) {
+  # previously get_q_fraction
   if (!missing(df)) { # if df is specified, replace NULL parameters with df columns
     if (!is.null(df)) {
       if (!("data.frame" %in% class(df))) {
@@ -106,6 +107,7 @@ get_stream_depletion_fraction <- function(df, x1 = NULL, K = NULL, D = NULL, V =
 #' aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(df)
 #' aquifer_drawdown_ratio
 get_aquifer_drawdown_ratio <- function(df, r = NULL, K = NULL, D = NULL, V = NULL, t = NULL) {
+  # previously get_s_ratio
   if (!missing(df)) { # if df is specified, replace NULL parameters with df columns
     if (!is.null(df)) {
       if (!("data.frame" %in% class(df))) {
@@ -117,6 +119,8 @@ get_aquifer_drawdown_ratio <- function(df, r = NULL, K = NULL, D = NULL, V = NUL
     }
   }
   alpha <- K * D / V
+  ### ADD CHECK THAT ALPHA IS A UNITS OBJECT
+  warning('ADD CHECK THAT ALPHA IS A UNITS OBJECT')
   radius_squared_over_4_alpha_t <- r^2/(4 * alpha * t)
   if (length(units(radius_squared_over_4_alpha_t)$numerator) != 0 | length(units(radius_squared_over_4_alpha_t)$denominator) != 0) {
     stop("Units error resulting in dimensional value input to expint. ",
