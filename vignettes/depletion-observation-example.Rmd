@@ -93,7 +93,7 @@ locations <- tribble(~x1, ~y, ~`Obs. well`, ~`Pumping well`,
                      0.8, 0, "b", "d") %>%
   mutate(across(all_of(c("x1","y")), function(x) set_units(x,"mi")), id = row_number())
 df <- locations %>%
-  crossing(t = set_units(seq(0.1,5, by = 0.1),'year')) %>%
+  crossing(t = set_units(c(0.05, seq(0.1,5, by = 0.1)),'year')) %>%
   mutate(x2 = set_units(5280/2,"ft"), K = K, D = D, V = V)
 
 
@@ -104,23 +104,38 @@ df_calcs
 ```
 
 
-```{r}
+```{r, fig.height=5}
 p_depletion_fraction <- ggplot(df_calcs,aes(as.numeric(t), as.numeric(stream_depletion_fraction), color = `Pumping well`)) + 
   geom_line(aes(group = id)) +
   labs(x = "Time since pumping onset, years",
        y = "Fraction of well abstraction\nfrom stream depletion") +
+  expand_limits(y= c(0,1)) +
   theme_std %+replace% 
-  theme(legend.position = "none", axis.title.x = element_blank())
+  theme(legend.position = "none")
 p_drawdown_ratio <- ggplot(df_calcs,aes(as.numeric(t), as.numeric(-aquifer_drawdown_ratio), color = `Pumping well`)) + 
   geom_line(aes(group = id)) +
-  geom_point(data = df_calcs %>% dplyr::filter(abs(as.numeric(t)) %% 0.5 < 0.05),aes(shape = `Obs. well`), size = 3, stroke = 1) +
+  geom_point(data = df_calcs %>% dplyr::filter(abs(as.numeric(t)) %% 0.5 < 0.01),aes(shape = `Obs. well`), size = 3, stroke = 1) +
   scale_shape_manual(values = c(0, 5)) +
+  expand_limits(y= c(0)) +
   labs(x = "Time since pumping onset, years",
        y = "Drawdown (ft) per\ncusec pumping") +
   theme_std %+replace% theme(legend.position = "none")
 
 p_depletion_fraction / p_drawdown_ratio
 ```
+
+
+```{r}
+p_drawdown_depletion <- ggplot(df_calcs, aes(as.numeric(-aquifer_drawdown_ratio), as.numeric(stream_depletion_fraction), color = `Pumping well`)) + 
+  geom_point(data = df_calcs %>% dplyr::filter(abs(as.numeric(t)) %% 0.5 < 0.15),aes(shape = `Obs. well`), size = 3, stroke = 1) +
+  scale_shape_manual(values = c(0, 5)) +
+  # expand_limits(y= c(0)) +
+  labs(x = "Drawdown (ft) per\ncusec pumping",
+       y = "Fraction of well abstraction\nfrom stream depletion") +
+  theme_std %+replace% theme(legend.position = "none")
+p_drawdown_depletion
+```
+
 
 
 ```{r}
