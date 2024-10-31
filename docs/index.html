@@ -107,6 +107,10 @@
 <span><span class="va">t</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">5</span>, <span class="st">"year"</span><span class="op">)</span></span>
 <span><span class="va">V</span> <span class="op">&lt;-</span> <span class="fl">0.2</span> <span class="co"># unitless</span></span>
 <span><span class="fu"><a href="reference/get_depletion_from_pumping.html">get_depletion_from_pumping</a></span><span class="op">(</span>x1 <span class="op">=</span> <span class="va">x1</span>, x2 <span class="op">=</span> <span class="va">x2</span>, y <span class="op">=</span> <span class="va">y</span>, K <span class="op">=</span> <span class="va">K</span>, D <span class="op">=</span> <span class="va">D</span>, V <span class="op">=</span> <span class="va">V</span>, t <span class="op">=</span> <span class="va">t</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Warning in get_aquifer_drawdown_ratio(r = r_w, K = K, D = D, V = V, t = t): ADD</span></span>
+<span><span class="co">#&gt; CHECK THAT ALPHA IS A UNITS OBJECT</span></span>
+<span><span class="co">#&gt; Warning in get_aquifer_drawdown_ratio(r = r_wi, K = K, D = D, V = V, t = t):</span></span>
+<span><span class="co">#&gt; ADD CHECK THAT ALPHA IS A UNITS OBJECT</span></span>
 <span><span class="co">#&gt;   stream_depletion_fraction aquifer_drawdown_ratio</span></span>
 <span><span class="co">#&gt; 1                 0.9365474    -1.2707109 [s/ft^2]</span></span>
 <span><span class="co">#&gt; 2                 0.6905933    -0.5705381 [s/ft^2]</span></span>
@@ -116,11 +120,20 @@
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tibble.tidyverse.org/" class="external-link">tibble</a></span><span class="op">)</span></span>
 <span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span>x1 <span class="op">=</span> <span class="va">x1</span>, x2 <span class="op">=</span> <span class="va">x2</span>, y <span class="op">=</span> <span class="va">y</span>, K <span class="op">=</span> <span class="va">K</span>, D <span class="op">=</span> <span class="va">D</span>, V <span class="op">=</span> <span class="va">V</span>, t <span class="op">=</span> <span class="va">t</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/get_depletion_from_pumping.html">get_depletion_from_pumping</a></span><span class="op">(</span><span class="va">df</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Warning in get_aquifer_drawdown_ratio(r = r_w, K = K, D = D, V = V, t = t): ADD</span></span>
+<span><span class="co">#&gt; CHECK THAT ALPHA IS A UNITS OBJECT</span></span>
+<span><span class="co">#&gt; Warning in get_aquifer_drawdown_ratio(r = r_wi, K = K, D = D, V = V, t = t):</span></span>
+<span><span class="co">#&gt; ADD CHECK THAT ALPHA IS A UNITS OBJECT</span></span>
 <span><span class="co">#&gt;   stream_depletion_fraction aquifer_drawdown_ratio</span></span>
 <span><span class="co">#&gt; 1                 0.9365474    -1.2707109 [s/ft^2]</span></span>
 <span><span class="co">#&gt; 2                 0.6905933    -0.5705381 [s/ft^2]</span></span>
 <span><span class="co">#&gt; 3                 0.4259739    -0.2299550 [s/ft^2]</span></span></code></pre></div>
 <p>For details of this function, check <code><a href="reference/get_depletion_from_pumping.html">?get_depletion_from_pumping</a></code>.</p>
+</div>
+<div class="section level2">
+<h2 id="website">Website<a class="anchor" aria-label="anchor" href="#website"></a>
+</h2>
+<p>You can find further information about this package, including function help files and tutorials on the <a href="https://gopalpenny.github.io/isw/" class="external-link">package website</a>.</p>
 </div>
 </div>
   </div>

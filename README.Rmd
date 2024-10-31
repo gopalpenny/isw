@@ -80,3 +80,7 @@ get_depletion_from_pumping(df)
 
 For details of this function, check `?get_depletion_from_pumping`.
 
+## Website
+
+You can find further information about this package, including function help files and tutorials on the [package website](https://gopalpenny.github.io/isw/).
+

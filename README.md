@@ -46,6 +46,10 @@ K <- set_units(0.001, "ft/sec")
 t <- set_units(5, "year")
 V <- 0.2 # unitless
 get_depletion_from_pumping(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t)
+#> Warning in get_aquifer_drawdown_ratio(r = r_w, K = K, D = D, V = V, t = t): ADD
+#> CHECK THAT ALPHA IS A UNITS OBJECT
+#> Warning in get_aquifer_drawdown_ratio(r = r_wi, K = K, D = D, V = V, t = t):
+#> ADD CHECK THAT ALPHA IS A UNITS OBJECT
 #>   stream_depletion_fraction aquifer_drawdown_ratio
 #> 1                 0.9365474    -1.2707109 [s/ft^2]
 #> 2                 0.6905933    -0.5705381 [s/ft^2]
@@ -60,6 +64,10 @@ because it works more seamlessly with `units` objects.
 library(tibble)
 df <- tibble(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t)
 get_depletion_from_pumping(df)
+#> Warning in get_aquifer_drawdown_ratio(r = r_w, K = K, D = D, V = V, t = t): ADD
+#> CHECK THAT ALPHA IS A UNITS OBJECT
+#> Warning in get_aquifer_drawdown_ratio(r = r_wi, K = K, D = D, V = V, t = t):
+#> ADD CHECK THAT ALPHA IS A UNITS OBJECT
 #>   stream_depletion_fraction aquifer_drawdown_ratio
 #> 1                 0.9365474    -1.2707109 [s/ft^2]
 #> 2                 0.6905933    -0.5705381 [s/ft^2]
@@ -67,3 +75,9 @@ get_depletion_from_pumping(df)
 ```
 
 For details of this function, check `?get_depletion_from_pumping`.
+
+## Website
+
+You can find further information about this package, including function
+help files and tutorials on the [package
+website](https://gopalpenny.github.io/isw/).
