@@ -23,7 +23,9 @@ library(isw)
 library(patchwork)
 library(units)
 library(png)
-library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
 
 well_config_img <- readPNG("../inst/figs/pumping_observation_wells.png")
 

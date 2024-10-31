@@ -16,8 +16,10 @@ Suggests:
     units,
     ggplot2,
     dplyr,
+    tidyr,
     tibble,
-    patchwork
+    patchwork,
+    png
 Depends:
     expint
 Config/testthat/edition: 3

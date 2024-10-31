@@ -23,7 +23,9 @@ library(isw)
 library(patchwork)
 library(units)
 library(png)
-library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
 
 well_config_img <- readPNG("../inst/figs/pumping_observation_wells.png")
 
@@ -96,19 +98,19 @@ df2 <- df %>%
 ```
 
 ```{r}
-theme_std <- ggplot2::theme(line = ggplot2::element_line(size = 1, 
-        color = "black"), panel.background = ggplot2::element_rect(fill = "white"), 
-        panel.border = ggplot2::element_rect(fill = NA, colour = "black", 
-            size = 1), panel.grid.major = ggplot2::element_blank(), 
-        panel.grid.minor = ggplot2::element_blank(), axis.line = ggplot2::element_blank(), 
-        axis.ticks.x = ggplot2::element_line(colour = "black", 
-            size = 0.5), axis.ticks.y = ggplot2::element_line(colour = "black", 
-            size = 0.5), axis.ticks.length = ggplot2::unit(1, 
-            "mm"), axis.text.x = ggplot2::element_text(size = 9, 
-            colour = "black"), axis.text.y = ggplot2::element_text(size = 9, 
+theme_std <- theme(line = element_line(size = 1, 
+        color = "black"), panel.background = element_rect(fill = "white"), 
+        panel.border = element_rect(fill = NA, colour = "black", 
+            size = 1), panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), axis.line = element_blank(), 
+        axis.ticks.x = element_line(colour = "black", 
+            size = 0.5), axis.ticks.y = element_line(colour = "black", 
+            size = 0.5), axis.ticks.length = unit(1, 
+            "mm"), axis.text.x = element_text(size = 9, 
+            colour = "black"), axis.text.y = element_text(size = 9, 
             colour = "black", hjust = 1), legend.text = element_text(size = 9, 
-            color = "black"), axis.title.x = ggplot2::element_text(size = 10, 
-            colour = "black"), axis.title.y = ggplot2::element_text(size = 10, 
+            color = "black"), axis.title.x = element_text(size = 10, 
+            colour = "black"), axis.title.y = element_text(size = 10, 
             angle = 90, colour = "black"), legend.title = element_text(size = 10, 
             color = "black"))
 ```
@@ -169,9 +171,9 @@ p_drawdown_transects
 
 
 ```{r fig.width = 7, fig.height = 7}
-p_well_config <- ggplot2::ggplot() + ggplot2::annotation_custom(grid::rasterGrob(well_config_img,
-                                                                width=ggplot2::unit(1,"npc"),
-                                                                height=ggplot2::unit(1,"npc")),
+p_well_config <- ggplot() + annotation_custom(grid::rasterGrob(well_config_img,
+                                                                width=unit(1,"npc"),
+                                                                height=unit(1,"npc")),
                                                -Inf, Inf, -Inf, Inf)
 
 p_depletion_x <- p_q_fraction + p_well_config +
