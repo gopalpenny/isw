@@ -1,0 +1,46 @@
+---
+title: "ISW-reporting-scenarios"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{ISW-reporting-scenarios}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+
+# ISW scenarios to report observational data
+
+## Variable definitions
+
+* pumping is a function of cartesian space and time, $p = f(x,t)$. In this case $x$ is a 2-dimensional cartesian space.
+* actual pumping is $p_a$, modeled pumping is $p_m$. Generally, pumping should be modeled at least once every 5 years as part of GSP updates
+* water level is also a function of time and space, simplified here as hydraulic head, $h = f(x, t)$. Note that water level and hydraulic head are equivalent in 2D analytical models
+* observation wells are located at fixed points in space, $x_{obs}$, leading to observed water levels $h_{obs}$
+* the $x$ space can be transformed from cartesian space to another space, $d =  \{d_1, d_2\}$, where $d_1=\delta_1(x)$ represents the distance to the nearest river (or surface water body), and $d_2(x)$ represents the distance along the river network from the lowest point on the river network within the subbasin. In other words, $d_1$ is distance away from the river, while $d_2$ is distance along the river. We can likewise refer to pumping and water levels using these coordinates as $p(d, t)$ and $h(d, t)$.
+* we denote stream depletion as  $q_d = f(d_2, t)$, where $d_2$ essentially denotes the location of stream depletion on the river network (I think this notation is serviceable if we allow $d_2$ to be defined independently for each stream reach). Note that, by definition, $d_1 = 0$ along the river or at any surface water body.
+
+## Scenarios of analysis and reporting
+
+The following scenarios represent conditions where it **may** be possible to replace modeled results with reported results.
+
+### Scenario 1: Lower pumping across subbasin
+
+Imagine a situation where pumping is a function of cartesian space and time, $p = f(x,t)$. Let’s say you modeled ISW for the next five years $t \in [0,5]$ under the conditions that $p = p_m(x, t)$. But you did this in a conservative way, such that your actual pumping is $p_a < p_m \, \forall \, x, t$. In this case, you wouldn’t have to re-model the scenario, you can just report your pumping because ISW should be less than what you modeled
+
+### Scenario 2: Pumping below threshold based on stream distance
+
+In this situation, the primary condition is that the sum of all pumping within a certain distance (or buffer) from the river has to be less than modeled pumping within the same buffer. Essentially this allows for greater pumping away from the river if you pump less close to the river. This has to be true for any distance (or buffer width) $d_1$ within the subbasin as well as all $d_2$ along the river network:
+
+$$\sum_{d_1 < \hat d} p_a(d_1, d_2, t) < \sum_{d_1 < \hat d} p_m(d_1, d_2, t) \, , \forall \, d_2, \hat d, t$$
+
+Note that in the above equation, we write out $p(d, t) = p(d_1, d_2, t)$ to make it clearer we are not summing over $d_2$. The variable $\hat d$ is a dummy variable for the summation and spans the entire subbasin. *The potential concern with this approach is that there could be delayed stream depletion associated with pumping further away from the river, and the consequence of this delay would need to be investigated.*
+
+### Scenario 3: Water levels away from the river and pumping near the river
+
+In this case, the goal is to try to capture the net effect of pumping further away from the river using water level measurements, while limiting stream depletion from pumping near the river. This example has to be thoroughly explored to be viable. Conceptually, we break up stream depletion into depletion associated with pumping near the river, $q_{d<d'}$, and depletion associated with pumping away from the river $q_{d>d'}$. In this case, $d'$ is some arbitrary boundary where for $d_1 > d'$, water levels measurements are an appropriate proxy for stream depletion, meaning $q_{d>d'} \leq f(h_{obs})$. For $d_1<d'$, pumping is constrained in such a way to limit stream depletion as a function of pumping within this boundary or, in other words, $q_{d<d'}<f(p_a(d_1<d'))$.
+
+The basic idea is that a network of water level observation, $h_{obs}$, ensure that there is not significant water level drawdown within the subbasin across the subbasin, and therefore protects against a situation where intensive pumping across the subbasin creates hydraulic gradients whereby stream depletion thresholds exceeded.
+
+### Scenario 4: Water level don't decrease, pumping doesn't increase
+
+There may be rare scenarios where basins are adequately managed for ISW in that groundwater levels are constant or increasing, and pumping is constant or decreasing (relative to the 2015 baseline). In this case, we would be looking at actors that are at an advanced stage of groundwater management. If they can demonstrate these two characteristics, they may not need to model stream depletion. 
