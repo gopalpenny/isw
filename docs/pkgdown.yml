@@ -4,6 +4,7 @@ pkgdown_sha: ~
 articles:
   depletion-observation-example: depletion-observation-example.html
   Glover-stream-depletion: Glover-stream-depletion.html
+  ISW-reporting-scenarios: ISW-reporting-scenarios.html
   Stream-depletion-and-aquifer-drawdown: Stream-depletion-and-aquifer-drawdown.html
-last_built: 2024-10-31T18:49Z
+last_built: 2024-11-01T16:00Z
 
