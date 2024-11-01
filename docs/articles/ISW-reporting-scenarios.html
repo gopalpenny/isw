@@ -171,22 +171,28 @@ further away from the river using water level measurements, while
 limiting stream depletion from pumping near the river. This example has
 to be thoroughly explored to be viable. Conceptually, we break up stream
 depletion into depletion associated with pumping near the river, <span class="math inline">\(q_{d&lt;d'}\)</span>, and depletion associated
-with pumping away from the river <span class="math inline">\(q_{d&gt;d'}\)</span>. In this case, <span class="math inline">\(d'\)</span> is some arbitrary boundary where
-for <span class="math inline">\(d_1 &gt; d'\)</span>, water levels
-measurements are an appropriate proxy for stream depletion, meaning
-<span class="math inline">\(q_{d&gt;d'} \leq f(h_{obs})\)</span>.
-For <span class="math inline">\(d_1&lt;d'\)</span>, pumping is
+with pumping away from the river <span class="math inline">\(q_{d&gt;d'}\)</span>. In this case, <span class="math inline">\(d'=f(d_2)\)</span> is some arbitrary boundary
+representing distance from the river, defined as a function of <span class="math inline">\(d_2\)</span>, meaning that it varies along the
+river network (unlike <span class="math inline">\(\hat d\)</span>, which
+is fixed for the entire river network). We are looking to find a <span class="math inline">\(d'\)</span> such that, for <span class="math inline">\(d_1 &gt; d'\)</span>, water levels
+measurements (<span class="math inline">\(h_{obs}\)</span>) are an
+appropriate proxy for stream depletion, represented by <span class="math inline">\(f(h_{obs})\)</span>. In particular, we want to
+demonstrate a situation in which <span class="math inline">\(q_{d&gt;d'} \leq f(h_{obs})\)</span>. For
+<span class="math inline">\(d_1&lt;d'\)</span>, pumping is
 constrained in such a way to limit stream depletion as a function of
-pumping within this boundary or, in other words, <span class="math inline">\(q_{d&lt;d'}&lt;f(p_a(d_1&lt;d'))\)</span>.</p>
+pumping within this boundary or, in other words, <span class="math inline">\(q_{d&lt;d'}&lt;f(p_a(d_1&lt;d'))\)</span>,
+where <span class="math inline">\(p_a(d_1&lt;d')\)</span> represents
+actual pumping inside the <span class="math inline">\(d'\)</span>
+boundary.</p>
 <p>The basic idea is that a network of water level observation, <span class="math inline">\(h_{obs}\)</span>, ensure that there is not
-significant water level drawdown within the subbasin across the
-subbasin, and therefore protects against a situation where intensive
-pumping across the subbasin creates hydraulic gradients whereby stream
-depletion thresholds exceeded.</p>
+significant water level drawdown within/across the subbasin, and
+therefore protects against a situation where intensive pumping across
+the subbasin creates hydraulic gradients whereby stream depletion
+thresholds exceeded.</p>
 </div>
 <div class="section level4">
-<h4 id="scenario-4-water-level-dont-decrease-pumping-doesnt-increase">Scenario 4: Water level don’t decrease, pumping doesn’t
-increase<a class="anchor" aria-label="anchor" href="#scenario-4-water-level-dont-decrease-pumping-doesnt-increase"></a>
+<h4 id="scenario-4-water-levels-dont-decrease-pumping-doesnt-increase">Scenario 4: Water levels don’t decrease, pumping doesn’t
+increase<a class="anchor" aria-label="anchor" href="#scenario-4-water-levels-dont-decrease-pumping-doesnt-increase"></a>
 </h4>
 <p>There may be rare scenarios where basins are adequately managed for
 ISW in that groundwater levels are constant or increasing, and pumping

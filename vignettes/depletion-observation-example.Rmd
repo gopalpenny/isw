@@ -170,6 +170,7 @@ We can now add the depletion to the tibble to the original data frame for plotti
 ```{r}
 df_calcs <- df %>%
   bind_cols(as_tibble(depletion))
+head(df_calcs)
 ```
 
 ```{r, fig.height=5}
