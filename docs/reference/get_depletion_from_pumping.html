@@ -38,16 +38,16 @@
     <span class="caret"></span>
   </a>
   <ul class="dropdown-menu" role="menu"><li>
-      <a href="../articles/depletion-observation-example.html">depletion-observation-example</a>
+      <a href="../articles/depletion-observation-example.html">Depletion observation example</a>
     </li>
     <li>
-      <a href="../articles/Glover-stream-depletion.html">Glover stream depletion model</a>
+      <a href="../articles/Getting-started-with-ISW-package.html">Getting started with ISW package</a>
     </li>
     <li>
-      <a href="../articles/ISW-reporting-scenarios.html">ISW-reporting-scenarios</a>
+      <a href="../articles/ISW-reporting-scenarios.html">ISW reporting scenarios</a>
     </li>
     <li>
-      <a href="../articles/Stream-depletion-and-aquifer-drawdown.html">Stream-depletion-and-aquifer-drawdown</a>
+      <a href="../articles/Stream-depletion-and-aquifer-drawdown.html">Stream depletion and aquifer drawdown</a>
     </li>
   </ul></li>
       </ul><ul class="nav navbar-nav navbar-right"></ul></div><!--/.nav-collapse -->
@@ -152,8 +152,6 @@ fraction</p></dd>
 <span class="r-in"><span>                                                     D <span class="op">=</span> <span class="va">D</span>,</span></span>
 <span class="r-in"><span>                                                     V <span class="op">=</span> <span class="va">V</span>,</span></span>
 <span class="r-in"><span>                                                     t <span class="op">=</span> <span class="va">t</span><span class="op">)</span></span></span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>ADD CHECK THAT ALPHA IS A UNITS OBJECT</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>ADD CHECK THAT ALPHA IS A UNITS OBJECT</span>
 <span class="r-in"><span><span class="va">depletion_from_pumping</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   stream_depletion_fraction aquifer_drawdown_ratio</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1                 0.9365474    -1.2707109 [s/ft^2]</span>
@@ -164,8 +162,6 @@ fraction</p></dd>
 <span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tibble.tidyverse.org/" class="external-link">tibble</a></span><span class="op">)</span> <span class="co"># simplifies specifying data.frames with units objects</span></span></span>
 <span class="r-in"><span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span>x1 <span class="op">=</span> <span class="va">x1</span>, x2 <span class="op">=</span> <span class="va">x2</span>, y <span class="op">=</span> <span class="va">y</span>, K <span class="op">=</span> <span class="va">K</span>, D <span class="op">=</span> <span class="va">D</span>, V <span class="op">=</span> <span class="va">V</span>, t <span class="op">=</span> <span class="va">t</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">depletion_from_pumping</span> <span class="op">&lt;-</span> <span class="fu">get_depletion_from_pumping</span><span class="op">(</span><span class="va">df</span><span class="op">)</span></span></span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>ADD CHECK THAT ALPHA IS A UNITS OBJECT</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>ADD CHECK THAT ALPHA IS A UNITS OBJECT</span>
 <span class="r-in"><span><span class="va">depletion_from_pumping</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   stream_depletion_fraction aquifer_drawdown_ratio</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1                 0.9365474    -1.2707109 [s/ft^2]</span>

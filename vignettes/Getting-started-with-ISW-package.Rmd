@@ -1,8 +1,8 @@
 ---
-title: "Glover stream depletion model"
+title: "Getting started with ISW package"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Glover-stream-depletion}
+  %\VignetteIndexEntry{Getting started with ISW package}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -38,11 +38,11 @@ t <- set_units(5, "year")
 V <- 0.2 # unitless
 ```
 
-Now we estimate drawdown at multiple distances from a pumping well. To do that, we use the function `get_aquifer_drawdown_ratio`. This function gives the change in water level per unit pumping, assuming homogeneous aquifer of infinite extent and no boundaries (i.e., no streams). Let's get this ratio a distances ranging from 1 ft to 2 miles, after 2 years of pumping.
+Now we estimate drawdown at multiple distances from a pumping well. To do that, we use the function `get_aquifer_drawdown_ratio`. This function gives the change in water level per unit pumping, assuming homogeneous aquifer of infinite extent and no boundaries (i.e., no streams). Let's get this ratio a distances ranging from 1 ft to 10 miles, after 2 years of pumping.
 
 
 ```{r}
-r <- set_units(seq(1, 5280*10, length.out = 200), "ft")
+r <- set_units(seq(1/5280, 10, length.out = 200), "mi")
 t <- set_units(5, "year")
 aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(r = r, K = K, D = D, V = V, t = t)
 ```

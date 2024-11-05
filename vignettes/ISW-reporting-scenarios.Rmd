@@ -1,8 +1,8 @@
 ---
-title: "ISW-reporting-scenarios"
+title: "ISW reporting scenarios"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{ISW-reporting-scenarios}
+  %\VignetteIndexEntry{ISW reporting scenarios}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

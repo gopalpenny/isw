@@ -1,8 +1,8 @@
 ---
-title: "depletion-observation-example"
+title: "Depletion observation example"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{depletion-observation-example}
+  %\VignetteIndexEntry{Depletion observation example}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

@@ -35,16 +35,16 @@ aquifer boundaries. See Glover (1954)."><!-- mathjax --><script src="https://cdn
     <span class="caret"></span>
   </a>
   <ul class="dropdown-menu" role="menu"><li>
-      <a href="../articles/depletion-observation-example.html">depletion-observation-example</a>
+      <a href="../articles/depletion-observation-example.html">Depletion observation example</a>
     </li>
     <li>
-      <a href="../articles/Glover-stream-depletion.html">Glover stream depletion model</a>
+      <a href="../articles/Getting-started-with-ISW-package.html">Getting started with ISW package</a>
     </li>
     <li>
-      <a href="../articles/ISW-reporting-scenarios.html">ISW-reporting-scenarios</a>
+      <a href="../articles/ISW-reporting-scenarios.html">ISW reporting scenarios</a>
     </li>
     <li>
-      <a href="../articles/Stream-depletion-and-aquifer-drawdown.html">Stream-depletion-and-aquifer-drawdown</a>
+      <a href="../articles/Stream-depletion-and-aquifer-drawdown.html">Stream depletion and aquifer drawdown</a>
     </li>
   </ul></li>
       </ul><ul class="nav navbar-nav navbar-right"></ul></div><!--/.nav-collapse -->
@@ -121,7 +121,6 @@ fraction</p></dd>
 <span class="r-in"><span><span class="va">t</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">5</span>, <span class="st">"year"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">V</span> <span class="op">&lt;-</span> <span class="fl">0.2</span> <span class="co"># unitless</span></span></span>
 <span class="r-in"><span><span class="va">aquifer_drawdown_ratio</span> <span class="op">&lt;-</span> <span class="fu">get_aquifer_drawdown_ratio</span><span class="op">(</span>r <span class="op">=</span> <span class="va">r</span>, K <span class="op">=</span> <span class="va">K</span>, D <span class="op">=</span> <span class="va">D</span>, V <span class="op">=</span> <span class="va">V</span>, t <span class="op">=</span> <span class="va">t</span><span class="op">)</span></span></span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>ADD CHECK THAT ALPHA IS A UNITS OBJECT</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Drawdown per cusec pumping:</span></span></span>
 <span class="r-in"><span><span class="va">change_in_waterlevel_per_cusec</span> <span class="op">&lt;-</span> <span class="va">aquifer_drawdown_ratio</span> <span class="op">*</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"ft^3/sec"</span><span class="op">)</span></span></span>
@@ -134,7 +133,6 @@ fraction</p></dd>
 <span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tibble.tidyverse.org/" class="external-link">tibble</a></span><span class="op">)</span> <span class="co"># simplifies specifying data.frames with units objects</span></span></span>
 <span class="r-in"><span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span>r <span class="op">=</span> <span class="va">r</span>, K <span class="op">=</span> <span class="va">K</span>, D <span class="op">=</span> <span class="va">D</span>, V <span class="op">=</span> <span class="va">V</span>, t <span class="op">=</span> <span class="va">t</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">aquifer_drawdown_ratio</span> <span class="op">&lt;-</span> <span class="fu">get_aquifer_drawdown_ratio</span><span class="op">(</span><span class="va">df</span><span class="op">)</span></span></span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>ADD CHECK THAT ALPHA IS A UNITS OBJECT</span>
 <span class="r-in"><span><span class="va">aquifer_drawdown_ratio</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Units: [s/ft^2]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] -4.122375 -1.620171 -0.688698</span>

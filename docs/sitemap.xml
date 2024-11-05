@@ -10,6 +10,9 @@
     <loc>/LICENSE.html</loc>
   </url>
   <url>
+    <loc>/articles/Getting-started-with-ISW-package.html</loc>
+  </url>
+  <url>
     <loc>/articles/Glover-stream-depletion.html</loc>
   </url>
   <url>
@@ -29,6 +32,9 @@
   </url>
   <url>
     <loc>/index.html</loc>
+  </url>
+  <url>
+    <loc>/reference/check_dimensionality.html</loc>
   </url>
   <url>
     <loc>/reference/get_aquifer_drawdown_ratio.html</loc>

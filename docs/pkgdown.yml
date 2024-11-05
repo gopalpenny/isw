@@ -3,8 +3,8 @@ pkgdown: 2.0.8
 pkgdown_sha: ~
 articles:
   depletion-observation-example: depletion-observation-example.html
-  Glover-stream-depletion: Glover-stream-depletion.html
+  Getting-started-with-ISW-package: Getting-started-with-ISW-package.html
   ISW-reporting-scenarios: ISW-reporting-scenarios.html
   Stream-depletion-and-aquifer-drawdown: Stream-depletion-and-aquifer-drawdown.html
-last_built: 2024-11-01T16:00Z
+last_built: 2024-11-05T13:46Z
 
