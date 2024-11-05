@@ -107,11 +107,11 @@ as:</p>
 understand interconnected surface waters:</p>
 <ul>
 <li>
-<code>stream_depletion_fraction</code>: Estimate stream depletion
-due to pumping well(s)</li>
+<code>get_stream_depletion_fraction</code>: Estimate stream
+depletion due to pumping well(s)</li>
 <li>
-<code>aquifer_drawdown_ratio</code>: Estimate aquifer drawdown due
-to pumping well(s) (no stream)</li>
+<code>get_aquifer_drawdown_ratio</code>: Estimate aquifer drawdown
+due to pumping well(s) (no stream)</li>
 <li>
 <code>get_depletion_from_pumping</code>: Estimate stream depletion
 and aquifer drawdown</li>
@@ -124,9 +124,9 @@ sign of pumping. In other words, a pumping well and and injection well
 on opposite sides of the stream will ensure constant hydraulic head at
 the midpoint between the two wells, assuming the rates of pumping and
 injection are equal in magnitude.</p>
-<p>Note that the <code>aquifer_drawdown_ratio</code> does not assume a
-stream, and therefore works only for a single well. Both
-<code>stream_depletion_fraction</code> and
+<p>Note that the <code>get_aquifer_drawdown_ratio</code> does not assume
+a stream, and therefore works only for a single well. Both
+<code>get_stream_depletion_fraction</code> and
 <code>get_depletion_from_pumping</code> account for an image well on the
 other side of the stream.</p>
 </div>
@@ -158,11 +158,11 @@ units objects, and therefore aquifer parameters.</p>
 <div class="section level3">
 <h3 id="estimating-stream-depletion">Estimating stream depletion<a class="anchor" aria-label="anchor" href="#estimating-stream-depletion"></a>
 </h3>
-<p>The <code>stream_depletion_fraction()</code> function estimates
+<p>The <code><a href="../reference/get_stream_depletion_fraction.html">get_stream_depletion_fraction()</a></code> function estimates
 stream depletion at time <code>t</code> as a fraction of pumping from an
 individual pumping well, following Glover and Balmer (1954). The
 <code>x1</code> parameter represents distance from the stream. We can
-call <code>stream_depletion_fraction</code> by specifying
+call <code>get_stream_depletion_fraction</code> by specifying
 <code>x1</code>, the aquifer parameters, and the elapsed time
 <code>t</code> since pumping initiated.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">

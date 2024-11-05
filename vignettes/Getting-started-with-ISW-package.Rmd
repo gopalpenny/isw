@@ -31,8 +31,8 @@ library(isw)
 
 The `isw` package has three primary functions to understand interconnected surface waters:
 
-* `stream_depletion_fraction`: Estimate stream depletion due to pumping well(s)
-* `aquifer_drawdown_ratio`: Estimate aquifer drawdown due to pumping well(s) (no stream)
+* `get_stream_depletion_fraction`: Estimate stream depletion due to pumping well(s)
+* `get_aquifer_drawdown_ratio`: Estimate aquifer drawdown due to pumping well(s) (no stream)
 * `get_depletion_from_pumping`: Estimate stream depletion and aquifer drawdown
 
 We'll see how each of these works, below. Note that within these models, representation
@@ -43,8 +43,8 @@ and injection well on opposite sides of the stream will ensure constant hydrauli
 at the midpoint between the two wells, assuming the rates of pumping and injection
 are equal in magnitude. 
 
-Note that the `aquifer_drawdown_ratio` does not assume a stream, and therefore
-works only for a single well. Both `stream_depletion_fraction` and `get_depletion_from_pumping`
+Note that the `get_aquifer_drawdown_ratio` does not assume a stream, and therefore
+works only for a single well. Both `get_stream_depletion_fraction` and `get_depletion_from_pumping`
 account for an image well on the other side of the stream.
 
 ## Aquifer parameters 
@@ -72,9 +72,9 @@ V <- 0.2 # unitless
 
 ### Estimating stream depletion
 
-The `stream_depletion_fraction()` function estimates stream depletion at time `t` as a
+The `get_stream_depletion_fraction()` function estimates stream depletion at time `t` as a
 fraction of pumping from an individual pumping well, following Glover and Balmer (1954). The
-`x1` parameter represents distance from the stream. We can call `stream_depletion_fraction`
+`x1` parameter represents distance from the stream. We can call `get_stream_depletion_fraction`
 by specifying `x1`, the aquifer parameters, and the elapsed time `t` since pumping initiated.
 
 ```{r}
