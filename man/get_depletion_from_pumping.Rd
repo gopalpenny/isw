@@ -12,7 +12,8 @@ get_depletion_from_pumping(
   K = NULL,
   D = NULL,
   V = NULL,
-  t = NULL
+  t = NULL,
+  well_diam = NULL
 )
 }
 \arguments{
@@ -32,6 +33,8 @@ get_depletion_from_pumping(
 
 \item{t}{Time from pumping onset at which to calculate stream depletion
 fraction}
+
+\item{well_diam}{Diameter of the well, inside which drawdown does not increase. Defaults to 0.}
 }
 \value{
 A `data.frame` with two columns: `stream_depletion_fraction` and

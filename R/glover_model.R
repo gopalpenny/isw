@@ -80,6 +80,7 @@ get_stream_depletion_fraction <- function(df, x1 = NULL, K = NULL, D = NULL, V =
 #'
 #' @inheritParams get_stream_depletion_fraction
 #' @param r Distance between pumping and observation well
+#' @param well_diam Diameter of the well, inside which drawdown does not increase. Defaults to 0.
 #' @description
 #' This function estimates the ratio of water level drawdown to pumping rate
 #' at an observation well at time `t` after pumping initiates from an individual
@@ -106,27 +107,48 @@ get_stream_depletion_fraction <- function(df, x1 = NULL, K = NULL, D = NULL, V =
 #' df <- tibble(r = r, K = K, D = D, V = V, t = t)
 #' aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(df)
 #' aquifer_drawdown_ratio
-get_aquifer_drawdown_ratio <- function(df, r = NULL, K = NULL, D = NULL, V = NULL, t = NULL) {
+#'
+#' # for radius < well_diam/2, drawdown does not increase.
+#' r <- set_units(seq(0.25,2, by = 0.25), "ft")
+#' well_diam <- set_units(2, "ft")
+#' aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(r = r, K = K, D = D,
+#'                                                      V = V, t = t,
+#'                                                      well_diam = well_diam)
+#' aquifer_drawdown_ratio
+get_aquifer_drawdown_ratio <- function(df, r = NULL, K = NULL, D = NULL,
+                                       V = NULL, t = NULL,
+                                       well_diam = NULL) {
   # previously get_s_ratio
   if (!missing(df)) { # if df is specified, replace NULL parameters with df columns
     if (!is.null(df)) {
       if (!("data.frame" %in% class(df))) {
         stop("df must be a data.frame object")
       }
-      for (var in c("r","K","D","V","t")) {
+      for (var in c("r","K","D","V","t","well_diam")) {
         assign(var, df[[var]])
       }
     }
   }
 
+  if (is.null(well_diam)) {
+    well_diam <- units::set_units(0, "ft")
+  }
+
+  # check dimensionality
   check_dimensionality(K, "ft/s","K")
   check_dimensionality(D, "ft","D")
-  check_dimensionality(r, "ft","r")
   check_dimensionality(t, "s","t")
+  check_dimensionality(well_diam, "m","well_diam")
 
   alpha <- K * D / V
 
   check_dimensionality(alpha, "ft^2/s","alpha")
+
+  # for r < well_radius, set r = well_radius
+  well_radius <- units::set_units(well_diam/2, units(r))
+  r[r < well_radius] <- well_radius
+
+  check_dimensionality(r, "ft","r")
 
   radius_squared_over_4_alpha_t <- r^2/(4 * alpha * t)
   if (length(units(radius_squared_over_4_alpha_t)$numerator) != 0 | length(units(radius_squared_over_4_alpha_t)$denominator) != 0) {
@@ -140,53 +162,6 @@ get_aquifer_drawdown_ratio <- function(df, r = NULL, K = NULL, D = NULL, V = NUL
   return(s_over_Q)
 }
 
-#' Check dimensionality
-#'
-#' Check dimensionality of object
-#' @param object Object of which to check dimensionality
-#' @param desired_units Required dimensionality, given as units (e.g., "ft/s")
-#' @param variable_name Optional name of the object, for error reporting
-#' @description
-#' Internal function to check the dimensionality (i.e., units) of an object.
-#' First, check that the object is a units object. Second, try to convert the
-#' object to `desired_units` to ensure dimensionality is correct.
-#' @returns
-#' As of right now, nothing is returned
-#' @examples
-#' \dontrun{
-#' object <- set_units(1, "ft")
-#' desired_units <- "m"
-#' check_dimensionality(object, "m") # passes
-#'
-#' # error because object has wrong dimensionality
-#' check_dimensionality(object, "m^2", "object")
-#' check_dimensionality(object, "m^2") # error, note difference in error reporting
-#'
-#' check_dimensionality(1, "m", "object") # error because object not a units object
-#' }
-check_dimensionality <- function(object, desired_units, variable_name = NULL) {
-
-  if (is.null(variable_name)) {
-    variable_name <- "The variable passed to check_dimensionality()"
-  }
-  units::units_options(set_units_mode = "standard")
-  if(!any(class(object)=="units")) {
-    stop(paste(variable_name, 'is not a units object. Make sure to provide appropriate units'))
-  }
-  tryCatch(
-    expr = {
-      test <- units::set_units(object, desired_units)
-    },
-    error = function(cond) {
-      message1 <- paste(variable_name,"is",object,".",
-                    "It should have units that can be converted to",desired_units,
-                    "but the conversion failed\n")
-      message2 <- paste("Here's the original error message:", conditionMessage(cond))
-      stop(paste(message1, message2))
-      NA
-    })
-}
-
 
 #' Get stream depletion and changes in water level from pumping
 #'
@@ -195,6 +170,7 @@ check_dimensionality <- function(object, desired_units, variable_name = NULL) {
 #' @param x1 Distance of pumping well to stream
 #' @param x2 Distance of observation well to stream
 #' @param y Distance between pumping and observation well (parallel to stream)
+#' @param well_diam Diameter of the well, inside which drawdown does not increase. Defaults to 0.
 #' @inheritParams get_stream_depletion_fraction
 #' @export
 #' @description This function estimates stream depletion fraction (using
@@ -230,24 +206,28 @@ check_dimensionality <- function(object, desired_units, variable_name = NULL) {
 #' df <- tibble(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t)
 #' depletion_from_pumping <- get_depletion_from_pumping(df)
 #' depletion_from_pumping
-get_depletion_from_pumping <- function(df, x1 = NULL, x2 = NULL, y = NULL, K = NULL, D = NULL, V = NULL, t = NULL) {
+get_depletion_from_pumping <- function(df, x1 = NULL, x2 = NULL, y = NULL, K = NULL, D = NULL, V = NULL, t = NULL, well_diam = NULL) {
   if (!missing(df)) { # if df is specified, replace NULL parameters with df columns
     if (!is.null(df)) {
       if (!("data.frame" %in% class(df))) {
         stop("df must be a data.frame object")
       }
-      for (var in c("x1","x2","y","K","D","V","t")) {
+      for (var in c("x1","x2","y","K","D","V","t","well_diam")) {
         assign(var, df[[var]])
       }
     }
+  }
+
+  if (is.null(well_diam)) {
+    well_diam <- units::set_units(0, "ft")
   }
 
   r_w <- sqrt(y^2 + (x2-x1)^2) # distance from observation well to pumping well
   r_wi <- sqrt(y^2 + (x2+x1)^2) # distance from observation well to pumping well (imaged across the stream)
 
   stream_depletion_fraction <- get_stream_depletion_fraction(x1 = x1, K = K, D = D, V = V, t = t) # %
-  ds_w <- get_aquifer_drawdown_ratio(r = r_w, K = K, D = D, V = V, t = t) # ft / flowrate
-  dw_wi <- -get_aquifer_drawdown_ratio(r = r_wi, K = K, D = D, V = V, t = t) # ft / flowrate
+  ds_w <- get_aquifer_drawdown_ratio(r = r_w, K = K, D = D, V = V, t = t, well_diam = well_diam) # ft / flowrate
+  dw_wi <- -get_aquifer_drawdown_ratio(r = r_wi, K = K, D = D, V = V, t = t, well_diam = well_diam) # ft / flowrate
   depletion <- data.frame(stream_depletion_fraction = stream_depletion_fraction,
                           aquifer_drawdown_ratio = ds_w + dw_wi)
   return(depletion)

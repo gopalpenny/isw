@@ -4,10 +4,10 @@ suppressMessages(library(units))
 suppressMessages(library(tibble))
 
 
-x1 <- set_units(c(1, 5, 10) * 1e3, "ft")
-D <- set_units(100, "ft")
-K <- set_units(0.001, "ft/sec")
-t <- set_units(5, "year")
+x1 <- units::set_units(c(1, 5, 10) * 1e3, "ft")
+D <- units::set_units(100, "ft")
+K <- units::set_units(0.001, "ft/sec")
+t <- units::set_units(5, "year")
 V <- 0.2 # unitless
 stream_depletion_fraction <- get_stream_depletion_fraction(x1 = x1, K = K, D = D, V = V, t = t) # % percentage
 
@@ -68,6 +68,15 @@ pumping_depletion_df$aquifer_drawdown_ratio <-
   set_units(pumping_depletion_df$aquifer_drawdown_ratio, "sec/ft^2")
 test_that("get_depletion_from_pumping generates correct results for data.frame input",{
   expect_equal(pumping_depletion, pumping_depletion_df)
+})
+
+
+# for radius < well_diam/2, drawdown does not increase.
+r <- units::set_units(c(0.5, 0.75, 1, 1.1, 2, 5, 10), "ft")
+aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(r = r, K = K, D = D, V = V, t = t, well_diam = units::set_units(2, "ft"))
+test_that("get_aquifer_drawdown_ratio restrict drawdown inside well radius",{
+  expect_equal(round(aquifer_drawdown_ratio,5),
+               units::set_units(c(-15.11389, -15.11389, -15.11389, -14.96220, -14.01071, -12.55239, -11.44921),"s/ft^2"))
 })
 
 

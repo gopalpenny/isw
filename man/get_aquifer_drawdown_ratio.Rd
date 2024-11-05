@@ -10,7 +10,8 @@ get_aquifer_drawdown_ratio(
   K = NULL,
   D = NULL,
   V = NULL,
-  t = NULL
+  t = NULL,
+  well_diam = NULL
 )
 }
 \arguments{
@@ -26,6 +27,8 @@ get_aquifer_drawdown_ratio(
 
 \item{t}{Time from pumping onset at which to calculate stream depletion
 fraction}
+
+\item{well_diam}{Diameter of the well, inside which drawdown does not increase. Defaults to 0.}
 }
 \description{
 This function estimates the ratio of water level drawdown to pumping rate
@@ -54,5 +57,11 @@ change_in_waterlevel_per_cusec
 library(tibble) # simplifies specifying data.frames with units objects
 df <- tibble(r = r, K = K, D = D, V = V, t = t)
 aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(df)
+aquifer_drawdown_ratio
+
+# for radius < well_diam/2, drawdown does not increase.
+r <- set_units(seq(0.25,2, by = 0.25), "ft")
+well_diam <- set_units(2, "ft")
+aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(r = r, K = K, D = D, V = V, t = t, well_diam = well_diam)
 aquifer_drawdown_ratio
 }
