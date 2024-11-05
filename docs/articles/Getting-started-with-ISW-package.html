@@ -88,99 +88,255 @@
     
     
 <p>This vignette illustrates key elements of the <code>isw</code>
-package.</p>
-<p>This idealized model assumes the wells are screened over the
-saturated thickness of the aquifer, the stream fully penetrates the
-aquifer, all flow is horizontal, and the transmissivity is uniform and
-insensitive to changes in water level.</p>
-<p>Note that <code>isw</code> uses the <code>units</code> package to
-keep track of dimensionality, therefore we can begin by loading both
-packages. The <code>set_units</code> function can be used to specify
-units objects.</p>
+package, used to generate simple models of interconnected surface water.
+The package includes functions to estimate stream depletion and aquifer
+drawdown.</p>
+<p>The idealized model in <code>isw</code> assumes the wells are
+screened over the saturated thickness of the aquifer, the stream fully
+penetrates the aquifer, all flow is horizontal, and the transmissivity
+is uniform and insensitive to changes in water level.</p>
+<p>The package can be installed using
+<code>remotes::install_github("gopalpenny/isw")</code>, and loaded
+as:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">isw</span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-quantities.github.io/units/" class="external-link">units</a></span><span class="op">)</span></span></code></pre></div>
-<p>Let’s first consider an aquifer with the following
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">isw</span><span class="op">)</span></span></code></pre></div>
+<div class="section level2">
+<h2 id="main-package-functions">Main package functions<a class="anchor" aria-label="anchor" href="#main-package-functions"></a>
+</h2>
+<p>The <code>isw</code> package has three primary functions to
+understand interconnected surface waters:</p>
+<ul>
+<li>
+<code>stream_depletion_fraction</code>: Estimate stream depletion
+due to pumping well(s)</li>
+<li>
+<code>aquifer_drawdown_ratio</code>: Estimate aquifer drawdown due
+to pumping well(s) (no stream)</li>
+<li>
+<code>get_depletion_from_pumping</code>: Estimate stream depletion
+and aquifer drawdown</li>
+</ul>
+<p>We’ll see how each of these works, below. Note that within these
+models, representation of the stream uses the <a href="https://gopalpenny.github.io/anem/articles/anem-vignette.html" class="external-link">method
+of well images</a>, which basically says that streams with constant head
+can be modeled by mirroring wells across the stream and switching the
+sign of pumping. In other words, a pumping well and and injection well
+on opposite sides of the stream will ensure constant hydraulic head at
+the midpoint between the two wells, assuming the rates of pumping and
+injection are equal in magnitude.</p>
+<p>Note that the <code>aquifer_drawdown_ratio</code> does not assume a
+stream, and therefore works only for a single well. Both
+<code>stream_depletion_fraction</code> and
+<code>get_depletion_from_pumping</code> account for an image well on the
+other side of the stream.</p>
+</div>
+<div class="section level2">
+<h2 id="aquifer-parameters">Aquifer parameters<a class="anchor" aria-label="anchor" href="#aquifer-parameters"></a>
+</h2>
+<p>Aquifers in <code>isw</code> are represented with just a few
+variables. Let’s consider an aquifer with the following
 characteristics:</p>
 <ul>
 <li>Saturated thickness (<code>D</code>): 100 ft</li>
 <li>Permeability (<code>K</code>): 0.001 ft/sec</li>
 <li>Drainable porosity of the aquifer (<code>V</code>): 0.2</li>
 </ul>
+<p>Note that <code>isw</code> uses the <code>units</code> package to
+keep track of dimensionality, therefore we can begin by loading this
+package. The <code>set_units</code> function can be used to specify
+units objects, and therefore aquifer parameters.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">D</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">100</span>, <span class="st">"ft"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-quantities.github.io/units/" class="external-link">units</a></span><span class="op">)</span></span>
+<span><span class="va">D</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">100</span>, <span class="st">"ft"</span><span class="op">)</span></span>
 <span><span class="va">K</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">0.001</span>, <span class="st">"ft/sec"</span><span class="op">)</span></span>
 <span><span class="va">t</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">5</span>, <span class="st">"year"</span><span class="op">)</span></span>
 <span><span class="va">V</span> <span class="op">&lt;-</span> <span class="fl">0.2</span> <span class="co"># unitless</span></span></code></pre></div>
-<p>Now we estimate drawdown at multiple distances from a pumping well.
-To do that, we use the function <code>get_aquifer_drawdown_ratio</code>.
-This function gives the change in water level per unit pumping, assuming
-homogeneous aquifer of infinite extent and no boundaries (i.e., no
-streams). Let’s get this ratio a distances ranging from 1 ft to 10
-miles, after 2 years of pumping.</p>
+</div>
+<div class="section level2">
+<h2 id="some-basic-calculations">Some basic calculations<a class="anchor" aria-label="anchor" href="#some-basic-calculations"></a>
+</h2>
+<div class="section level3">
+<h3 id="estimating-stream-depletion">Estimating stream depletion<a class="anchor" aria-label="anchor" href="#estimating-stream-depletion"></a>
+</h3>
+<p>The <code>stream_depletion_fraction()</code> function estimates
+stream depletion at time <code>t</code> as a fraction of pumping from an
+individual pumping well, following Glover and Balmer (1954). The
+<code>x1</code> parameter represents distance from the stream. We can
+call <code>stream_depletion_fraction</code> by specifying
+<code>x1</code>, the aquifer parameters, and the elapsed time
+<code>t</code> since pumping initiated.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">x1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="st">"mi"</span><span class="op">)</span></span>
+<span><span class="va">stream_depletion_fraction</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_stream_depletion_fraction.html">get_stream_depletion_fraction</a></span><span class="op">(</span>x1 <span class="op">=</span> <span class="va">x1</span>, K <span class="op">=</span> <span class="va">K</span>, D <span class="op">=</span> <span class="va">D</span>, V <span class="op">=</span> <span class="va">V</span>, t <span class="op">=</span> <span class="va">t</span><span class="op">)</span></span>
+<span><span class="va">stream_depletion_fraction</span></span>
+<span><span class="co">#&gt; [1] 0.8335347</span></span></code></pre></div>
+<p>We can get total stream depletion by multiplying this fraction by a
+pumping rate, for instance 1 cfs:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">pumping_rate</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"ft^3/s"</span><span class="op">)</span></span>
+<span><span class="va">stream_depletion</span> <span class="op">&lt;-</span> <span class="va">stream_depletion_fraction</span> <span class="op">*</span> <span class="va">pumping_rate</span></span>
+<span><span class="va">stream_depletion</span></span>
+<span><span class="co">#&gt; 0.8335347 [ft^3/s]</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="estimating-aquifer-drawdown">Estimating aquifer drawdown<a class="anchor" aria-label="anchor" href="#estimating-aquifer-drawdown"></a>
+</h3>
+<p>The <code><a href="../reference/get_aquifer_drawdown_ratio.html">get_aquifer_drawdown_ratio()</a></code> function gives the
+change in water level per unit pumping at an observation well (without a
+stream). The parameter <code>r</code> is the distance between the
+pumping well and observation well.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">r</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"mi"</span><span class="op">)</span></span>
+<span><span class="va">aquifer_drawdown_ratio</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_aquifer_drawdown_ratio.html">get_aquifer_drawdown_ratio</a></span><span class="op">(</span>r <span class="op">=</span> <span class="va">r</span>, K <span class="op">=</span> <span class="va">K</span>, D <span class="op">=</span> <span class="va">D</span>, V <span class="op">=</span> <span class="va">V</span>, t <span class="op">=</span> <span class="va">t</span><span class="op">)</span></span>
+<span><span class="va">aquifer_drawdown_ratio</span></span>
+<span><span class="co">#&gt; -1.540413 [s/ft^2]</span></span></code></pre></div>
+<p>Note that <code>get_aquifer_drawdown_ratio</code> has an optional
+parameter, <code>well_diam</code> that defaults to a value of 0. When
+specified, drawdown does not increase inside the well. In other words,
+when <code>r&lt;well_diam/2</code>, drawdown is calculated as if
+<code>r=well_diam/2</code>.</p>
+</div>
+<div class="section level3">
+<h3 id="depletion-and-drawdown">Depletion and drawdown<a class="anchor" aria-label="anchor" href="#depletion-and-drawdown"></a>
+</h3>
+<p>The <code><a href="../reference/get_depletion_from_pumping.html">get_depletion_from_pumping()</a></code> function estimates
+stream depletion fraction (using
+<code>get_stream_depletion_fraction</code>) and changes in water level
+at an observation well (<code>get_aquifer_drawdown_ratio</code>) due to
+abstraction from a pumping well at time <code>t</code> after pumping
+initiates. Like <code>get_stream_depletion_fraction</code>, and unlike
+<code>get_aquifer_drawdown_ratio</code>, The function accounts for a the
+effect of the stream as a constant head boundary using, as noted above,
+the method of images.</p>
+<p>This function uses a couple new parameters. The <code>x2</code>
+parameter (<span class="math inline">\(x_2\)</span>) is the distance
+between the observation well and the stream. If <code>r</code> is the
+distance between the pumping and observation wells, <code>y</code> is
+the component of this distance that is parallel to the stream. In other
+words, <span class="math inline">\(r^2 = (x_2-x_1)^2 + y^2\)</span>.
+Keeping the remaining parameters the same as before, we can call this
+function as:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">x2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">1e3</span>, <span class="st">"ft"</span><span class="op">)</span></span>
+<span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">1e3</span>, <span class="st">"ft"</span><span class="op">)</span></span>
+<span><span class="va">depletion_from_pumping</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_depletion_from_pumping.html">get_depletion_from_pumping</a></span><span class="op">(</span>x1 <span class="op">=</span> <span class="va">x1</span>,</span>
+<span>                                                     x2 <span class="op">=</span> <span class="va">x2</span>,</span>
+<span>                                                     y <span class="op">=</span> <span class="va">y</span>,</span>
+<span>                                                     K <span class="op">=</span> <span class="va">K</span>,</span>
+<span>                                                     D <span class="op">=</span> <span class="va">D</span>,</span>
+<span>                                                     V <span class="op">=</span> <span class="va">V</span>,</span>
+<span>                                                     t <span class="op">=</span> <span class="va">t</span><span class="op">)</span></span>
+<span><span class="va">depletion_from_pumping</span></span>
+<span><span class="co">#&gt;   stream_depletion_fraction aquifer_drawdown_ratio</span></span>
+<span><span class="co">#&gt; 1                 0.8335347     -1.049005 [s/ft^2]</span></span></code></pre></div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="parameter-combinations-with-vector-and-data-frame-objects">Parameter combinations with <code>vector</code> and
+<code>data.frame</code> objects<a class="anchor" aria-label="anchor" href="#parameter-combinations-with-vector-and-data-frame-objects"></a>
+</h2>
+<p>We can also estimate drawdown at multiple distances from a pumping
+well. We use the function <code>get_aquifer_drawdown_ratio</code>,
+noting that both <code>stream_depletion_fraction</code> and
+<code>get_depletion_from_pumping</code> also allow multiple parameter
+combinations specified as <code>vector</code> or <code>data.frame</code>
+objects. Let’s get this ratio a distances ranging from 1 ft to 10 miles,
+after 2 years of pumping.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">r</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">1</span><span class="op">/</span><span class="fl">5280</span>, <span class="fl">10</span>, length.out <span class="op">=</span> <span class="fl">200</span><span class="op">)</span>, <span class="st">"mi"</span><span class="op">)</span></span>
-<span><span class="va">t</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">5</span>, <span class="st">"year"</span><span class="op">)</span></span>
-<span><span class="va">aquifer_drawdown_ratio</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_aquifer_drawdown_ratio.html">get_aquifer_drawdown_ratio</a></span><span class="op">(</span>r <span class="op">=</span> <span class="va">r</span>, K <span class="op">=</span> <span class="va">K</span>, D <span class="op">=</span> <span class="va">D</span>, V <span class="op">=</span> <span class="va">V</span>, t <span class="op">=</span> <span class="va">t</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">t</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">2</span>, <span class="st">'year'</span><span class="op">)</span></span>
+<span><span class="va">aquifer_drawdown_ratio</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_aquifer_drawdown_ratio.html">get_aquifer_drawdown_ratio</a></span><span class="op">(</span>r <span class="op">=</span> <span class="va">r</span>, K <span class="op">=</span> <span class="va">K</span>, D <span class="op">=</span> <span class="va">D</span>, V <span class="op">=</span> <span class="va">V</span>, t <span class="op">=</span> <span class="va">t</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">aquifer_drawdown_ratio</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Units: [s/ft^2]</span></span>
+<span><span class="co">#&gt; [1] -14.384728  -5.496842  -4.397988  -3.755887  -3.301625  -2.950755</span></span></code></pre></div>
+<p>Equivalently, we can specify parameter combinations in a
+<code>data.frame</code>. The <code>tidyr</code> function
+<code><a href="https://tidyr.tidyverse.org/reference/expand.html" class="external-link">crossing()</a></code> can be very helpful to get multiple parameter
+combinations.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyr.tidyverse.org" class="external-link">tidyr</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># create tibble with all parameter combinations</span></span>
+<span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span>K <span class="op">=</span> <span class="va">K</span>, D <span class="op">=</span> <span class="va">D</span>, V <span class="op">=</span> <span class="va">V</span>, t <span class="op">=</span> <span class="va">t</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://tidyr.tidyverse.org/reference/expand.html" class="external-link">crossing</a></span><span class="op">(</span>r <span class="op">=</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">1</span><span class="op">/</span><span class="fl">5280</span>, <span class="fl">10</span>, length.out <span class="op">=</span> <span class="fl">200</span><span class="op">)</span>, <span class="st">"mi"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># call function with tibble to specify parameters</span></span>
+<span><span class="va">aquifer_drawdown_ratio</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_aquifer_drawdown_ratio.html">get_aquifer_drawdown_ratio</a></span><span class="op">(</span><span class="va">df</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">aquifer_drawdown_ratio</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Units: [s/ft^2]</span></span>
+<span><span class="co">#&gt; [1] -14.384728  -5.496842  -4.397988  -3.755887  -3.301625  -2.950755</span></span></code></pre></div>
 <p>For simplicity, let’s assume the well was pumping 1 cusec over those
 two years. The change in water level is calculated as
 <code>aquifer_drawdown_ratio</code> multiplied by the pumping rate.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pumping_rate</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"ft^3/sec"</span><span class="op">)</span></span>
 <span><span class="va">aquifer_drawdown</span> <span class="op">&lt;-</span> <span class="va">aquifer_drawdown_ratio</span> <span class="op">*</span> <span class="va">pumping_rate</span></span></code></pre></div>
 <p>We can then plot the drawdown as a function of pumping using
-<code>ggplot.</code></p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code>ggplot.</code> The <code>bind_cols</code> function from
+<code>dplyr</code> allows us to join the drawdown results with the
+original <code>data.frame</code>.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
-<span><span class="va">drawdown_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>radius <span class="op">=</span> <span class="va">r</span>,</span>
-<span>                          drawdown <span class="op">=</span> <span class="va">aquifer_drawdown</span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
+<span><span class="va">drawdown_df</span> <span class="op">&lt;-</span> <span class="va">df</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_cols.html" class="external-link">bind_cols</a></span><span class="op">(</span>drawdown <span class="op">=</span> <span class="va">aquifer_drawdown</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">drawdown_df</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">radius</span>, <span class="va">drawdown</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Warning: The `scale_name` argument of `continuous_scale()` is deprecated as of ggplot2</span></span>
-<span><span class="co">#&gt; 3.5.0.</span></span>
-<span><span class="co">#&gt; <span style="color: #555555;">This warning is displayed once every 8 hours.</span></span></span>
-<span><span class="co">#&gt; <span style="color: #555555;">Call `lifecycle::last_lifecycle_warnings()` to see where this warning was</span></span></span>
-<span><span class="co">#&gt; <span style="color: #555555;">generated.</span></span></span></code></pre></div>
-<p><img src="Getting-started-with-ISW-package_files/figure-html/unnamed-chunk-5-1.png" width="700"></p>
+<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">drawdown_df</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">r</span>, <span class="va">drawdown</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p><img src="Getting-started-with-ISW-package_files/figure-html/unnamed-chunk-10-1.png" width="700"></p>
+</div>
+<div class="section level2">
+<h2 id="checking-the-drawdown-calculations">Checking the drawdown calculations<a class="anchor" aria-label="anchor" href="#checking-the-drawdown-calculations"></a>
+</h2>
 <p>As a check, to give confidence in this calculation, we can calculate
 the volume of water drained from the aquifer as drawdown times the
-drainable porosity for circular bands around the well. For simplicity,
-we use the <code>dplyr</code> package to calculate this value</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
-<span><span class="va">dr</span> <span class="op">&lt;-</span> <span class="va">r</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="op">-</span> <span class="va">r</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span></span>
+drainable porosity for circular bands (with differential radius <span class="math inline">\(dr\)</span>) around the well. For simplicity, we
+use the <code><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">dplyr::mutate</a></code> function to calculate this value.</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">dr</span> <span class="op">&lt;-</span> <span class="va">r</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span> <span class="op">-</span> <span class="va">r</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span></span>
 <span><span class="va">drawdown_df</span> <span class="op">&lt;-</span> <span class="va">drawdown_df</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>d_area <span class="op">=</span> <span class="va">dr</span> <span class="op">*</span> <span class="fl">2</span> <span class="op">*</span> <span class="va">pi</span> <span class="op">*</span> <span class="va">r</span>,</span>
 <span>         volumetric_drawdown <span class="op">=</span> <span class="va">drawdown</span> <span class="op">*</span> <span class="va">d_area</span> <span class="op">*</span> <span class="va">V</span><span class="op">)</span></span></code></pre></div>
 <p>In an aquifer with no recharge, the total volumetric drawdown should
 be equal to the pumping rate over the time period, 1 cusec over five
-years or 158 million ft<sup>3</sup>. The water drained from the aquifer
+years or 63 million ft<sup>3</sup>. The water drained from the aquifer
 can be calculated using <code>sum(volumetric_drawdown)</code>, which
-gives a result of 0 million ft<sup>3</sup>.</p>
+gives a result of -63 million ft<sup>3</sup>.</p>
 <p>The total radial flow towards the well can be calculated as <span class="math inline">\(q = 2 \pi r D K \frac{\partial h}{\partial
 r}\)</span> (the typical negative sign in Darcy’s law is removed because
 we are calculating flow in the direction of negative r). We can run this
 calculation and plot flow towards the aquifer.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">drawdown_df</span> <span class="op">&lt;-</span> <span class="va">drawdown_df</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>flow_towards_well <span class="op">=</span> <span class="fl">2</span> <span class="op">*</span> <span class="va">pi</span> <span class="op">*</span> <span class="va">r</span> <span class="op">*</span> <span class="va">D</span> <span class="op">*</span> <span class="va">K</span> <span class="op">*</span> <span class="op">(</span><span class="va">drawdown</span> <span class="op">-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/lead-lag.html" class="external-link">lag</a></span><span class="op">(</span><span class="va">drawdown</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span> <span class="va">dr</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>flow_towards_well <span class="op">=</span> <span class="fl">2</span> <span class="op">*</span> <span class="va">pi</span> <span class="op">*</span> <span class="va">r</span> <span class="op">*</span> <span class="va">D</span> <span class="op">*</span> <span class="va">K</span> <span class="op">*</span> <span class="op">(</span><span class="va">drawdown</span> <span class="op">-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/lead-lag.html" class="external-link">lag</a></span><span class="op">(</span><span class="va">drawdown</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span> <span class="va">dr</span>,</span>
+<span>         flow_towards_well <span class="op">=</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="va">flow_towards_well</span>, <span class="st">"ft^3/s"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">drawdown_df</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">r</span>, <span class="va">flow_towards_well</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">drawdown_df</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">r</span>, <span class="va">flow_towards_well</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_abline.html" class="external-link">geom_abline</a></span><span class="op">(</span>slope <span class="op">=</span> <span class="fl">0</span>, intercept <span class="op">=</span> <span class="fl">1</span>, color <span class="op">=</span> <span class="st">"red"</span>, linetype <span class="op">=</span> <span class="st">"dashed"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Warning: Removed 1 row containing missing values or values outside the scale range</span></span>
 <span><span class="co">#&gt; (`geom_line()`).</span></span></code></pre></div>
-<p><img src="Getting-started-with-ISW-package_files/figure-html/unnamed-chunk-7-1.png" width="700"></p>
+<p><img src="Getting-started-with-ISW-package_files/figure-html/unnamed-chunk-12-1.png" width="700"></p>
 <p>Note that closer to the pumping well this calculation suffers from
 coarse discretization of the domain causing the flowrate to diverge from
 1 ft<sup>3</sup>/s. You can verify this yourself by, for instance,
 changing the radius to
 <code>r &lt;- set_units(seq(1, 5, length.out = 200), "ft")</code> and
 re-running the calculations.</p>
+</div>
+<div class="section level2">
+<h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
+</h2>
+<p>Glover, Robert E., and Glenn G. Balmer. “River Depletion Resulting
+from Pumping a Well near a River.” Eos, Transactions American
+Geophysical Union 35, no. 3 (1954): 468–70. <a href="https://doi.org/10.1029/TR035i003p00468" class="external-link uri">https://doi.org/10.1029/TR035i003p00468</a>.</p>
+</div>
   </div>
 
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
 
-      </div>
+        <nav id="toc" data-toggle="toc"><h2 data-toc-skip>Contents</h2>
+    </nav>
+</div>
 
 </div>
 

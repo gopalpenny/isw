@@ -70,7 +70,7 @@ V <- 0.2 # unitless
 
 ## Some basic calculations
 
-### Estimating stream depletion with `stream_depletion_fraction()`
+### Estimating stream depletion
 
 The `stream_depletion_fraction()` function estimates stream depletion at time `t` as a
 fraction of pumping from an individual pumping well, following Glover and Balmer (1954). The
@@ -92,7 +92,7 @@ stream_depletion <- stream_depletion_fraction * pumping_rate
 stream_depletion
 ```
 
-### Estimating aquifer drawdown with `get_aquifer_drawdown_ratio()` 
+### Estimating aquifer drawdown
 
 The `get_aquifer_drawdown_ratio()` function gives the change in water level per unit pumping
 at an observation well (without a stream). The parameter `r` is the distance between 
@@ -106,7 +106,7 @@ aquifer_drawdown_ratio
 
 Note that `get_aquifer_drawdown_ratio` has an optional parameter, `well_diam` that defaults to a value of 0. When specified, drawdown does not increase inside the well. In other words, when `r<well_diam/2`, drawdown is calculated as if `r=well_diam/2`.
 
-### Depletion and drawdown with `get_depletion_from_pumping()`
+### Depletion and drawdown
 
 The `get_depletion_from_pumping()` function estimates stream depletion fraction (using
 `get_stream_depletion_fraction`) and changes in water level at an
