@@ -39,12 +39,14 @@ keep track of the following variables:
 - `y`: Component of the distance between the two wells that is *parallel* to the river
 
 ```{r echo = FALSE}
+library(png)
 well_config_img <- readPNG("../inst/figs/pumping_observation_wells.png")
 
 p_well_config <- ggplot() + annotation_custom(grid::rasterGrob(well_config_img,
                                                                 width=unit(1,"npc"),
                                                                 height=unit(1,"npc")),
-                                               -Inf, Inf, -Inf, Inf)
+                                               -Inf, Inf, -Inf, Inf) +
+  coord_equal()
 p_well_config
 ```
 
