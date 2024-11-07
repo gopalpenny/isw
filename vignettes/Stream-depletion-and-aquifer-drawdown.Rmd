@@ -18,7 +18,6 @@ knitr::opts_chunk$set(
 library(isw)
 ```
 
-
 ```{r message = FALSE}
 library(patchwork)
 library(units)
@@ -56,21 +55,8 @@ df <- crossing(x1 = set_units(seq(0, 4, by = 0.02) * 5280,'ft'),
 
 ```{r}
 df2 <- df %>%
-  mutate(well_diam = set_units(10, 'ft')) %>%
+  mutate(well_diam = set_units(0, 'ft')) %>%
   bind_cols(as_tibble(get_depletion_from_pumping(.)))
-```
-
-```{r}
-# df_calcs <- df %>%
-#   mutate(x1 = x1 + set_units(10,'ft'),
-#          y = y + set_units(10,'ft')) %>%
-#   bind_cols(as_tibble(get_depletion_from_pumping(.))) %>%
-#   mutate(x1 = replace(x1, x1 <= set_units(10,'ft'), set_units(0,'ft')),
-#          y = replace(y, y <= set_units(10,'ft'), set_units(0,'ft')))
-# 
-# 
-# df2 <- df %>%
-#   bind_cols(df_calcs %>% dplyr::select(stream_depletion_fraction, aquifer_drawdown_ratio))
 ```
 
 ```{r}
@@ -127,11 +113,6 @@ p_drawdown
 
 
 ```{r}
-# ggplot() +
-#   geom_vline(data = NULL, aes(xintercept = c(0.25, 0.5, 1, 2, 3)* 5280))
-# p_q_fraction /
-
-
 transects_data <- df2 %>% dplyr::filter(x1 %in% (c(0.24, 0.5, 1, 2, 3)*5280))
 p_drawdown_transects <- ggplot(transects_data) + #, t %in% (c(2, 5) * t_sec))) +
   geom_line(data = transects_data %>% dplyr::filter(years == "5 years") %>% dplyr::select(-years),
