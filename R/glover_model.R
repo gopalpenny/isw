@@ -146,7 +146,7 @@ get_aquifer_drawdown_ratio <- function(df, r = NULL, K = NULL, D = NULL,
 
   # for r < well_radius, set r = well_radius
   well_radius <- units::set_units(well_diam/2, units(r))
-  r[r < well_radius] <- well_radius
+  r <- dplyr::if_else(r < well_radius, well_radius, r)
 
   check_dimensionality(r, "ft","r")
 
