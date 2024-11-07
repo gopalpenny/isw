@@ -19,82 +19,58 @@ library(isw)
 ```
 
 
-```{r}
+```{r message = FALSE}
 library(patchwork)
 library(units)
-library(png)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+```
 
+```{r echo = FALSE}
+library(png)
+library(ggplot2)
 well_config_img <- readPNG("../inst/figs/pumping_observation_wells.png")
 
-# example from Glover
-x1 <- set_units(c(1, 5, 10, 25, 50) * 1e3, 'ft')
+p_well_config <- ggplot() + 
+  annotation_custom(grid::rasterGrob(well_config_img,
+                                     width=unit(1,"npc"),
+                                     height=unit(1,"npc")),
+                    -Inf, Inf, -Inf, Inf) +
+  coord_equal()
+p_well_config
+```
+
+```{r}
 D <- set_units(200, 'ft')
 K <- set_units(0.001, 'ft/sec')
-t_sec <- set_units(1, "year") # sec in a year
 V <- 0.2
-# 
-r <- x1 # ft
-# x1
-# df1 <- tibble(r = r, K = K, D = D, V = V, t = t_sec)
-# get_aquifer_drawdown_ratio(df1)
-get_aquifer_drawdown_ratio(r = r, K = K, D = D, V = V, t = t_sec*2)
-```
-
-
-```{r}
-# 
-# 
-# 
-# get stream depletion and effect on head at observation well
-# x1 - distance of pumping well to stream
-# x2 - distance of observation well to stream
-# y - distance between pumping and observation well (parallel to stream)
-# other variables from Glover (1954)
-# get_depletion_of_well <- function(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t) {
-
-#   r_w <- sqrt(y^2 + (x2-x1)^2) # ft
-#   r_wi <- sqrt(y^2 + (x2+x1)^2) # ft
-# 
-#   q_fraction <- get_q_fraction(x1 = x1, K = K, D = D, V = V, t = t) # %
-#   ds_w <- get_s_ratio(r = r_w, K = K, D = D, V = V, t = t) # ft / flowrate
-#   dw_wi <- -get_s_ratio(r = r_wi, K = K, D = D, V = V, t = t) # ft / flowrate
-#   return(list(q_fraction = q_fraction, s_ratio = ds_w + dw_wi))
-# }
-```
-
-
-```{r}
-x2 <- set_units(1e3,'ft')
-y <- set_units(1e3,'ft')
-get_depletion_from_pumping(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t_sec)
 
 df <- crossing(x1 = set_units(seq(0, 4, by = 0.02) * 5280,'ft'),
                y = set_units(seq(0, 3, by = 0.02) * 5280,'ft'),
-               nesting(t = c(t_sec*2, t_sec*5, t_sec * 10), years = c(2, 5, 10))) %>%
+               nesting(t = set_units(c(2, 5, 10),'year'), years = c(2, 5, 10))) %>%
   mutate(x2 = set_units(5280/2,"ft"), K = K, D = D, V = V,
          years = factor(years, levels = c(2, 5, 10), labels = paste(c(2, 5, 10), "years")))
-
-# df <- df %>%
-#   dplyr::filter(t == t_sec/2 | ((x1 %in% (seq(0, 4, by = 0.1) * 5280)) & y %in% (seq(0, 3, by = 0.1) * 5280)))
-
-# df %>% dplyr::filter(t == t_sec) #%>% pull(x1) %>% unique()
 ```
 
 
 ```{r}
-df_calcs <- df %>%
-  mutate(x1 = x1 + set_units(10,'ft'),
-         y = y + set_units(10,'ft')) %>%
-  bind_cols(as_tibble(get_depletion_from_pumping(.))) %>%
-  mutate(x1 = replace(x1, x1 <= set_units(10,'ft'), set_units(0,'ft')),
-         y = replace(y, y <= set_units(10,'ft'), set_units(0,'ft')))
-
-
 df2 <- df %>%
-  bind_cols(df_calcs %>% dplyr::select(stream_depletion_fraction, aquifer_drawdown_ratio))
+  mutate(well_diam = set_units(10, 'ft')) %>%
+  bind_cols(as_tibble(get_depletion_from_pumping(.)))
+```
+
+```{r}
+# df_calcs <- df %>%
+#   mutate(x1 = x1 + set_units(10,'ft'),
+#          y = y + set_units(10,'ft')) %>%
+#   bind_cols(as_tibble(get_depletion_from_pumping(.))) %>%
+#   mutate(x1 = replace(x1, x1 <= set_units(10,'ft'), set_units(0,'ft')),
+#          y = replace(y, y <= set_units(10,'ft'), set_units(0,'ft')))
+# 
+# 
+# df2 <- df %>%
+#   bind_cols(df_calcs %>% dplyr::select(stream_depletion_fraction, aquifer_drawdown_ratio))
 ```
 
 ```{r}
@@ -183,7 +159,10 @@ p_depletion_x <- p_q_fraction + p_well_config +
                   subtitle = paste0(paste(rep("     ",10), collapse = ""),"x2 = 0.5 mile, ",D," ft aq. depth\n"))
 
 p_depletion_x
+```
 
+
+```{r fig.width = 7, fig.height = 7, echo = FALSE}
 # ggsave(paste0("stream_depletion_drawdown_aq",D,"ft.png"), p_depletion_x, path = out_path, width = 8, height = 8)
 # set_units(set_units(1, "ft^3 / sec"), "acre * ft/year")
 ```
