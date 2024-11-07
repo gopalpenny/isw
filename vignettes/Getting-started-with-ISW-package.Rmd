@@ -33,7 +33,7 @@ The `isw` package has three primary functions to understand interconnected surfa
 
 * `get_stream_depletion_fraction`: Estimate stream depletion due to pumping well(s)
 * `get_aquifer_drawdown_ratio`: Estimate aquifer drawdown due to pumping well(s) (no stream)
-* `get_depletion_from_pumping`: Estimate stream depletion and aquifer drawdown
+* `get_depletion_from_pumping`: Estimate stream depletion and aquifer drawdown (with stream)
 
 We'll see how each of these works, below. Note that within these models, representation
 of the stream uses the [method of well images](https://gopalpenny.github.io/anem/articles/anem-vignette.html),
@@ -70,12 +70,32 @@ V <- 0.2 # unitless
 
 ## Some basic calculations
 
+The main functions in `isw` use variables to describe the spatial relationship among pumping wells, observation wells, and the river. These include the following variables illustrated in the figure below:
+
+* `x1`: distance from the stream to a pumping well,
+* `x2`: distance from the stream to a observation well well, and
+* `y`: distance between observation and pumping wells *parallel* to the river.
+
+
+```{r echo = FALSE}
+library(png)
+library(ggplot2)
+well_config_img <- readPNG("../inst/figs/pumping_observation_wells.png")
+
+p_well_config <- ggplot() + 
+  annotation_custom(grid::rasterGrob(well_config_img,
+                                     width=unit(1,"npc"),
+                                     height=unit(1,"npc")),
+                    -Inf, Inf, -Inf, Inf) +
+  coord_equal()
+p_well_config
+```
+
+
 ### Estimating stream depletion
 
 The `get_stream_depletion_fraction()` function estimates stream depletion at time `t` as a
-fraction of pumping from an individual pumping well, following Glover and Balmer (1954). The
-`x1` parameter represents distance from the stream. We can call `get_stream_depletion_fraction`
-by specifying `x1`, the aquifer parameters, and the elapsed time `t` since pumping initiated.
+fraction of pumping from an individual pumping well, following Glover and Balmer (1954). We can call `get_stream_depletion_fraction` by specifying `x1`, the aquifer parameters, and the elapsed time `t` since pumping initiated.
 
 ```{r}
 x1 <- set_units(0.5, "mi")
@@ -92,10 +112,14 @@ stream_depletion <- stream_depletion_fraction * pumping_rate
 stream_depletion
 ```
 
+As can be seen, the stream depletion fraction is simply the percentage of total pumping, at time `t`, that is coming from stream depletion. Or put another way, it is:
+
+$$\text{stream depletion fraction (at time t)} = \frac{\text{rate of stream depletion (at time t)}}{\text{rate of pumping (at time t)}}$$
+
 ### Estimating aquifer drawdown
 
 The `get_aquifer_drawdown_ratio()` function gives the change in water level per unit pumping
-at an observation well (without a stream). The parameter `r` is the distance between 
+at an observation well (*without a stream*). The parameter `r` is the distance between 
 the pumping well and observation well.
 
 ```{r}
@@ -113,7 +137,7 @@ The `get_depletion_from_pumping()` function estimates stream depletion fraction 
 observation well (`get_aquifer_drawdown_ratio`) due to abstraction from a
 pumping well at time `t` after pumping initiates. Like
 `get_stream_depletion_fraction`, and unlike `get_aquifer_drawdown_ratio`,
-The function accounts for a the effect of the stream as a constant head
+the *function accounts for a the effect of the stream* as a constant head
 boundary using, as noted above, the method of images.
 
 This function uses a couple new parameters. The `x2` parameter ($x_2$) is the distance 

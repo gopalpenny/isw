@@ -114,7 +114,7 @@ depletion due to pumping well(s)</li>
 due to pumping well(s) (no stream)</li>
 <li>
 <code>get_depletion_from_pumping</code>: Estimate stream depletion
-and aquifer drawdown</li>
+and aquifer drawdown (with stream)</li>
 </ul>
 <p>We’ll see how each of these works, below. Note that within these
 models, representation of the stream uses the <a href="https://gopalpenny.github.io/anem/articles/anem-vignette.html" class="external-link">method
@@ -155,14 +155,28 @@ units objects, and therefore aquifer parameters.</p>
 <div class="section level2">
 <h2 id="some-basic-calculations">Some basic calculations<a class="anchor" aria-label="anchor" href="#some-basic-calculations"></a>
 </h2>
+<p>The main functions in <code>isw</code> use variables to describe the
+spatial relationship among pumping wells, observation wells, and the
+river. These include the following variables illustrated in the figure
+below:</p>
+<ul>
+<li>
+<code>x1</code>: distance from the stream to a pumping well,</li>
+<li>
+<code>x2</code>: distance from the stream to a observation well
+well, and</li>
+<li>
+<code>y</code>: distance between observation and pumping wells
+<em>parallel</em> to the river.</li>
+</ul>
+<p><img src="Getting-started-with-ISW-package_files/figure-html/unnamed-chunk-3-1.png" width="700"></p>
 <div class="section level3">
 <h3 id="estimating-stream-depletion">Estimating stream depletion<a class="anchor" aria-label="anchor" href="#estimating-stream-depletion"></a>
 </h3>
 <p>The <code><a href="../reference/get_stream_depletion_fraction.html">get_stream_depletion_fraction()</a></code> function estimates
 stream depletion at time <code>t</code> as a fraction of pumping from an
-individual pumping well, following Glover and Balmer (1954). The
-<code>x1</code> parameter represents distance from the stream. We can
-call <code>get_stream_depletion_fraction</code> by specifying
+individual pumping well, following Glover and Balmer (1954). We can call
+<code>get_stream_depletion_fraction</code> by specifying
 <code>x1</code>, the aquifer parameters, and the elapsed time
 <code>t</code> since pumping initiated.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
@@ -177,14 +191,20 @@ pumping rate, for instance 1 cfs:</p>
 <span><span class="va">stream_depletion</span> <span class="op">&lt;-</span> <span class="va">stream_depletion_fraction</span> <span class="op">*</span> <span class="va">pumping_rate</span></span>
 <span><span class="va">stream_depletion</span></span>
 <span><span class="co">#&gt; 0.8335347 [ft^3/s]</span></span></code></pre></div>
+<p>As can be seen, the stream depletion fraction is simply the
+percentage of total pumping, at time <code>t</code>, that is coming from
+stream depletion. Or put another way, it is:</p>
+<p><span class="math display">\[\text{stream depletion fraction (at time
+t)} = \frac{\text{rate of stream depletion (at time t)}}{\text{rate of
+pumping (at time t)}}\]</span></p>
 </div>
 <div class="section level3">
 <h3 id="estimating-aquifer-drawdown">Estimating aquifer drawdown<a class="anchor" aria-label="anchor" href="#estimating-aquifer-drawdown"></a>
 </h3>
 <p>The <code><a href="../reference/get_aquifer_drawdown_ratio.html">get_aquifer_drawdown_ratio()</a></code> function gives the
-change in water level per unit pumping at an observation well (without a
-stream). The parameter <code>r</code> is the distance between the
-pumping well and observation well.</p>
+change in water level per unit pumping at an observation well
+(<em>without a stream</em>). The parameter <code>r</code> is the
+distance between the pumping well and observation well.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">r</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"mi"</span><span class="op">)</span></span>
 <span><span class="va">aquifer_drawdown_ratio</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_aquifer_drawdown_ratio.html">get_aquifer_drawdown_ratio</a></span><span class="op">(</span>r <span class="op">=</span> <span class="va">r</span>, K <span class="op">=</span> <span class="va">K</span>, D <span class="op">=</span> <span class="va">D</span>, V <span class="op">=</span> <span class="va">V</span>, t <span class="op">=</span> <span class="va">t</span><span class="op">)</span></span>
@@ -205,9 +225,9 @@ stream depletion fraction (using
 at an observation well (<code>get_aquifer_drawdown_ratio</code>) due to
 abstraction from a pumping well at time <code>t</code> after pumping
 initiates. Like <code>get_stream_depletion_fraction</code>, and unlike
-<code>get_aquifer_drawdown_ratio</code>, The function accounts for a the
-effect of the stream as a constant head boundary using, as noted above,
-the method of images.</p>
+<code>get_aquifer_drawdown_ratio</code>, the <em>function accounts for a
+the effect of the stream</em> as a constant head boundary using, as
+noted above, the method of images.</p>
 <p>This function uses a couple new parameters. The <code>x2</code>
 parameter (<span class="math inline">\(x_2\)</span>) is the distance
 between the observation well and the stream. If <code>r</code> is the
@@ -283,7 +303,7 @@ original <code>data.frame</code>.</p>
 <span></span>
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">drawdown_df</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">r</span>, <span class="va">drawdown</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="Getting-started-with-ISW-package_files/figure-html/unnamed-chunk-10-1.png" width="700"></p>
+<p><img src="Getting-started-with-ISW-package_files/figure-html/unnamed-chunk-11-1.png" width="700"></p>
 </div>
 <div class="section level2">
 <h2 id="checking-the-drawdown-calculations">Checking the drawdown calculations<a class="anchor" aria-label="anchor" href="#checking-the-drawdown-calculations"></a>
@@ -315,7 +335,7 @@ calculation and plot flow towards the aquifer.</p>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_abline.html" class="external-link">geom_abline</a></span><span class="op">(</span>slope <span class="op">=</span> <span class="fl">0</span>, intercept <span class="op">=</span> <span class="fl">1</span>, color <span class="op">=</span> <span class="st">"red"</span>, linetype <span class="op">=</span> <span class="st">"dashed"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Warning: Removed 1 row containing missing values or values outside the scale range</span></span>
 <span><span class="co">#&gt; (`geom_line()`).</span></span></code></pre></div>
-<p><img src="Getting-started-with-ISW-package_files/figure-html/unnamed-chunk-12-1.png" width="700"></p>
+<p><img src="Getting-started-with-ISW-package_files/figure-html/unnamed-chunk-13-1.png" width="700"></p>
 <p>Note that closer to the pumping well this calculation suffers from
 coarse discretization of the domain causing the flowrate to diverge from
 1 ft<sup>3</sup>/s. You can verify this yourself by, for instance,
