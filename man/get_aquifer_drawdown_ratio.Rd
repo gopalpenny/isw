@@ -2,11 +2,13 @@
 % Please edit documentation in R/glover_model.R
 \name{get_aquifer_drawdown_ratio}
 \alias{get_aquifer_drawdown_ratio}
-\title{Drawdown for single well without boundaries}
+\title{Drawdown from a single pumping well}
 \usage{
 get_aquifer_drawdown_ratio(
   df,
-  r = NULL,
+  x1 = NULL,
+  x2 = NULL,
+  y = NULL,
   K = NULL,
   D = NULL,
   V = NULL,
@@ -17,7 +19,11 @@ get_aquifer_drawdown_ratio(
 \arguments{
 \item{df}{\code{data.frame} with columns specifying all parameters}
 
-\item{r}{Distance between pumping and observation well}
+\item{x1}{Distance of pumping well to stream}
+
+\item{x2}{Distance of observation well to stream}
+
+\item{y}{Distance between pumping and observation well (parallel to stream)}
 
 \item{K}{Saturated hydraulic conductivity}
 
@@ -37,16 +43,23 @@ pumping well. Note that this function does not account for the presence of any
 aquifer boundaries. See Glover (1954).
 }
 \details{
-Estimate drawdown at observation well due to pumping at another well
+Estimate drawdown at observation well due to pumping at another well, either
+with a nearby stream or without a stream.
 }
 \examples{
 library(units)
-r <- set_units(c(1, 5, 10) * 1e3, "ft")
+y <- set_units(c(1, 5, 10) * 1e3, "ft")
 D <- set_units(100, "ft")
 K <- set_units(0.001, "ft/sec")
 t <- set_units(5, "year")
 V <- 0.2 # unitless
-aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(r = r, K = K, D = D, V = V, t = t)
+aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(y = y,
+                                                     x1 = Inf,
+                                                     x2 = Inf,
+                                                     K = K,
+                                                     D = D,
+                                                     V = V,
+                                                     t = t)
 
 # Drawdown per cusec pumping:
 change_in_waterlevel_per_cusec <- aquifer_drawdown_ratio * set_units(1, "ft^3/sec")
@@ -55,13 +68,16 @@ change_in_waterlevel_per_cusec
 
 # Specifying parameters as named data.frame columns
 library(tibble) # simplifies specifying data.frames with units objects
-df <- tibble(r = r, K = K, D = D, V = V, t = t)
+df <- tibble(y = y, x1 = Inf, x2 = Inf, K = K, D = D, V = V, t = t)
 aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(df)
 aquifer_drawdown_ratio
 
 # for radius < well_diam/2, drawdown does not increase.
-r <- set_units(seq(0.25,2, by = 0.25), "ft")
+y <- set_units(seq(0.25,2, by = 0.25), "ft")
 well_diam <- set_units(2, "ft")
-aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(r = r, K = K, D = D, V = V, t = t, well_diam = well_diam)
+aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(x1 = Inf, x2 = Inf, y = y,
+                                                     K = K, D = D,
+                                                     V = V, t = t,
+                                                     well_diam = well_diam)
 aquifer_drawdown_ratio
 }

@@ -1,10 +1,10 @@
-pandoc: 3.1.1
-pkgdown: 2.0.8
+pandoc: 3.6.2
+pkgdown: 2.1.1
 pkgdown_sha: ~
 articles:
   depletion-observation-example: depletion-observation-example.html
   Getting-started-with-ISW-package: Getting-started-with-ISW-package.html
+  Identify-blind-spots: Identify-blind-spots.html
   ISW-reporting-scenarios: ISW-reporting-scenarios.html
   Stream-depletion-and-aquifer-drawdown: Stream-depletion-and-aquifer-drawdown.html
-last_built: 2024-11-05T15:33Z
-
+last_built: 2025-08-01T23:40Z

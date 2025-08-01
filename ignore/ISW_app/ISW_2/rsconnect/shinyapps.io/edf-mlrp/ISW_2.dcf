@@ -1,0 +1,12 @@
+name: ISW_2
+title: ISW_2
+username: edf-mlrp
+account: edf-mlrp
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 13579985
+bundleId: 9505593
+url: https://edf-mlrp.shinyapps.io/ISW_2/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

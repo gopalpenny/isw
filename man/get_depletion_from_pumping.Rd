@@ -19,7 +19,7 @@ get_depletion_from_pumping(
 \arguments{
 \item{df}{\code{data.frame} with columns specifying all parameters}
 
-\item{x1}{Distance of pumping well to stream}
+\item{x1}{Distance between well and river}
 
 \item{x2}{Distance of observation well to stream}
 
