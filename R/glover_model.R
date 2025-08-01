@@ -74,12 +74,15 @@ get_stream_depletion_fraction <- function(df, x1 = NULL, K = NULL, D = NULL, V =
   return(stream_depletion_fraction)
 }
 
-#' Drawdown for single well without boundaries
+#' Drawdown from a single pumping well
 #'
-#' Estimate drawdown at observation well due to pumping at another well
+#' Estimate drawdown at observation well due to pumping at another well, either
+#' with a nearby stream or without a stream.
 #'
 #' @inheritParams get_stream_depletion_fraction
-#' @param r Distance between pumping and observation well
+#' @param x1 Distance of pumping well to stream
+#' @param x2 Distance of observation well to stream
+#' @param y Distance between pumping and observation well (parallel to stream)
 #' @param well_diam Diameter of the well, inside which drawdown does not increase. Defaults to 0.
 #' @description
 #' This function estimates the ratio of water level drawdown to pumping rate
@@ -87,15 +90,22 @@ get_stream_depletion_fraction <- function(df, x1 = NULL, K = NULL, D = NULL, V =
 #' pumping well. Note that this function does not account for the presence of any
 #' aquifer boundaries. See Glover (1954).
 #' @importFrom expint expint
+#' @importFrom units set_units
 #' @export
 #' @examples
 #' library(units)
-#' r <- set_units(c(1, 5, 10) * 1e3, "ft")
+#' y <- set_units(c(1, 5, 10) * 1e3, "ft")
 #' D <- set_units(100, "ft")
 #' K <- set_units(0.001, "ft/sec")
 #' t <- set_units(5, "year")
 #' V <- 0.2 # unitless
-#' aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(r = r, K = K, D = D, V = V, t = t)
+#' aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(y = y,
+#'                                                      x1 = Inf,
+#'                                                      x2 = Inf,
+#'                                                      K = K,
+#'                                                      D = D,
+#'                                                      V = V,
+#'                                                      t = t)
 #'
 #' # Drawdown per cusec pumping:
 #' change_in_waterlevel_per_cusec <- aquifer_drawdown_ratio * set_units(1, "ft^3/sec")
@@ -104,18 +114,20 @@ get_stream_depletion_fraction <- function(df, x1 = NULL, K = NULL, D = NULL, V =
 #'
 #' # Specifying parameters as named data.frame columns
 #' library(tibble) # simplifies specifying data.frames with units objects
-#' df <- tibble(r = r, K = K, D = D, V = V, t = t)
+#' df <- tibble(y = y, x1 = Inf, x2 = Inf, K = K, D = D, V = V, t = t)
 #' aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(df)
 #' aquifer_drawdown_ratio
 #'
 #' # for radius < well_diam/2, drawdown does not increase.
-#' r <- set_units(seq(0.25,2, by = 0.25), "ft")
+#' y <- set_units(seq(0.25,2, by = 0.25), "ft")
 #' well_diam <- set_units(2, "ft")
-#' aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(r = r, K = K, D = D,
+#' aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(x1 = Inf, x2 = Inf, y = y,
+#'                                                      K = K, D = D,
 #'                                                      V = V, t = t,
 #'                                                      well_diam = well_diam)
 #' aquifer_drawdown_ratio
-get_aquifer_drawdown_ratio <- function(df, r = NULL, K = NULL, D = NULL,
+get_aquifer_drawdown_ratio <- function(df, x1 = NULL, x2 = NULL, y = NULL,
+                                       K = NULL, D = NULL,
                                        V = NULL, t = NULL,
                                        well_diam = NULL) {
   # previously get_s_ratio
@@ -124,7 +136,7 @@ get_aquifer_drawdown_ratio <- function(df, r = NULL, K = NULL, D = NULL,
       if (!("data.frame" %in% class(df))) {
         stop("df must be a data.frame object")
       }
-      for (var in c("r","K","D","V","t","well_diam")) {
+      for (var in c("y","x1","x2","K","D","V","t","well_diam")) {
         assign(var, df[[var]])
       }
     }
@@ -139,26 +151,68 @@ get_aquifer_drawdown_ratio <- function(df, r = NULL, K = NULL, D = NULL,
   check_dimensionality(D, "ft","D")
   check_dimensionality(t, "s","t")
   check_dimensionality(well_diam, "m","well_diam")
-
+  check_dimensionality(y, "ft","rw")
+  # allow Inf as an input for x1 or x2
+  if (any(as.numeric(x1) != Inf)) {
+    check_dimensionality(x1, "ft","rw")
+  }
+  if (any(as.numeric(x2) != Inf)) {
+    check_dimensionality(x2, "ft","rw")
+  }
   alpha <- K * D / V
 
   check_dimensionality(alpha, "ft^2/s","alpha")
 
-  # for r < well_radius, set r = well_radius
-  well_radius <- units::set_units(well_diam/2, units(r))
-  r <- dplyr::if_else(r < well_radius, well_radius, r)
 
-  check_dimensionality(r, "ft","r")
-
-  radius_squared_over_4_alpha_t <- r^2/(4 * alpha * t)
-  if (length(units(radius_squared_over_4_alpha_t)$numerator) != 0 | length(units(radius_squared_over_4_alpha_t)$denominator) != 0) {
-    stop("Units error resulting in dimensional value input to expint. ",
-         "Numerator: ",units(radius_squared_over_4_alpha_t)$numerator,", Denominator: ",units(radius_squared_over_4_alpha_t)$denominator)
-  } else{
-    exp_integral <- -0.5 * expint(as.numeric(radius_squared_over_4_alpha_t)) ### CHECK SIGN ON r^2 -- MAKES SMALL DIFFERENCE?
+  # if x1 is Inf, x2 must be inf
+  if (any(as.numeric(x1) == Inf) | any(as.numeric(x2) == Inf)) {
+    if (!all(x1 == x2)) {
+      stop("If either x1 or x2 has any Inf values, both should only contain Inf values")
+    }
+    no_stream <- TRUE
+    rw <- y
+    rwi <- sqrt(set_units(x2 + x1,units(y))^2 + y^2)
+  } else {
+    no_stream <- FALSE
+    # get distance from pumping well to obs well
+    rw <- sqrt((x2 - x1)^2 + y^2)
+    # get distance from mirrored pumping well to obs well
+    rwi <- sqrt((x2 + x1)^2 + y^2)
   }
 
-  s_over_Q <- 1 / (2 * pi * K * D) * exp_integral
+  # for rw, rwi < well_radius, set rw, rwi = well_radius
+  well_radius <- units::set_units(well_diam/2, units(rw))
+
+  rw <- dplyr::if_else(rw < well_radius, well_radius, rw)
+  rwi <- dplyr::if_else(rwi < well_radius, well_radius, rwi)
+
+  check_dimensionality(rw, "ft","rw")
+  check_dimensionality(rwi, "ft","rwi")
+
+  rw_squared_over_4_alpha_t <- rw^2/(4 * alpha * t)
+  if (length(units(rw_squared_over_4_alpha_t)$numerator) != 0 | length(units(rw_squared_over_4_alpha_t)$denominator) != 0) {
+    stop("Units error resulting in dimensional value input to expint. ",
+         "Numerator: ",units(rw_squared_over_4_alpha_t)$numerator,", Denominator: ",units(rw_squared_over_4_alpha_t)$denominator)
+  } else{
+    rw_exp_integral <- -0.5 * expint(as.numeric(rw_squared_over_4_alpha_t)) ### CHECK SIGN ON rw^2 -- MAKES SMALL DIFFERENCE?
+  }
+  sw_over_Q <- 1 / (2 * pi * K * D) * rw_exp_integral
+
+  if (no_stream) {
+    s_over_Q <- sw_over_Q # if no stream, use s_over_Q from pumping well only
+  } else { # if stream, calculate s_over_Q from image well
+    rwi_squared_over_4_alpha_t <- rwi^2/(4 * alpha * t)
+    if (length(units(rwi_squared_over_4_alpha_t)$numerator) != 0 | length(units(rwi_squared_over_4_alpha_t)$denominator) != 0) {
+      stop("Units error resulting in dimensional value input to expint. ",
+           "Numerator: ",units(rwi_squared_over_4_alpha_t)$numerator,", Denominator: ",units(rwi_squared_over_4_alpha_t)$denominator)
+    } else{
+      rwi_exp_integral <- -0.5 * expint(as.numeric(rwi_squared_over_4_alpha_t)) ### CHECK SIGN ON rwi^2 -- MAKES SMALL DIFFERENCE?
+    }
+    swi_over_Q <- 1 / (2 * pi * K * D) * rwi_exp_integral
+
+    s_over_Q <- sw_over_Q - swi_over_Q # subtract well image from well s_over_Q
+  }
+
   return(s_over_Q)
 }
 
@@ -167,11 +221,8 @@ get_aquifer_drawdown_ratio <- function(df, r = NULL, K = NULL, D = NULL,
 #'
 #' Get stream depletion and changes in water level from pumping
 #'
-#' @param x1 Distance of pumping well to stream
-#' @param x2 Distance of observation well to stream
-#' @param y Distance between pumping and observation well (parallel to stream)
-#' @param well_diam Diameter of the well, inside which drawdown does not increase. Defaults to 0.
 #' @inheritParams get_stream_depletion_fraction
+#' @inheritParams get_aquifer_drawdown_ratio
 #' @export
 #' @description This function estimates stream depletion fraction (using
 #'   `get_stream_depletion_fraction`) and changes in water level at an
@@ -222,13 +273,13 @@ get_depletion_from_pumping <- function(df, x1 = NULL, x2 = NULL, y = NULL, K = N
     well_diam <- units::set_units(0, "ft")
   }
 
-  r_w <- sqrt(y^2 + (x2-x1)^2) # distance from observation well to pumping well
-  r_wi <- sqrt(y^2 + (x2+x1)^2) # distance from observation well to pumping well (imaged across the stream)
+  # r_w <- sqrt(y^2 + (x2-x1)^2) # distance from observation well to pumping well
+  # r_wi <- sqrt(y^2 + (x2+x1)^2) # distance from observation well to pumping well (imaged across the stream)
 
   stream_depletion_fraction <- get_stream_depletion_fraction(x1 = x1, K = K, D = D, V = V, t = t) # %
-  ds_w <- get_aquifer_drawdown_ratio(r = r_w, K = K, D = D, V = V, t = t, well_diam = well_diam) # ft / flowrate
-  dw_wi <- -get_aquifer_drawdown_ratio(r = r_wi, K = K, D = D, V = V, t = t, well_diam = well_diam) # ft / flowrate
+  ds_w <- get_aquifer_drawdown_ratio(y = y, x1 = x1, x2 = x2, K = K, D = D, V = V, t = t, well_diam = well_diam) # ft / flowrate
+  # dw_wi <- -get_aquifer_drawdown_ratio(y = y, x1 = x1, x2 = x2, K = K, D = D, V = V, t = t, well_diam = well_diam) # ft / flowrate
   depletion <- data.frame(stream_depletion_fraction = stream_depletion_fraction,
-                          aquifer_drawdown_ratio = ds_w + dw_wi)
+                          aquifer_drawdown_ratio = ds_w)
   return(depletion)
 }

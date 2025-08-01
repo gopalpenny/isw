@@ -24,8 +24,8 @@ test_that("get_stream_depletion_fraction generates correct results for data.fram
 })
 
 
-r <- set_units(c(1, 5, 10) * 1e3, "ft")
-aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(r = r, K = K, D = D, V = V, t = t)
+y <- set_units(c(1, 5, 10) * 1e3, "ft")
+aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(y = y, x1 = Inf, x2 = Inf, K = K, D = D, V = V, t = t)
 # # For pasting results into expect_equal()
 # paste0("c(",paste(round(aquifer_drawdown_ratio, 5), collapse = ", "),")")
 
@@ -35,7 +35,7 @@ test_that("get_aquifer_drawdown_ratio generates correct results for numeric/vect
 })
 
 
-aquifer_drawdown_ratio_df <- get_aquifer_drawdown_ratio(tibble(r = r, K = K, D = D, V = V, t = t))
+aquifer_drawdown_ratio_df <- get_aquifer_drawdown_ratio(tibble(y = y, x1 = Inf, x2 = Inf, K = K, D = D, V = V, t = t))
 test_that("get_aquifer_drawdown_ratio generates correct results for data.frame input",{
   expect_equal(round(aquifer_drawdown_ratio, 5), round(aquifer_drawdown_ratio_df, 5))
 })
@@ -72,15 +72,15 @@ test_that("get_depletion_from_pumping generates correct results for data.frame i
 
 
 # for radius < well_diam/2, drawdown does not increase.
-r <- units::set_units(c(0.5, 0.75, 1, 1.1, 2, 5, 10), "ft")
+y <- units::set_units(c(0.5, 0.75, 1, 1.1, 2, 5, 10), "ft")
 well_d <- units::set_units(2, "ft")
-aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(r = r, K = K, D = D, V = V, t = t, well_diam = well_d)
+aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(y = y, x1 = Inf, x2 = Inf, K = K, D = D, V = V, t = t, well_diam = well_d)
 test_that("get_aquifer_drawdown_ratio restrict drawdown inside well radius",{
   expect_equal(round(aquifer_drawdown_ratio,5),
                units::set_units(c(-15.11389, -15.11389, -15.11389, -14.96220, -14.01071, -12.55239, -11.44921),"s/ft^2"))
 })
 
-aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(r = r, K = K, D = D, V = V, t = t, well_diam = rep(well_d, length(r)))
+aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(y = y, x1 = Inf, x2 = Inf, K = K, D = D, V = V, t = t, well_diam = rep(well_d, length(y)))
 test_that("get_aquifer_drawdown_ratio restrict drawdown inside well radius, well_diam as vector",{
   expect_equal(round(aquifer_drawdown_ratio,5),
                units::set_units(c(-15.11389, -15.11389, -15.11389, -14.96220, -14.01071, -12.55239, -11.44921),"s/ft^2"))

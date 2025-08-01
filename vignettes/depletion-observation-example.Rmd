@@ -64,12 +64,6 @@ D <- set_units(200, 'ft')
 K <- set_units(0.001, 'ft/sec')
 # t_sec <- set_units(1, "year") # sec in a year
 V <- 0.2
-# 
-# r <- x1 # ft
-# x1
-# df1 <- tibble(r = r, K = K, D = D, V = V, t = t_sec)
-# get_aquifer_drawdown_ratio(df1)
-# get_aquifer_drawdown_ratio(r = r, K = K, D = D, V = V, t = t_sec*2)
 ```
 
 ## Prepare themes for plotting
@@ -125,14 +119,6 @@ obs_wells <- tibble(y = c(0, 1.5), x2 = c(0.5), `Obs. well` = c("a", "b"))
 
 locations <- crossing(pump_wells, obs_wells)%>%
   mutate(across(all_of(c("x1","x2","y")), function(x) set_units(x,"mi")), id = row_number())
-
-# locations <- tribble(~x1, ~y, ~`Obs. well`, ~`Pumping well`,
-#                      0.2, 1.5, "a", "c",
-#                      0.8, 1.5, "a", "d",
-#                      0.2, 0, "b", "c",
-#                      0.8, 0, "b", "d") %>%
-#   mutate(x2 = 0.5,
-#          across(all_of(c("x1","x2","y")), function(x) set_units(x,"mi")), id = row_number())
 ```
 
 To visualize these permutations we can plot them.
@@ -219,15 +205,20 @@ create the figures.
 
 ```{r fig.width = 5.5, fig.height = 4}
 elapsed_time_years <- c(0, 1, 4, 5)
+obs_wells_distance <- c(0.1, 5)
 df_prep <- tibble(t = set_units(elapsed_time_years, "year"),
              period = factor(elapsed_time_years > 1.1, levels = c(F, T), labels = c("0-1 year","4-5 years")),
-             x1 = set_units(2, "mi"),
+             period_long = factor(elapsed_time_years %in% c(0, 5), levels = c(T, F), labels = c("0-5 years","1-4 years")),
              y = set_units(0.01, "mi"),
+             well_diam = set_units(10, "ft"),
              K = K, D = D, V = V) %>%
+  crossing(x1 = set_units(c(obs_wells_distance, 2), "mi")) %>%
   mutate(`Elapsed time` = factor(as.character(t), as.character(elapsed_time_years), labels = paste(elapsed_time_years, "years"))) %>%
-  crossing(x2 = set_units(seq(0.02, 8, by = 0.1),"mi")) %>%
-  group_by(period, x2) %>%
+  crossing(x2 = set_units(seq(0.02, 8, by = 0.02),"mi")) %>%
+  group_by(period, x1, x2) %>%
   mutate(first_or_second = factor(row_number(), levels = c(1,2), labels = c("Initial water table", "One year later"))) %>%
+  group_by(period_long, x1, x2) %>%
+  mutate(zero_to_five = factor(row_number(), levels = c(1,2), labels = c("Initial water table", "Five years later"))) %>%
   group_by()
 ```
 
@@ -235,16 +226,15 @@ We can then get the drawdown by again calling `get_depletion_from_pumping` and j
 the results with the original tibble. The pipe operator `%>%` and self-referential object (`.`)
 allow us to do this in one line.
 
-```{r fig.width = 5.5, fig.height = 4}
+```{r fig.width = 5.5, fig.height = 4, warning=FALSE}
 df <- df_prep %>%
   bind_cols(as_tibble(get_depletion_from_pumping(.)))
 
 
-df_ribbon <- df %>%
+df_ribbon <- df %>% filter(x1 == set_units(2, "mi")) %>%
   mutate(aquifer_drawdown_ratio = as.numeric(aquifer_drawdown_ratio)) %>%
   dplyr::select(period, first_or_second, t, aquifer_drawdown_ratio, x2, `Elapsed time`) %>%
   pivot_wider(id_cols = c("period", "x2"), names_from = "first_or_second", values_from = "aquifer_drawdown_ratio")
-
 
 # ggplot(df) + 
 #   geom_line(aes(as.numeric(x2), as.numeric(aquifer_drawdown_ratio), color = `Elapsed time`)) + 
@@ -259,7 +249,8 @@ We can then plot the results.
 ```{r fig.width = 5.5, fig.height = 4}
 ggplot(df_ribbon) + 
   geom_ribbon(aes(as.numeric(x2), ymin = `Initial water table`, ymax = `One year later`, fill = 'Aquifer drawdown'), alpha = 0.7) + 
-  geom_line(data = df, aes(as.numeric(x2), as.numeric(aquifer_drawdown_ratio), linetype = first_or_second)) + 
+  geom_line(data = df %>% filter(x1 == set_units(2, "mi")), 
+            aes(as.numeric(x2), as.numeric(aquifer_drawdown_ratio), linetype = first_or_second)) + 
   scale_color_discrete() +
   scale_fill_manual("", values = "lightblue") +
   scale_linetype_manual("", values = c("dashed","solid")) +
@@ -268,6 +259,23 @@ ggplot(df_ribbon) +
   facet_wrap(~period, ncol = 1)
 ```
 
+
+```{r fig.width = 5.5, fig.height = 4, warning=FALSE}
+df_ribbon2 <- df %>% filter(x1 %in% set_units(obs_wells_distance, "mi"), period_long == "0-5 years") %>%
+  mutate(aquifer_drawdown_ratio = as.numeric(aquifer_drawdown_ratio)) %>%
+  dplyr::select(period_long, zero_to_five, t, aquifer_drawdown_ratio, x1, x2, `Elapsed time`) %>%
+  pivot_wider(id_cols = c("x2","x1"), names_from = "zero_to_five", values_from = "aquifer_drawdown_ratio")
+ggplot(df_ribbon2) + 
+  geom_ribbon(aes(as.numeric(x2), ymin = `Initial water table`, ymax = `Five years later`, fill = 'Aquifer drawdown'), alpha = 0.7) + 
+  geom_line(data = df %>% filter(x1 == set_units(obs_wells_distance, "mi"), period_long == "0-5 years"), 
+            aes(as.numeric(x2), as.numeric(aquifer_drawdown_ratio), linetype = zero_to_five)) + 
+  scale_color_discrete() +
+  scale_fill_manual("", values = "lightblue") +
+  scale_linetype_manual("", values = c("dashed","solid")) +
+  labs(y = "Groundwater levels (ft)", x = "Distance from river (mi)") +
+  theme_diagram +
+  facet_wrap(~x1, ncol = 1)
+```
 
 
 

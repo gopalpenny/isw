@@ -13,7 +13,6 @@ Suggests:
     knitr,
     rmarkdown,
     testthat (>= 3.0.0),
-    units,
     ggplot2,
     dplyr,
     tidyr,
@@ -21,9 +20,12 @@ Suggests:
     patchwork,
     png
 Depends:
-    expint
+    expint,
+    streamDepletr,
+    units,
+    class
 Config/testthat/edition: 3
-RoxygenNote: 7.3.1
+RoxygenNote: 7.3.2
 Imports: 
     magrittr,
     stats
