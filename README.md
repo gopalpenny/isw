@@ -4,6 +4,7 @@
 # isw
 
 <!-- badges: start -->
+
 <!-- badges: end -->
 
 The goal of isw is to enable modeling of stream depletion and aquifer
@@ -26,6 +27,10 @@ This is a basic example which shows you how to solve a common problem:
 ``` r
 library(isw)
 #> Loading required package: expint
+#> Loading required package: streamDepletr
+#> Loading required package: units
+#> udunits database from /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/units/share/udunits/udunits2.xml
+#> Loading required package: class
 ```
 
 Consider the following configuration of stream, pumping well, and
