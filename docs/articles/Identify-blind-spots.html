@@ -63,6 +63,9 @@
     <li>
       <a href="../articles/Stream-depletion-and-aquifer-drawdown.html">Stream depletion and aquifer drawdown</a>
     </li>
+    <li>
+      <a href="../articles/stream-depletion-apportionment.html">Stream Depletion Apportionment</a>
+    </li>
   </ul>
 </li>
       </ul>
@@ -93,12 +96,14 @@
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">isw</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Loading required package: expint</span></span>
 <span><span class="co">#&gt; Loading required package: units</span></span>
+<span><span class="co">#&gt; Warning: package 'units' was built under R version 4.4.3</span></span>
 <span><span class="co">#&gt; udunits database from /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/units/share/udunits/udunits2.xml</span></span></code></pre></div>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://patchwork.data-imaginist.com" class="external-link">patchwork</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-quantities.github.io/units/" class="external-link">units</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="http://www.rforge.net/png/" class="external-link">png</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
+<span><span class="co">#&gt; Warning: package 'dplyr' was built under R version 4.4.3</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Attaching package: 'dplyr'</span></span>
 <span><span class="co">#&gt; The following objects are masked from 'package:stats':</span></span>
@@ -108,7 +113,9 @@
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;     intersect, setdiff, setequal, union</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyr.tidyverse.org" class="external-link">tidyr</a></span><span class="op">)</span></span></code></pre></div>
+<span><span class="co">#&gt; Warning: package 'ggplot2' was built under R version 4.4.3</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyr.tidyverse.org" class="external-link">tidyr</a></span><span class="op">)</span></span>
+<span><span class="co">#&gt; Warning: package 'tidyr' was built under R version 4.4.3</span></span></code></pre></div>
 <p>The package handles the configuration between river, pumping well,
 and observation well in a particular way, as shown in the figure below.
 We need to keep track of the following variables:</p>
@@ -119,10 +126,10 @@ We need to keep track of the following variables:</p>
 <code>x2</code>: Distance from the observation well to the
 river</li>
 <li>
-<code>y</code>: Component of the distance between the two wells that
-is <em>parallel</em> to the river</li>
+<code>along_stream_distance</code>: Component of the distance
+between the two wells that is <em>parallel</em> to the river</li>
 </ul>
-<p><img src="Identify-blind-spots_files/figure-html/unnamed-chunk-3-1.png" width="700"></p>
+<p><img src="Identify-blind-spots_files/figure-html/unnamed-chunk-3-1.png" alt="" width="700"></p>
 <p>We also need to consider aquifer parameters. We parameterize an
 aquifer with the following characteristics, based on the Glover
 paper:</p>
@@ -153,12 +160,12 @@ paper:</p>
 <span>  legend.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="va">txt_size</span>, color <span class="op">=</span> <span class="st">"black"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Warning: The `size` argument of `element_line()` is deprecated as of ggplot2 3.4.0.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Please use the `linewidth` argument instead.</span></span>
-<span><span class="co">#&gt; <span style="color: #555555;">This warning is displayed once every 8 hours.</span></span></span>
+<span><span class="co">#&gt; <span style="color: #555555;">This warning is displayed once per session.</span></span></span>
 <span><span class="co">#&gt; <span style="color: #555555;">Call `lifecycle::last_lifecycle_warnings()` to see where this warning was</span></span></span>
 <span><span class="co">#&gt; <span style="color: #555555;">generated.</span></span></span>
 <span></span>
 <span></span>
-<span><span class="va">theme_std</span> <span class="op">&lt;-</span> <span class="va">theme_basic</span> <span class="op"><a href="https://ggplot2.tidyverse.org/reference/theme_get.html" class="external-link">%+replace%</a></span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span></span>
+<span><span class="va">theme_std</span> <span class="op">&lt;-</span> <span class="va">theme_basic</span> <span class="op"><a href="https://ggplot2.tidyverse.org/reference/get_theme.html" class="external-link">%+replace%</a></span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span></span>
 <span>  panel.border <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_rect</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="cn">NA</span>, colour <span class="op">=</span> <span class="st">"black"</span>, size <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>, </span>
 <span>  panel.grid.major <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span>, </span>
 <span>  panel.grid.minor <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span>, axis.line <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span>, </span>
@@ -169,11 +176,11 @@ paper:</p>
 <span>  axis.text.y <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_text</a></span><span class="op">(</span>size <span class="op">=</span> <span class="va">txt_size</span><span class="op">*</span><span class="fl">0.9</span>,  colour <span class="op">=</span> <span class="st">"black"</span>, hjust <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Warning: The `size` argument of `element_rect()` is deprecated as of ggplot2 3.4.0.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Please use the `linewidth` argument instead.</span></span>
-<span><span class="co">#&gt; <span style="color: #555555;">This warning is displayed once every 8 hours.</span></span></span>
+<span><span class="co">#&gt; <span style="color: #555555;">This warning is displayed once per session.</span></span></span>
 <span><span class="co">#&gt; <span style="color: #555555;">Call `lifecycle::last_lifecycle_warnings()` to see where this warning was</span></span></span>
 <span><span class="co">#&gt; <span style="color: #555555;">generated.</span></span></span>
 <span></span>
-<span><span class="va">theme_diagram</span> <span class="op">&lt;-</span> <span class="va">theme_basic</span> <span class="op"><a href="https://ggplot2.tidyverse.org/reference/theme_get.html" class="external-link">%+replace%</a></span> </span>
+<span><span class="va">theme_diagram</span> <span class="op">&lt;-</span> <span class="va">theme_basic</span> <span class="op"><a href="https://ggplot2.tidyverse.org/reference/get_theme.html" class="external-link">%+replace%</a></span> </span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span></span>
 <span>  panel.border <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_rect</a></span><span class="op">(</span>fill <span class="op">=</span> <span class="cn">NA</span>, colour <span class="op">=</span> <span class="cn">NA</span>, size <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>, </span>
 <span>  panel.grid.major <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span>, </span>
@@ -185,14 +192,8 @@ paper:</p>
 <span>  axis.text.x <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span>, </span>
 <span>  axis.text.y <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span>, </span>
 <span>  axis.title.x <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span>, </span>
-<span>  axis.title.y <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://ggplot2.tidyverse.org/reference/theme_get.html" class="external-link">%+replace%</a></span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>legend.position <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.8</span>, <span class="fl">0.75</span><span class="op">)</span>, legend.box <span class="op">=</span> <span class="st">'vertical'</span>, legend.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Warning: A numeric `legend.position` argument in `theme()` was deprecated in ggplot2</span></span>
-<span><span class="co">#&gt; 3.5.0.</span></span>
-<span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Please use the `legend.position.inside` argument of `theme()` instead.</span></span>
-<span><span class="co">#&gt; <span style="color: #555555;">This warning is displayed once every 8 hours.</span></span></span>
-<span><span class="co">#&gt; <span style="color: #555555;">Call `lifecycle::last_lifecycle_warnings()` to see where this warning was</span></span></span>
-<span><span class="co">#&gt; <span style="color: #555555;">generated.</span></span></span></code></pre></div>
+<span>  axis.title.y <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="https://ggplot2.tidyverse.org/reference/get_theme.html" class="external-link">%+replace%</a></span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>legend.position <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.8</span>, <span class="fl">0.75</span><span class="op">)</span>, legend.box <span class="op">=</span> <span class="st">'vertical'</span>, legend.title <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="set-up-grid-of-locations">Set up grid of locations<a class="anchor" aria-label="anchor" href="#set-up-grid-of-locations"></a>
@@ -225,18 +226,19 @@ distances among the river, pumping well, and observation well.</p>
 <span>                  <span class="va">obs_wells</span>,</span>
 <span>                  t <span class="op">=</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="va">t_years</span>,<span class="st">'year'</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>K <span class="op">=</span> <span class="va">K</span>, D <span class="op">=</span> <span class="va">D</span>, V <span class="op">=</span> <span class="va">V</span>,</span>
-<span>         y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">y2</span> <span class="op">-</span> <span class="va">y1</span><span class="op">)</span>,</span>
+<span>         along_stream_distance <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">y2</span> <span class="op">-</span> <span class="va">y1</span><span class="op">)</span>,</span>
 <span>         id <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/row_number.html" class="external-link">row_number</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span></span>
 <span></span>
-<span><span class="co"># locations &lt;- tribble(~x1, ~y, ~`Obs. well`, ~`Pumping well`,</span></span>
+<span><span class="co"># locations &lt;- tribble(~x1, ~along_stream_distance, ~`Obs. well`, ~`Pumping well`,</span></span>
 <span><span class="co">#                      0.2, 1.5, "a", "c",</span></span>
 <span><span class="co">#                      0.8, 1.5, "a", "d",</span></span>
 <span><span class="co">#                      0.2, 0, "b", "c",</span></span>
 <span><span class="co">#                      0.8, 0, "b", "d") %&gt;%</span></span>
 <span><span class="co">#   mutate(x2 = 0.5,</span></span>
-<span><span class="co">#          across(all_of(c("x1","x2","y")), function(x) set_units(x,"mi")), id = row_number())</span></span></code></pre></div>
+<span><span class="co">#          across(all_of(c("x1", "x2", "along_stream_distance")),</span></span>
+<span><span class="co">#                 function(x) set_units(x, "mi")), id = row_number())</span></span></code></pre></div>
 <p>To visualize these permutations we can plot them.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">p_grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span> </span>
@@ -249,13 +251,8 @@ distances among the river, pumping well, and observation well.</p>
 <span>  <span class="co"># scale_color_discrete("Well type") + </span></span>
 <span>  <span class="va">theme_std</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/coord_fixed.html" class="external-link">coord_equal</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">p_grid</span></span>
-<span><span class="co">#&gt; Warning: The `scale_name` argument of `continuous_scale()` is deprecated as of ggplot2</span></span>
-<span><span class="co">#&gt; 3.5.0.</span></span>
-<span><span class="co">#&gt; <span style="color: #555555;">This warning is displayed once every 8 hours.</span></span></span>
-<span><span class="co">#&gt; <span style="color: #555555;">Call `lifecycle::last_lifecycle_warnings()` to see where this warning was</span></span></span>
-<span><span class="co">#&gt; <span style="color: #555555;">generated.</span></span></span></code></pre></div>
-<p><img src="Identify-blind-spots_files/figure-html/unnamed-chunk-7-1.png" width="700"></p>
+<span><span class="va">p_grid</span></span></code></pre></div>
+<p><img src="Identify-blind-spots_files/figure-html/unnamed-chunk-7-1.png" alt="" width="700"></p>
 <p>Now we can get aquifer depletion with the
 <code>get_depletion_from_pumping</code> function. As seen in the output,
 the function returns a <code>data.frame</code> with two columns:</p>
@@ -296,8 +293,9 @@ for plotting and analysis.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span>   -<span style="color: #BB0000;">1</span> -<span style="color: #BB0000;">1</span>   FALSE  3    1          50 4                5  0.001  100   0.2</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span>   -<span style="color: #BB0000;">1</span> -<span style="color: #BB0000;">1</span>   FALSE  4    6          50 5                5  0.001  100   0.2</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span>   -<span style="color: #BB0000;">1</span> -<span style="color: #BB0000;">0.8</span> FALSE  0.8  2          50 1                5  0.001  100   0.2</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 6 more variables: y [mi], id &lt;int&gt;, stream_depletion_fraction &lt;dbl&gt;,</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;">#   aquifer_drawdown_ratio [s/ft^2], ratio [ft^2/s], ratio_cut &lt;fct&gt;</span></span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 6 more variables: along_stream_distance [mi], id &lt;int&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   stream_depletion_fraction &lt;dbl&gt;, aquifer_drawdown_ratio [s/ft^2],</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   ratio [ft^2/s], ratio_cut &lt;fct&gt;</span></span></span></code></pre></div>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">p_ratio</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">wells_calcs</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">x1</span>, <span class="va">y1</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">ratio</span> <span class="op">==</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">ratio</span><span class="op">)</span>, <span class="va">keep</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> </span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">aquifer_drawdown_ratio</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">stream_depletion_fraction</span><span class="op">)</span>, alpha <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">x1</span><span class="op">)</span>, color <span class="op">=</span> <span class="va">ratio_cut</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
@@ -311,13 +309,13 @@ for plotting and analysis.</p>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_continuous.html" class="external-link">scale_y_continuous</a></span><span class="op">(</span><span class="st">"Stream depletion per cfs pumping (cfs)"</span>, limits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">1</span><span class="op">)</span>, breaks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">1</span>,by <span class="op">=</span> <span class="fl">0.2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Warning: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.</span></span>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> Please use `linewidth` instead.</span></span>
-<span><span class="co">#&gt; <span style="color: #555555;">This warning is displayed once every 8 hours.</span></span></span>
+<span><span class="co">#&gt; <span style="color: #555555;">This warning is displayed once per session.</span></span></span>
 <span><span class="co">#&gt; <span style="color: #555555;">Call `lifecycle::last_lifecycle_warnings()` to see where this warning was</span></span></span>
 <span><span class="co">#&gt; <span style="color: #555555;">generated.</span></span></span>
 <span><span class="va">p_ratio</span></span>
 <span><span class="co">#&gt; Warning: Removed 154 rows containing missing values or values outside the scale range</span></span>
 <span><span class="co">#&gt; (`geom_point()`).</span></span></code></pre></div>
-<p><img src="Identify-blind-spots_files/figure-html/unnamed-chunk-10-1.png" width="700"></p>
+<p><img src="Identify-blind-spots_files/figure-html/unnamed-chunk-10-1.png" alt="" width="700"></p>
 <p>Now let’s plot the same ratio as a map</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">wells_calcs_ratio</span> <span class="op">&lt;-</span> <span class="va">wells_calcs</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
@@ -352,7 +350,7 @@ for plotting and analysis.</p>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> 244 duplicated rows have been dropped.</span></span>
 <span><span class="co">#&gt; Warning: Removed 61 rows containing non-finite outside the scale range</span></span>
 <span><span class="co">#&gt; (`stat_contour()`).</span></span></code></pre></div>
-<p><img src="Identify-blind-spots_files/figure-html/unnamed-chunk-12-1.png" width="700"></p>
+<p><img src="Identify-blind-spots_files/figure-html/unnamed-chunk-12-1.png" alt="" width="700"></p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">p_ratio</span> <span class="op">+</span> <span class="va">p_blind_spot</span></span>
 <span><span class="co">#&gt; Warning: Removed 154 rows containing missing values or values outside the scale range</span></span>
@@ -369,7 +367,7 @@ for plotting and analysis.</p>
 <span><span class="co">#&gt; <span style="color: #00BBBB;">ℹ</span> 244 duplicated rows have been dropped.</span></span>
 <span><span class="co">#&gt; Warning: Removed 61 rows containing non-finite outside the scale range</span></span>
 <span><span class="co">#&gt; (`stat_contour()`).</span></span></code></pre></div>
-<p><img src="Identify-blind-spots_files/figure-html/unnamed-chunk-13-1.png" width="1344"></p>
+<p><img src="Identify-blind-spots_files/figure-html/unnamed-chunk-13-1.png" alt="" width="1344"></p>
 </div>
   </div>
 

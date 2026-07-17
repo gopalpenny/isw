@@ -36,7 +36,8 @@ keep track of the following variables:
 
 - `x1`: Distance from the pumping well to the river
 - `x2`: Distance from the observation well to the river
-- `y`: Component of the distance between the two wells that is *parallel* to the river
+- `along_stream_distance`: Component of the distance between the two wells that
+  is *parallel* to the river
 
 ```{r echo = FALSE}
 library(png)
@@ -115,10 +116,12 @@ river, pumping well, and observation well.
 
 ```{r}
 pump_wells <- tibble(x1 = c(0.2, 0.8), `Pumping well` = c("c", "d"))
-obs_wells <- tibble(y = c(0, 1.5), x2 = c(0.5), `Obs. well` = c("a", "b"))
+obs_wells <- tibble(along_stream_distance = c(0, 1.5), x2 = c(0.5),
+                    `Obs. well` = c("a", "b"))
 
 locations <- crossing(pump_wells, obs_wells)%>%
-  mutate(across(all_of(c("x1","x2","y")), function(x) set_units(x,"mi")), id = row_number())
+  mutate(across(all_of(c("x1", "x2", "along_stream_distance")),
+                function(x) set_units(x, "mi")), id = row_number())
 ```
 
 To visualize these permutations we can plot them.
@@ -126,9 +129,10 @@ To visualize these permutations we can plot them.
 ```{r}
 ggplot() + 
   geom_point(data = pump_wells, aes(x1, y = 0, color = `Pumping well`), size = 4) + 
-  geom_point(data = obs_wells, aes(x2, y, shape = `Obs. well`), size = 4) + 
+  geom_point(data = obs_wells, aes(x2, y = along_stream_distance,
+                                   shape = `Obs. well`), size = 4) +
   scale_shape_manual(values = c(0, 5)) +
-  xlab("Distance from river (x)") + ylab("Distance between wells (y)") +
+  xlab("Distance from river (x)") + ylab("Along-stream distance") +
   scale_color_discrete("Well type") + theme_std + coord_equal()
 ```
 
@@ -209,7 +213,7 @@ obs_wells_distance <- c(0.1, 5)
 df_prep <- tibble(t = set_units(elapsed_time_years, "year"),
              period = factor(elapsed_time_years > 1.1, levels = c(F, T), labels = c("0-1 year","4-5 years")),
              period_long = factor(elapsed_time_years %in% c(0, 5), levels = c(T, F), labels = c("0-5 years","1-4 years")),
-             y = set_units(0.01, "mi"),
+             along_stream_distance = set_units(0.01, "mi"),
              well_diam = set_units(10, "ft"),
              K = K, D = D, V = V) %>%
   crossing(x1 = set_units(c(obs_wells_distance, 2), "mi")) %>%
@@ -276,7 +280,6 @@ ggplot(df_ribbon2) +
   theme_diagram +
   facet_wrap(~x1, ncol = 1)
 ```
-
 
 
 

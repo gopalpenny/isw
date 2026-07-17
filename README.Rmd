@@ -61,19 +61,25 @@ Stream depletion and aquifer drawdown in this scenario can be modeled using the 
 library(units)
 x1 <- set_units(c(1, 5, 10) * 1e3, "ft")
 x2 <- set_units(1e3, "ft")
-y <- set_units(1e3, "ft")
+along_stream_distance <- set_units(1e3, "ft")
 D <- set_units(100, "ft")
 K <- set_units(0.001, "ft/sec")
 t <- set_units(5, "year")
 V <- 0.2 # unitless
-get_depletion_from_pumping(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t)
+get_depletion_from_pumping(
+  x1 = x1, x2 = x2, along_stream_distance = along_stream_distance,
+  K = K, D = D, V = V, t = t
+)
 ```
 
 The variables can also be specified as named columns of a `data.frame` or `tibble`. While either can be used, `tibble` package is used below because it works more seamlessly with `units` objects.
 
 ```{r}
 library(tibble)
-df <- tibble(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t)
+df <- tibble(
+  x1 = x1, x2 = x2, along_stream_distance = along_stream_distance,
+  K = K, D = D, V = V, t = t
+)
 get_depletion_from_pumping(df)
 ```
 
@@ -83,4 +89,3 @@ For details of this function, check `?get_depletion_from_pumping`.
 ## Website
 
 You can find further information about this package, including function help files and tutorials on the [package website](https://gopalpenny.github.io/isw/).
-

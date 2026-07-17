@@ -45,12 +45,15 @@ using the function `get_depletion_from_pumping` in this package.
 library(units)
 x1 <- set_units(c(1, 5, 10) * 1e3, "ft")
 x2 <- set_units(1e3, "ft")
-y <- set_units(1e3, "ft")
+along_stream_distance <- set_units(1e3, "ft")
 D <- set_units(100, "ft")
 K <- set_units(0.001, "ft/sec")
 t <- set_units(5, "year")
 V <- 0.2 # unitless
-get_depletion_from_pumping(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t)
+get_depletion_from_pumping(
+  x1 = x1, x2 = x2, along_stream_distance = along_stream_distance,
+  K = K, D = D, V = V, t = t
+)
 #>   stream_depletion_fraction aquifer_drawdown_ratio
 #> 1                 0.9365474    -1.2707109 [s/ft^2]
 #> 2                 0.6905933    -0.5705381 [s/ft^2]
@@ -63,7 +66,10 @@ because it works more seamlessly with `units` objects.
 
 ``` r
 library(tibble)
-df <- tibble(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t)
+df <- tibble(
+  x1 = x1, x2 = x2, along_stream_distance = along_stream_distance,
+  K = K, D = D, V = V, t = t
+)
 get_depletion_from_pumping(df)
 #>   stream_depletion_fraction aquifer_drawdown_ratio
 #> 1                 0.9365474    -1.2707109 [s/ft^2]

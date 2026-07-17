@@ -169,7 +169,8 @@ get_aquifer_drawdown_ratio <- function(df, r = NULL, K = NULL, D = NULL,
 #'
 #' @param x1 Distance of pumping well to stream
 #' @param x2 Distance of observation well to stream
-#' @param y Distance between pumping and observation well (parallel to stream)
+#' @param along_stream_distance Distance between pumping and observation well
+#'   parallel to stream
 #' @param well_diam Diameter of the well, inside which drawdown does not increase. Defaults to 0.
 #' @inheritParams get_stream_depletion_fraction
 #' @export
@@ -187,14 +188,14 @@ get_aquifer_drawdown_ratio <- function(df, r = NULL, K = NULL, D = NULL,
 #' library(units)
 #' x1 <- set_units(c(1, 5, 10) * 1e3, "ft")
 #' x2 <- set_units(1e3, "ft")
-#' y <- set_units(1e3, "ft")
+#' along_stream_distance <- set_units(1e3, "ft")
 #' D <- set_units(100, "ft")
 #' K <- set_units(0.001, "ft/sec")
 #' t <- set_units(5, "year")
 #' V <- 0.2 # unitless
 #' depletion_from_pumping <- get_depletion_from_pumping(x1 = x1,
 #'                                                      x2 = x2,
-#'                                                      y = y,
+#'                                                      along_stream_distance = along_stream_distance,
 #'                                                      K = K,
 #'                                                      D = D,
 #'                                                      V = V,
@@ -203,16 +204,22 @@ get_aquifer_drawdown_ratio <- function(df, r = NULL, K = NULL, D = NULL,
 #'
 #' # Specifying parameters as named data.frame columns
 #' library(tibble) # simplifies specifying data.frames with units objects
-#' df <- tibble(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t)
+#' df <- tibble(x1 = x1, x2 = x2,
+#'              along_stream_distance = along_stream_distance,
+#'              K = K, D = D, V = V, t = t)
 #' depletion_from_pumping <- get_depletion_from_pumping(df)
 #' depletion_from_pumping
-get_depletion_from_pumping <- function(df, x1 = NULL, x2 = NULL, y = NULL, K = NULL, D = NULL, V = NULL, t = NULL, well_diam = NULL) {
+get_depletion_from_pumping <- function(df, x1 = NULL, x2 = NULL,
+                                       along_stream_distance = NULL,
+                                       K = NULL, D = NULL, V = NULL, t = NULL,
+                                       well_diam = NULL) {
   if (!missing(df)) { # if df is specified, replace NULL parameters with df columns
     if (!is.null(df)) {
       if (!("data.frame" %in% class(df))) {
         stop("df must be a data.frame object")
       }
-      for (var in c("x1","x2","y","K","D","V","t","well_diam")) {
+      for (var in c("x1", "x2", "along_stream_distance", "K", "D", "V",
+                    "t", "well_diam")) {
         assign(var, df[[var]])
       }
     }
@@ -222,8 +229,8 @@ get_depletion_from_pumping <- function(df, x1 = NULL, x2 = NULL, y = NULL, K = N
     well_diam <- units::set_units(0, "ft")
   }
 
-  r_w <- sqrt(y^2 + (x2-x1)^2) # distance from observation well to pumping well
-  r_wi <- sqrt(y^2 + (x2+x1)^2) # distance from observation well to pumping well (imaged across the stream)
+  r_w <- sqrt(along_stream_distance^2 + (x2-x1)^2)
+  r_wi <- sqrt(along_stream_distance^2 + (x2+x1)^2)
 
   stream_depletion_fraction <- get_stream_depletion_fraction(x1 = x1, K = K, D = D, V = V, t = t) # %
   ds_w <- get_aquifer_drawdown_ratio(r = r_w, K = K, D = D, V = V, t = t, well_diam = well_diam) # ft / flowrate

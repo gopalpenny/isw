@@ -49,6 +49,9 @@ aquifer boundaries. See Glover (1954)."><!-- mathjax --><script src="https://cdn
     <li>
       <a href="../articles/Stream-depletion-and-aquifer-drawdown.html">Stream depletion and aquifer drawdown</a>
     </li>
+    <li>
+      <a href="../articles/stream-depletion-apportionment.html">Stream Depletion Apportionment</a>
+    </li>
   </ul></li>
       </ul><ul class="nav navbar-nav navbar-right"></ul></div><!--/.nav-collapse -->
   </div><!--/.container -->
@@ -76,7 +79,7 @@ aquifer boundaries. See Glover (1954).</p>
 <span>  <span class="va">df</span>,</span>
 <span>  x1 <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  x2 <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  y <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  along_stream_distance <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  K <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  D <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  V <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -101,8 +104,9 @@ aquifer boundaries. See Glover (1954).</p>
 <dd><p>Distance of observation well to stream</p></dd>
 
 
-<dt id="arg-y">y<a class="anchor" aria-label="anchor" href="#arg-y"></a></dt>
-<dd><p>Distance between pumping and observation well (parallel to stream)</p></dd>
+<dt id="arg-along-stream-distance">along_stream_distance<a class="anchor" aria-label="anchor" href="#arg-along-stream-distance"></a></dt>
+<dd><p>Distance between the pumping and observation
+wells parallel to the stream.</p></dd>
 
 
 <dt id="arg-k">K<a class="anchor" aria-label="anchor" href="#arg-k"></a></dt>
@@ -135,12 +139,12 @@ with a nearby stream or without a stream.</p>
     <div id="ref-examples">
     <h2>Examples</h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-quantities.github.io/units/" class="external-link">units</a></span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">5</span>, <span class="fl">10</span><span class="op">)</span> <span class="op">*</span> <span class="fl">1e3</span>, <span class="st">"ft"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">along_stream_distance</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">5</span>, <span class="fl">10</span><span class="op">)</span> <span class="op">*</span> <span class="fl">1e3</span>, <span class="st">"ft"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">D</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">100</span>, <span class="st">"ft"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">K</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">0.001</span>, <span class="st">"ft/sec"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">t</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">5</span>, <span class="st">"year"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">V</span> <span class="op">&lt;-</span> <span class="fl">0.2</span> <span class="co"># unitless</span></span></span>
-<span class="r-in"><span><span class="va">aquifer_drawdown_ratio</span> <span class="op">&lt;-</span> <span class="fu">get_aquifer_drawdown_ratio</span><span class="op">(</span>y <span class="op">=</span> <span class="va">y</span>,</span></span>
+<span class="r-in"><span><span class="va">aquifer_drawdown_ratio</span> <span class="op">&lt;-</span> <span class="fu">get_aquifer_drawdown_ratio</span><span class="op">(</span>along_stream_distance <span class="op">=</span> <span class="va">along_stream_distance</span>,</span></span>
 <span class="r-in"><span>                                                     x1 <span class="op">=</span> <span class="cn">Inf</span>,</span></span>
 <span class="r-in"><span>                                                     x2 <span class="op">=</span> <span class="cn">Inf</span>,</span></span>
 <span class="r-in"><span>                                                     K <span class="op">=</span> <span class="va">K</span>,</span></span>
@@ -157,16 +161,19 @@ with a nearby stream or without a stream.</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Specifying parameters as named data.frame columns</span></span></span>
 <span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tibble.tidyverse.org/" class="external-link">tibble</a></span><span class="op">)</span> <span class="co"># simplifies specifying data.frames with units objects</span></span></span>
-<span class="r-in"><span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span>y <span class="op">=</span> <span class="va">y</span>, x1 <span class="op">=</span> <span class="cn">Inf</span>, x2 <span class="op">=</span> <span class="cn">Inf</span>, K <span class="op">=</span> <span class="va">K</span>, D <span class="op">=</span> <span class="va">D</span>, V <span class="op">=</span> <span class="va">V</span>, t <span class="op">=</span> <span class="va">t</span><span class="op">)</span></span></span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>package ‘tibble’ was built under R version 4.4.3</span>
+<span class="r-in"><span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span>along_stream_distance <span class="op">=</span> <span class="va">along_stream_distance</span>, x1 <span class="op">=</span> <span class="cn">Inf</span>,</span></span>
+<span class="r-in"><span>             x2 <span class="op">=</span> <span class="cn">Inf</span>, K <span class="op">=</span> <span class="va">K</span>, D <span class="op">=</span> <span class="va">D</span>, V <span class="op">=</span> <span class="va">V</span>, t <span class="op">=</span> <span class="va">t</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">aquifer_drawdown_ratio</span> <span class="op">&lt;-</span> <span class="fu">get_aquifer_drawdown_ratio</span><span class="op">(</span><span class="va">df</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">aquifer_drawdown_ratio</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Units: [s/ft^2]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] -4.122375 -1.620171 -0.688698</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># for radius &lt; well_diam/2, drawdown does not increase.</span></span></span>
-<span class="r-in"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0.25</span>,<span class="fl">2</span>, by <span class="op">=</span> <span class="fl">0.25</span><span class="op">)</span>, <span class="st">"ft"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">along_stream_distance</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0.25</span>,<span class="fl">2</span>, by <span class="op">=</span> <span class="fl">0.25</span><span class="op">)</span>, <span class="st">"ft"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">well_diam</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">2</span>, <span class="st">"ft"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">aquifer_drawdown_ratio</span> <span class="op">&lt;-</span> <span class="fu">get_aquifer_drawdown_ratio</span><span class="op">(</span>x1 <span class="op">=</span> <span class="cn">Inf</span>, x2 <span class="op">=</span> <span class="cn">Inf</span>, y <span class="op">=</span> <span class="va">y</span>,</span></span>
+<span class="r-in"><span><span class="va">aquifer_drawdown_ratio</span> <span class="op">&lt;-</span> <span class="fu">get_aquifer_drawdown_ratio</span><span class="op">(</span>x1 <span class="op">=</span> <span class="cn">Inf</span>, x2 <span class="op">=</span> <span class="cn">Inf</span>,</span></span>
+<span class="r-in"><span>                                                     along_stream_distance <span class="op">=</span> <span class="va">along_stream_distance</span>,</span></span>
 <span class="r-in"><span>                                                     K <span class="op">=</span> <span class="va">K</span>, D <span class="op">=</span> <span class="va">D</span>,</span></span>
 <span class="r-in"><span>                                                     V <span class="op">=</span> <span class="va">V</span>, t <span class="op">=</span> <span class="va">t</span>,</span></span>
 <span class="r-in"><span>                                                     well_diam <span class="op">=</span> <span class="va">well_diam</span><span class="op">)</span></span></span>

@@ -35,7 +35,8 @@ We need to keep track of the following variables:
 
 - `x1`: Distance from the pumping well to the river
 - `x2`: Distance from the observation well to the river
-- `y`: Component of the distance between the two wells that is *parallel* to the river
+- `along_stream_distance`: Component of the distance between the two wells that
+  is *parallel* to the river
 
 
 ```{r echo = FALSE}
@@ -140,18 +141,19 @@ wells <- crossing(pump_wells,
                   obs_wells,
                   t = set_units(t_years,'year')) %>%
   mutate(K = K, D = D, V = V,
-         y = abs(y2 - y1),
+         along_stream_distance = abs(y2 - y1),
          id = row_number())
 
 
 
-# locations <- tribble(~x1, ~y, ~`Obs. well`, ~`Pumping well`,
+# locations <- tribble(~x1, ~along_stream_distance, ~`Obs. well`, ~`Pumping well`,
 #                      0.2, 1.5, "a", "c",
 #                      0.8, 1.5, "a", "d",
 #                      0.2, 0, "b", "c",
 #                      0.8, 0, "b", "d") %>%
 #   mutate(x2 = 0.5,
-#          across(all_of(c("x1","x2","y")), function(x) set_units(x,"mi")), id = row_number())
+#          across(all_of(c("x1", "x2", "along_stream_distance")),
+#                 function(x) set_units(x, "mi")), id = row_number())
 ```
 
 To visualize these permutations we can plot them.
@@ -240,4 +242,3 @@ p_blind_spot
 ```{r fig.width=14,fig.height=6}
 p_ratio + p_blind_spot
 ```
-

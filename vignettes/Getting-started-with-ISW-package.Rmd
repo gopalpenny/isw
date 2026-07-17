@@ -74,7 +74,8 @@ The main functions in `isw` use variables to describe the spatial relationship a
 
 * `x1`: distance from the stream to a pumping well,
 * `x2`: distance from the stream to a observation well well, and
-* `y`: distance between observation and pumping wells *parallel* to the river.
+* `along_stream_distance`: distance between observation and pumping wells
+  *parallel* to the river.
 
 Note that the stream can be omitted by specifying `x1 = Inf` and `x2 = Inf`.
 
@@ -121,16 +122,20 @@ $$\text{stream depletion fraction (at time t)} = \frac{\text{rate of stream depl
 ### Estimating aquifer drawdown
 
 The `get_aquifer_drawdown_ratio()` function gives the change in water level per unit pumping
-at an observation well (*without a stream*). The parameters `x1`, `x2`, and `y` specify the
-geometry of the pumping well, observation well, and stream. 
+at an observation well (*without a stream*). The parameters `x1`, `x2`, and
+`along_stream_distance` specify the geometry of the pumping well, observation
+well, and stream.
 
 ```{r}
-y <- set_units(1, "mi")
-aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(y = y, x1 = Inf, x2 = Inf, K = K, D = D, V = V, t = t)
+along_stream_distance <- set_units(1, "mi")
+aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(
+  along_stream_distance = along_stream_distance,
+  x1 = Inf, x2 = Inf, K = K, D = D, V = V, t = t
+)
 aquifer_drawdown_ratio
 ```
 
-Note that `get_aquifer_drawdown_ratio` has an optional parameter, `well_diam` that defaults to a value of 0. When specified, drawdown does not increase inside the well. In other words, when `r<well_diam/2`, drawdown is calculated as if `r=well_diam/2`, where `r` is the distance between the pumping and observation wells ($r = \sqrt{(x_2 - x_1)^2 + y^2}$).
+Note that `get_aquifer_drawdown_ratio` has an optional parameter, `well_diam` that defaults to a value of 0. When specified, drawdown does not increase inside the well. In other words, when `r<well_diam/2`, drawdown is calculated as if `r=well_diam/2`, where `r` is the distance between the pumping and observation wells ($r = \sqrt{(x_2 - x_1)^2 + \mathrm{along\_stream\_distance}^2}$).
 
 ### Depletion and drawdown
 
@@ -144,16 +149,17 @@ boundary using, as noted above, the method of images.
 
 This function uses a couple new parameters. The `x2` parameter ($x_2$) is the distance 
 between the observation well and the stream. If `r` is the distance between
-the pumping and observation wells, `y` is the component of this distance that is
-parallel to the stream. In other words, $r^2 = (x_2-x_1)^2 + y^2$. Keeping the remaining
+the pumping and observation wells, `along_stream_distance` is the component of
+this distance that is parallel to the stream. In other words,
+$r^2 = (x_2-x_1)^2 + \mathrm{along\_stream\_distance}^2$. Keeping the remaining
 parameters the same as before, we can call this function as:
 
 ```{r}
 x2 <- set_units(1e3, "ft")
-y <- set_units(1e3, "ft")
+along_stream_distance <- set_units(1e3, "ft")
 depletion_from_pumping <- get_depletion_from_pumping(x1 = x1,
                                                      x2 = x2,
-                                                     y = y,
+                                                     along_stream_distance = along_stream_distance,
                                                      K = K,
                                                      D = D,
                                                      V = V,
@@ -170,9 +176,9 @@ as `vector` or `data.frame` objects. Let's get this ratio a distances ranging fr
 1 ft to 10 miles, after 2 years of pumping.
 
 ```{r}
-y <- set_units(seq(1/5280, 10, length.out = 200), "mi")
+along_stream_distance <- set_units(seq(1/5280, 10, length.out = 200), "mi")
 t <- set_units(2, 'year')
-aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(y = y, x1 = Inf, x2 = Inf, K = K, D = D, V = V, t = t)
+aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(along_stream_distance = along_stream_distance, x1 = Inf, x2 = Inf, K = K, D = D, V = V, t = t)
 head(aquifer_drawdown_ratio)
 ```
 
@@ -184,7 +190,7 @@ library(tidyr)
 
 # create tibble with all parameter combinations
 df <- tibble(K = K, D = D, V = V, t = t, x1 = Inf, x2 = Inf) %>%
-  crossing(y = set_units(seq(1/5280, 10, length.out = 200), "mi"))
+  crossing(along_stream_distance = set_units(seq(1/5280, 10, length.out = 200), "mi"))
 
 # call function with tibble to specify parameters
 aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(df)
@@ -208,7 +214,7 @@ library(dplyr)
 drawdown_df <- df %>% 
   bind_cols(drawdown = aquifer_drawdown)
 
-ggplot(drawdown_df, aes(y, drawdown)) +
+ggplot(drawdown_df, aes(along_stream_distance, drawdown)) +
   geom_line()
 ```
 
@@ -217,9 +223,9 @@ ggplot(drawdown_df, aes(y, drawdown)) +
 As a check, to give confidence in this calculation, we can calculate the volume of water drained from the aquifer as drawdown times the drainable porosity for circular bands (with differential radius $dr$) around the well. For simplicity, we use the `dplyr::mutate` function to calculate this value.
 
 ```{r message = FALSE}
-dy <- y[2] - y[1]
+d_along_stream_distance <- along_stream_distance[2] - along_stream_distance[1]
 drawdown_df <- drawdown_df %>% 
-  mutate(d_area = dy * 2 * pi * y,
+  mutate(d_area = d_along_stream_distance * 2 * pi * along_stream_distance,
          volumetric_drawdown = drawdown * d_area * V)
 ```
 
@@ -229,16 +235,16 @@ The total radial flow towards the well can be calculated as $q = 2 \pi r D K \fr
 
 ```{r}
 drawdown_df <- drawdown_df %>% 
-  mutate(flow_towards_well = 2 * pi * y * D * K * (drawdown - lag(drawdown)) / dy,
+  mutate(flow_towards_well = 2 * pi * along_stream_distance * D * K *
+           (drawdown - lag(drawdown)) / d_along_stream_distance,
          flow_towards_well = set_units(flow_towards_well, "ft^3/s"))
 
-ggplot(drawdown_df, aes(y, flow_towards_well)) + geom_line() +
+ggplot(drawdown_df, aes(along_stream_distance, flow_towards_well)) + geom_line() +
   geom_abline(slope = 0, intercept = 1, color = "red", linetype = "dashed")
 ```
 
-Note that closer to the pumping well this calculation suffers from coarse discretization of the domain causing the flowrate to diverge from 1 ft^3^/s. You can verify this yourself by, for instance, changing the radius to `y <- set_units(seq(1, 5, length.out = 200), "ft")` and re-running the calculations.
+Note that closer to the pumping well this calculation suffers from coarse discretization of the domain causing the flowrate to diverge from 1 ft^3^/s. You can verify this yourself by, for instance, changing the radius to `along_stream_distance <- set_units(seq(1, 5, length.out = 200), "ft")` and re-running the calculations.
 
 ## References
 
 Glover, Robert E., and Glenn G. Balmer. “River Depletion Resulting from Pumping a Well near a River.” Eos, Transactions American Geophysical Union 35, no. 3 (1954): 468–70. https://doi.org/10.1029/TR035i003p00468.
-

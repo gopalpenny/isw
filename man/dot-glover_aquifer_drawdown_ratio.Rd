@@ -4,7 +4,16 @@
 \alias{.glover_aquifer_drawdown_ratio}
 \title{Calculate the Glover aquifer-drawdown ratio}
 \usage{
-.glover_aquifer_drawdown_ratio(x1, x2, y, K, D, V, t, well_diam)
+.glover_aquifer_drawdown_ratio(
+  x1,
+  x2,
+  along_stream_distance,
+  K,
+  D,
+  V,
+  t,
+  well_diam
+)
 }
 \arguments{
 \item{x1}{Perpendicular distance from the pumping well to the stream. Use
@@ -15,9 +24,9 @@ boundary.}
 `Inf` together with `x1 = Inf` for a calculation without a stream
 boundary.}
 
-\item{y}{Distance between the pumping and observation wells parallel to the
-stream. When no stream boundary is included, `y` is the direct distance
-between the wells.}
+\item{along_stream_distance}{Distance between the pumping and observation
+wells parallel to the stream. When no stream boundary is included,
+`along_stream_distance` is the direct distance between the wells.}
 
 \item{K}{Saturated hydraulic conductivity. Must have units of length per
 time.}
@@ -45,9 +54,9 @@ For a stream boundary, the function calculates drawdown from the pumping
 well and subtracts the response associated with its image well. The pumping-
 well and image-well distances from the observation well are:
 
-\deqn{r_w = \sqrt{(x_2-x_1)^2+y^2}}
+\deqn{r_w = \sqrt{(x_2-x_1)^2+along\_stream\_distance^2}}
 
-\deqn{r_{wi} = \sqrt{(x_2+x_1)^2+y^2}}
+\deqn{r_{wi} = \sqrt{(x_2+x_1)^2+along\_stream\_distance^2}}
 
 When `x1` and `x2` are both `Inf`, only the pumping-well response is used.
 }

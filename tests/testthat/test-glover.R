@@ -24,8 +24,8 @@ test_that("get_stream_depletion_fraction generates correct results for data.fram
 })
 
 
-y <- set_units(c(1, 5, 10) * 1e3, "ft")
-aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(y = y, x1 = Inf, x2 = Inf, K = K, D = D, V = V, t = t)
+along_stream_distance <- set_units(c(1, 5, 10) * 1e3, "ft")
+aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(along_stream_distance = along_stream_distance, x1 = Inf, x2 = Inf, K = K, D = D, V = V, t = t)
 # # For pasting results into expect_equal()
 # paste0("c(",paste(round(aquifer_drawdown_ratio, 5), collapse = ", "),")")
 
@@ -35,7 +35,7 @@ test_that("get_aquifer_drawdown_ratio generates correct results for numeric/vect
 })
 
 
-aquifer_drawdown_ratio_df <- get_aquifer_drawdown_ratio(tibble(y = y, x1 = Inf, x2 = Inf, K = K, D = D, V = V, t = t))
+aquifer_drawdown_ratio_df <- get_aquifer_drawdown_ratio(tibble(along_stream_distance = along_stream_distance, x1 = Inf, x2 = Inf, K = K, D = D, V = V, t = t))
 test_that("get_aquifer_drawdown_ratio generates correct results for data.frame input",{
   expect_equal(round(aquifer_drawdown_ratio, 5), round(aquifer_drawdown_ratio_df, 5))
 })
@@ -44,8 +44,8 @@ test_that("get_aquifer_drawdown_ratio generates correct results for data.frame i
 
 x1 <- set_units(c(1, 5, 10) * 1e3, "ft")
 x2 <- set_units(1e3, "ft")
-y <- set_units(1e3, "ft")
-pumping_depletion <- get_depletion_from_pumping(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t) %>%
+along_stream_distance <- set_units(1e3, "ft")
+pumping_depletion <- get_depletion_from_pumping(x1 = x1, x2 = x2, along_stream_distance = along_stream_distance, K = K, D = D, V = V, t = t) %>%
     dplyr::mutate(dplyr::across(dplyr::everything(), function(x) round(as.numeric(x), 4)))
 pumping_depletion$aquifer_drawdown_ratio <-
   set_units(pumping_depletion$aquifer_drawdown_ratio, "sec/ft^2")
@@ -62,7 +62,7 @@ test_that("get_depletion_from_pumping generates correct results for numeric/vect
 })
 
 
-pumping_depletion_df <- get_depletion_from_pumping(tibble(x1 = x1, x2 = x2, y = y, K = K, D = D, V = V, t = t)) %>%
+pumping_depletion_df <- get_depletion_from_pumping(tibble(x1 = x1, x2 = x2, along_stream_distance = along_stream_distance, K = K, D = D, V = V, t = t)) %>%
   dplyr::mutate(dplyr::across(dplyr::everything(), function(x) round(as.numeric(x), 4)))
 pumping_depletion_df$aquifer_drawdown_ratio <-
   set_units(pumping_depletion_df$aquifer_drawdown_ratio, "sec/ft^2")
@@ -72,18 +72,17 @@ test_that("get_depletion_from_pumping generates correct results for data.frame i
 
 
 # for radius < well_diam/2, drawdown does not increase.
-y <- units::set_units(c(0.5, 0.75, 1, 1.1, 2, 5, 10), "ft")
+along_stream_distance <- units::set_units(c(0.5, 0.75, 1, 1.1, 2, 5, 10), "ft")
 well_d <- units::set_units(2, "ft")
-aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(y = y, x1 = Inf, x2 = Inf, K = K, D = D, V = V, t = t, well_diam = well_d)
+aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(along_stream_distance = along_stream_distance, x1 = Inf, x2 = Inf, K = K, D = D, V = V, t = t, well_diam = well_d)
 test_that("get_aquifer_drawdown_ratio restrict drawdown inside well radius",{
   expect_equal(round(aquifer_drawdown_ratio,5),
                units::set_units(c(-15.11389, -15.11389, -15.11389, -14.96220, -14.01071, -12.55239, -11.44921),"s/ft^2"))
 })
 
-aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(y = y, x1 = Inf, x2 = Inf, K = K, D = D, V = V, t = t, well_diam = rep(well_d, length(y)))
+aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(along_stream_distance = along_stream_distance, x1 = Inf, x2 = Inf, K = K, D = D, V = V, t = t, well_diam = rep(well_d, length(along_stream_distance)))
 test_that("get_aquifer_drawdown_ratio restrict drawdown inside well radius, well_diam as vector",{
   expect_equal(round(aquifer_drawdown_ratio,5),
                units::set_units(c(-15.11389, -15.11389, -15.11389, -14.96220, -14.01071, -12.55239, -11.44921),"s/ft^2"))
 })
-
 

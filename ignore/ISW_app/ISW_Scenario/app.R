@@ -52,8 +52,9 @@ server <- function(input, output) {
     
     crossing(pump_wells, obs_wells) |> 
       mutate(
-        y = abs(y_pump) - y_obs,
-        across(all_of(c("x1", "x2", "y")),  function(x) set_units(x,"mi")),
+        along_stream_distance = abs(y_pump) - y_obs,
+        across(all_of(c("x1", "x2", "along_stream_distance")),
+               function(x) set_units(x,"mi")),
         id = row_number()
       )
   })
@@ -107,7 +108,9 @@ server <- function(input, output) {
   
   output$depletionPlot <- renderPlot({
     df_calcs <- depletionData()
-    ggplot(df_calcs, aes(as.numeric(-aquifer_drawdown_ratio), as.numeric(stream_depletion_fraction), shape = as.factor(y))) +
+    ggplot(df_calcs, aes(as.numeric(-aquifer_drawdown_ratio),
+                         as.numeric(stream_depletion_fraction),
+                         shape = as.factor(along_stream_distance))) +
       geom_point(
         data = df_calcs |> filter(abs(as.numeric(t)) %% 0.5 < 0.15),
         aes(color = as.factor(x1)), size = 3, stroke = 1
