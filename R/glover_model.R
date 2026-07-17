@@ -14,6 +14,65 @@ prob_integral <- function(Z) {
   (pnorm(Z * sqrt(2)) - 0.5) * 2
 }
 
+#' Calculate the Glover stream-depletion fraction
+#'
+#' Internal numerical kernel for calculating stream depletion caused by a
+#' pumping well near a fully penetrating stream with no streambed resistance.
+#'
+#' @param x1 Distance from the pumping well to the stream. Must have units of
+#'   length.
+#' @param K Saturated hydraulic conductivity. Must have units of length per
+#'   time.
+#' @param D Aquifer thickness. Must have units of length.
+#' @param V Drainable porosity or specific yield. A dimensionless numeric value.
+#' @param t Elapsed time since pumping began. Must have units of time.
+#'
+#' @return A dimensionless numeric vector containing the stream-depletion
+#'   fraction.
+#'
+#' @details
+#' This function contains the numerical implementation of the Glover and Balmer
+#' analytical solution. Input preparation and higher-level pumping-schedule
+#' processing are handled by other functions.
+#'
+#' Hydraulic diffusivity is calculated as:
+#'
+#' \deqn{\alpha = \frac{K D}{V}}
+#'
+#' The stream-depletion fraction is then calculated from the dimensionless
+#' distance:
+#'
+#' \deqn{\frac{x_1}{\sqrt{4 \alpha t}}}
+#'
+#' @references
+#' Glover, R. E., and Balmer, G. G. (1954). River Depletion Resulting from
+#' Pumping a Well near a River. *Transactions, American Geophysical Union*,
+#' 35(3), 468–470. \doi{10.1029/TR035i003p00468}
+#'
+#' @seealso [get_stream_depletion_fraction()]
+#' @keywords internal
+.glover_stream_depletion_fraction <- function(x1, K, D, V, t) {
+  alpha <- K * D / V
+  
+  x1_over_4_alpha_t <- x1 / sqrt(4 * alpha * t)
+  
+  dimensionless <-
+    length(units(x1_over_4_alpha_t)$numerator) == 0 &&
+    length(units(x1_over_4_alpha_t)$denominator) == 0
+  
+  if (!dimensionless) {
+    stop(
+      "Units error resulting in dimensional value input ",
+      "to probability integral. Numerator: ",
+      units(x1_over_4_alpha_t)$numerator,
+      ", Denominator: ",
+      units(x1_over_4_alpha_t)$denominator
+    )
+  }
+  
+  1 - prob_integral(as.numeric(x1_over_4_alpha_t))
+}
+
 #' Glover model of stream depletion fraction
 #'
 #' Glover model of stream depletion, including image well
@@ -51,27 +110,157 @@ prob_integral <- function(Z) {
 #' df <- tibble(x1 = x1, K = K, D = D, V = V, t = t)
 #' stream_depletion_fraction <- get_stream_depletion_fraction(df)
 #' stream_depletion_fraction
-get_stream_depletion_fraction <- function(df, x1 = NULL, K = NULL, D = NULL, V = NULL, t = NULL) {
-  # previously get_q_fraction
-  if (!missing(df)) { # if df is specified, replace NULL parameters with df columns
-    if (!is.null(df)) {
-      if (!("data.frame" %in% class(df))) {
-        stop("df must be a data.frame object")
-      }
-      for (var in c("x1","K","D","V","t")) {
-        assign(var, df[[var]])
-      }
+get_stream_depletion_fraction <- function(
+    df,
+    x1 = NULL,
+    K = NULL,
+    D = NULL,
+    V = NULL,
+    t = NULL) {
+
+  if (!missing(df) && !is.null(df)) {
+    if (!is.data.frame(df)) {
+      stop("df must be a data.frame object")
     }
+
+    x1 <- df[["x1"]]
+    K <- df[["K"]]
+    D <- df[["D"]]
+    V <- df[["V"]]
+    t <- df[["t"]]
+  }
+
+  .glover_stream_depletion_fraction(
+    x1 = x1,
+    K = K,
+    D = D,
+    V = V,
+    t = t
+  )
+}
+
+#' Calculate the Glover aquifer-drawdown ratio
+#'
+#' Internal numerical kernel for calculating aquifer drawdown at an observation
+#' well caused by pumping from another well. The calculation can include a
+#' single straight stream represented as a constant-head boundary.
+#'
+#' @param x1 Perpendicular distance from the pumping well to the stream. Use
+#'   `Inf` together with `x2 = Inf` for a calculation without a stream
+#'   boundary.
+#' @param x2 Perpendicular distance from the observation well to the stream. Use
+#'   `Inf` together with `x1 = Inf` for a calculation without a stream
+#'   boundary.
+#' @param y Distance between the pumping and observation wells parallel to the
+#'   stream. When no stream boundary is included, `y` is the direct distance
+#'   between the wells.
+#' @param K Saturated hydraulic conductivity. Must have units of length per
+#'   time.
+#' @param D Aquifer thickness. Must have units of length.
+#' @param V Drainable porosity or specific yield. A dimensionless numeric value.
+#' @param t Elapsed time since pumping began. Must have units of time.
+#' @param well_diam Pumping-well diameter. Drawdown does not increase within
+#'   one well radius. Must have units of length.
+#'
+#' @return A units vector containing the ratio of aquifer drawdown to pumping
+#'   rate. The resulting dimensions are time divided by length squared.
+#'
+#' @details
+#' For a stream boundary, the function calculates drawdown from the pumping
+#' well and subtracts the response associated with its image well. The pumping-
+#' well and image-well distances from the observation well are:
+#'
+#' \deqn{r_w = \sqrt{(x_2-x_1)^2+y^2}}
+#'
+#' \deqn{r_{wi} = \sqrt{(x_2+x_1)^2+y^2}}
+#'
+#' When `x1` and `x2` are both `Inf`, only the pumping-well response is used.
+#'
+#' @references
+#' Glover, R. E., and Balmer, G. G. (1954). River Depletion Resulting from
+#' Pumping a Well near a River. *Transactions, American Geophysical Union*,
+#' 35(3), 468–470. \doi{10.1029/TR035i003p00468}
+#'
+#' @seealso [get_aquifer_drawdown_ratio()]
+#' @keywords internal
+.glover_aquifer_drawdown_ratio <- function(
+    x1,
+    x2,
+    y,
+    K,
+    D,
+    V,
+    t,
+    well_diam) {
+  #
+  # check dimensionality
+  check_dimensionality(K, "ft/s","K")
+  check_dimensionality(D, "ft","D")
+  check_dimensionality(t, "s","t")
+  check_dimensionality(well_diam, "m","well_diam")
+  check_dimensionality(y, "ft","rw")
+  # allow Inf as an input for x1 or x2
+  if (any(as.numeric(x1) != Inf)) {
+    check_dimensionality(x1, "ft","rw")
+  }
+  if (any(as.numeric(x2) != Inf)) {
+    check_dimensionality(x2, "ft","rw")
   }
   alpha <- K * D / V
-  x1_over_4_alpha_t <- x1 / sqrt(4 * alpha * t) # column 2 in Table 1 of glover
-  if (length(units(x1_over_4_alpha_t)$numerator) != 0 | length(units(x1_over_4_alpha_t)$denominator) != 0) {
-    stop("Units error resulting in dimensional value input to probability integral. ",
-         "Numerator: ",units(x1_over_4_alpha_t)$numerator,", Denominator: ",units(x1_over_4_alpha_t)$denominator)
-  } else{
-    stream_depletion_fraction <- 1 - prob_integral(as.numeric(x1_over_4_alpha_t))
+  
+  check_dimensionality(alpha, "ft^2/s","alpha")
+  
+  
+  # if x1 is Inf, x2 must be inf
+  if (any(as.numeric(x1) == Inf) | any(as.numeric(x2) == Inf)) {
+    if (!all(x1 == x2)) {
+      stop("If either x1 or x2 has any Inf values, both should only contain Inf values")
+    }
+    no_stream <- TRUE
+    rw <- y
+    rwi <- sqrt(set_units(x2 + x1,units(y))^2 + y^2)
+  } else {
+    no_stream <- FALSE
+    # get distance from pumping well to obs well
+    rw <- sqrt((x2 - x1)^2 + y^2)
+    # get distance from mirrored pumping well to obs well
+    rwi <- sqrt((x2 + x1)^2 + y^2)
   }
-  return(stream_depletion_fraction)
+  
+  # for rw, rwi < well_radius, set rw, rwi = well_radius
+  well_radius <- units::set_units(well_diam/2, units(rw))
+  
+  rw <- dplyr::if_else(rw < well_radius, well_radius, rw)
+  rwi <- dplyr::if_else(rwi < well_radius, well_radius, rwi)
+  
+  check_dimensionality(rw, "ft","rw")
+  check_dimensionality(rwi, "ft","rwi")
+  
+  rw_squared_over_4_alpha_t <- rw^2/(4 * alpha * t)
+  if (length(units(rw_squared_over_4_alpha_t)$numerator) != 0 | length(units(rw_squared_over_4_alpha_t)$denominator) != 0) {
+    stop("Units error resulting in dimensional value input to expint. ",
+         "Numerator: ",units(rw_squared_over_4_alpha_t)$numerator,", Denominator: ",units(rw_squared_over_4_alpha_t)$denominator)
+  } else{
+    rw_exp_integral <- -0.5 * expint(as.numeric(rw_squared_over_4_alpha_t)) ### CHECK SIGN ON rw^2 -- MAKES SMALL DIFFERENCE?
+  }
+  sw_over_Q <- 1 / (2 * pi * K * D) * rw_exp_integral
+  
+  if (no_stream) {
+    s_over_Q <- sw_over_Q # if no stream, use s_over_Q from pumping well only
+  } else { # if stream, calculate s_over_Q from image well
+    rwi_squared_over_4_alpha_t <- rwi^2/(4 * alpha * t)
+    if (length(units(rwi_squared_over_4_alpha_t)$numerator) != 0 | length(units(rwi_squared_over_4_alpha_t)$denominator) != 0) {
+      stop("Units error resulting in dimensional value input to expint. ",
+           "Numerator: ",units(rwi_squared_over_4_alpha_t)$numerator,", Denominator: ",units(rwi_squared_over_4_alpha_t)$denominator)
+    } else{
+      rwi_exp_integral <- -0.5 * expint(as.numeric(rwi_squared_over_4_alpha_t)) ### CHECK SIGN ON rwi^2 -- MAKES SMALL DIFFERENCE?
+    }
+    swi_over_Q <- 1 / (2 * pi * K * D) * rwi_exp_integral
+    
+    s_over_Q <- sw_over_Q - swi_over_Q # subtract well image from well s_over_Q
+  }
+  
+  return(s_over_Q)
 }
 
 #' Drawdown from a single pumping well
@@ -126,94 +315,46 @@ get_stream_depletion_fraction <- function(df, x1 = NULL, K = NULL, D = NULL, V =
 #'                                                      V = V, t = t,
 #'                                                      well_diam = well_diam)
 #' aquifer_drawdown_ratio
-get_aquifer_drawdown_ratio <- function(df, x1 = NULL, x2 = NULL, y = NULL,
-                                       K = NULL, D = NULL,
-                                       V = NULL, t = NULL,
-                                       well_diam = NULL) {
-  # previously get_s_ratio
-  if (!missing(df)) { # if df is specified, replace NULL parameters with df columns
-    if (!is.null(df)) {
-      if (!("data.frame" %in% class(df))) {
-        stop("df must be a data.frame object")
-      }
-      for (var in c("y","x1","x2","K","D","V","t","well_diam")) {
-        assign(var, df[[var]])
-      }
+get_aquifer_drawdown_ratio <- function(
+    df,
+    x1 = NULL,
+    x2 = NULL,
+    y = NULL,
+    K = NULL,
+    D = NULL,
+    V = NULL,
+    t = NULL,
+    well_diam = NULL) {
+  
+  if (!missing(df) && !is.null(df)) {
+    if (!is.data.frame(df)) {
+      stop("df must be a data.frame object")
     }
+    
+    y <- df[["y"]]
+    x1 <- df[["x1"]]
+    x2 <- df[["x2"]]
+    K <- df[["K"]]
+    D <- df[["D"]]
+    V <- df[["V"]]
+    t <- df[["t"]]
+    well_diam <- df[["well_diam"]]
   }
-
+  
   if (is.null(well_diam)) {
     well_diam <- units::set_units(0, "ft")
   }
-
-  # check dimensionality
-  check_dimensionality(K, "ft/s","K")
-  check_dimensionality(D, "ft","D")
-  check_dimensionality(t, "s","t")
-  check_dimensionality(well_diam, "m","well_diam")
-  check_dimensionality(y, "ft","rw")
-  # allow Inf as an input for x1 or x2
-  if (any(as.numeric(x1) != Inf)) {
-    check_dimensionality(x1, "ft","rw")
-  }
-  if (any(as.numeric(x2) != Inf)) {
-    check_dimensionality(x2, "ft","rw")
-  }
-  alpha <- K * D / V
-
-  check_dimensionality(alpha, "ft^2/s","alpha")
-
-
-  # if x1 is Inf, x2 must be inf
-  if (any(as.numeric(x1) == Inf) | any(as.numeric(x2) == Inf)) {
-    if (!all(x1 == x2)) {
-      stop("If either x1 or x2 has any Inf values, both should only contain Inf values")
-    }
-    no_stream <- TRUE
-    rw <- y
-    rwi <- sqrt(set_units(x2 + x1,units(y))^2 + y^2)
-  } else {
-    no_stream <- FALSE
-    # get distance from pumping well to obs well
-    rw <- sqrt((x2 - x1)^2 + y^2)
-    # get distance from mirrored pumping well to obs well
-    rwi <- sqrt((x2 + x1)^2 + y^2)
-  }
-
-  # for rw, rwi < well_radius, set rw, rwi = well_radius
-  well_radius <- units::set_units(well_diam/2, units(rw))
-
-  rw <- dplyr::if_else(rw < well_radius, well_radius, rw)
-  rwi <- dplyr::if_else(rwi < well_radius, well_radius, rwi)
-
-  check_dimensionality(rw, "ft","rw")
-  check_dimensionality(rwi, "ft","rwi")
-
-  rw_squared_over_4_alpha_t <- rw^2/(4 * alpha * t)
-  if (length(units(rw_squared_over_4_alpha_t)$numerator) != 0 | length(units(rw_squared_over_4_alpha_t)$denominator) != 0) {
-    stop("Units error resulting in dimensional value input to expint. ",
-         "Numerator: ",units(rw_squared_over_4_alpha_t)$numerator,", Denominator: ",units(rw_squared_over_4_alpha_t)$denominator)
-  } else{
-    rw_exp_integral <- -0.5 * expint(as.numeric(rw_squared_over_4_alpha_t)) ### CHECK SIGN ON rw^2 -- MAKES SMALL DIFFERENCE?
-  }
-  sw_over_Q <- 1 / (2 * pi * K * D) * rw_exp_integral
-
-  if (no_stream) {
-    s_over_Q <- sw_over_Q # if no stream, use s_over_Q from pumping well only
-  } else { # if stream, calculate s_over_Q from image well
-    rwi_squared_over_4_alpha_t <- rwi^2/(4 * alpha * t)
-    if (length(units(rwi_squared_over_4_alpha_t)$numerator) != 0 | length(units(rwi_squared_over_4_alpha_t)$denominator) != 0) {
-      stop("Units error resulting in dimensional value input to expint. ",
-           "Numerator: ",units(rwi_squared_over_4_alpha_t)$numerator,", Denominator: ",units(rwi_squared_over_4_alpha_t)$denominator)
-    } else{
-      rwi_exp_integral <- -0.5 * expint(as.numeric(rwi_squared_over_4_alpha_t)) ### CHECK SIGN ON rwi^2 -- MAKES SMALL DIFFERENCE?
-    }
-    swi_over_Q <- 1 / (2 * pi * K * D) * rwi_exp_integral
-
-    s_over_Q <- sw_over_Q - swi_over_Q # subtract well image from well s_over_Q
-  }
-
-  return(s_over_Q)
+  
+  .glover_aquifer_drawdown_ratio(
+    x1 = x1,
+    x2 = x2,
+    y = y,
+    K = K,
+    D = D,
+    V = V,
+    t = t,
+    well_diam = well_diam
+  )
 }
 
 
