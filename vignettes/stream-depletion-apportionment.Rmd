@@ -1,0 +1,104 @@
+---
+title: "Stream Depletion Apportionment"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Stream Depletion Apportionment}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r packages}
+library(isw)
+library(units)
+library(tibble)
+library(dplyr)
+library(ggplot2)
+```
+
+## Introduction
+
+```{r define-parameters}
+# Times at which stream depletion will be evaluated
+times <- set_units(seq(1, 100), "day")
+
+# Aquifer properties
+K <- set_units(1e-5, "m/s")
+D <- set_units(50, "m")
+V <- 0.1
+
+# Distance from the pumping well to the stream
+x1 <- set_units(250, "m")
+```
+
+We can run the stream depletion function either by inputting individual variables, like this:
+
+```{r}
+stream_depletion_fraction <- get_stream_depletion_fraction(
+  x1 = x1,
+  K = K,
+  D = D,
+  V = V,
+  t = times
+)
+
+depletion <- tibble(
+  t = times,
+  stream_depletion_fraction = stream_depletion_fraction
+)
+
+depletion
+```
+
+Alternatively, we can supply the parameters as named columns in a tibble:
+
+```{r}
+df <- tibble(
+  x1 = x1,
+  K = K,
+  D = D,
+  V = V,
+  t = times
+)
+
+df$stream_depletion_fraction <-
+  get_stream_depletion_fraction(df)
+
+df
+```
+
+
+```{r}
+ggplot(df) + geom_line(aes(t, stream_depletion_fraction))
+```
+
+
+## Convert the stream-depletion fraction to a depletion rate
+
+The `stream_depletion_fraction` variable describes depletion relative to the pumping rate. We will now calculate volumetric stream depletion, multiplying the fraction by pumping rate. In this example, the well pumps 500 cubic meters per day:
+
+```{r calculate-stream-depletion-rate}
+pumping_rate <- set_units(500, "m^3/day")
+
+df <- df |>
+  mutate(
+    stream_depletion_rate =
+      stream_depletion_fraction * pumping_rate
+  )
+
+df
+```
+
+The `stream_depletion_rate` column retains units of cubic meters per day. Its values represent the modeled reduction in streamflow caused by pumping.
+
+
+
+```{r}
+ggplot(df) + geom_line(aes(t, stream_depletion_rate))
+```
