@@ -1,0 +1,158 @@
+make_valid_pumping_wells <- function() {
+  sf::st_as_sf(
+    tibble::tibble(
+      pump_id = c("pump_1", "pump_2"),
+      x = c(-93.25, -93.20),
+      y = c(44.95, 45.00),
+      K = units::set_units(c(10, 15), "m/day"),
+      D = units::set_units(c(20, 25), "m"),
+      V = c(0.15, 0.20)
+    ),
+    coords = c("x", "y"),
+    crs = 4326
+  )
+}
+
+test_that("valid pumping_wells are returned unchanged", {
+  pumping_wells <- make_valid_pumping_wells()
+
+  expect_identical(
+    isw:::.validate_pumping_wells(pumping_wells),
+    pumping_wells
+  )
+})
+
+test_that("optional well_diam is validated when present", {
+  pumping_wells <- make_valid_pumping_wells()
+  pumping_wells$well_diam <- units::set_units(c(0, 0.25), "m")
+
+  expect_identical(
+    isw:::.validate_pumping_wells(pumping_wells),
+    pumping_wells
+  )
+
+  pumping_wells$well_diam <- units::set_units(c(0, -0.25), "m")
+
+  expect_error(
+    isw:::.validate_pumping_wells(pumping_wells),
+    "finite, nonnegative"
+  )
+})
+
+test_that("pumping_wells must be a nonempty sf object with a CRS", {
+  pumping_wells <- make_valid_pumping_wells()
+
+  expect_error(
+    isw:::.validate_pumping_wells(sf::st_drop_geometry(pumping_wells)),
+    "must be an sf object"
+  )
+
+  expect_error(
+    isw:::.validate_pumping_wells(pumping_wells[0, ]),
+    "at least one"
+  )
+
+  pumping_wells_without_crs <- suppressWarnings(
+    sf::st_set_crs(pumping_wells, NA)
+  )
+
+  expect_error(
+    isw:::.validate_pumping_wells(pumping_wells_without_crs),
+    "defined CRS"
+  )
+})
+
+test_that("pumping_wells geometries must be nonempty points", {
+  pumping_wells <- make_valid_pumping_wells()
+
+  line_geometry <- sf::st_sfc(
+    sf::st_linestring(matrix(c(0, 0, 1, 1), ncol = 2, byrow = TRUE)),
+    sf::st_linestring(matrix(c(1, 1, 2, 2), ncol = 2, byrow = TRUE)),
+    crs = 4326
+  )
+  sf::st_geometry(pumping_wells) <- line_geometry
+
+  expect_error(
+    isw:::.validate_pumping_wells(pumping_wells),
+    "must be a POINT"
+  )
+
+  pumping_wells <- make_valid_pumping_wells()[1, ]
+  sf::st_geometry(pumping_wells) <- sf::st_sfc(sf::st_point(), crs = 4326)
+
+  expect_error(
+    isw:::.validate_pumping_wells(pumping_wells),
+    "empty geometries"
+  )
+})
+
+test_that("required pumping_wells columns are enforced", {
+  pumping_wells <- make_valid_pumping_wells()
+  pumping_wells$K <- NULL
+  pumping_wells$D <- NULL
+
+  expect_error(
+    isw:::.validate_pumping_wells(pumping_wells),
+    "K, D"
+  )
+})
+
+test_that("pump_id values must be valid and unique", {
+  pumping_wells <- make_valid_pumping_wells()
+  pumping_wells$pump_id <- factor(pumping_wells$pump_id)
+
+  expect_error(
+    isw:::.validate_pumping_wells(pumping_wells),
+    "character vector"
+  )
+
+  pumping_wells <- make_valid_pumping_wells()
+  pumping_wells$pump_id[2] <- " "
+
+  expect_error(
+    isw:::.validate_pumping_wells(pumping_wells),
+    "missing or empty"
+  )
+
+  pumping_wells <- make_valid_pumping_wells()
+  pumping_wells$pump_id[2] <- pumping_wells$pump_id[1]
+
+  expect_error(
+    isw:::.validate_pumping_wells(pumping_wells),
+    "must be unique"
+  )
+})
+
+test_that("aquifer properties have valid units and values", {
+  pumping_wells <- make_valid_pumping_wells()
+  pumping_wells$K <- units::set_units(c(10, 15), "m")
+
+  expect_error(
+    isw:::.validate_pumping_wells(pumping_wells),
+    "conversion failed"
+  )
+
+  pumping_wells <- make_valid_pumping_wells()
+  pumping_wells$K <- units::set_units(c(10, 0), "m/day")
+
+  expect_error(
+    isw:::.validate_pumping_wells(pumping_wells),
+    "finite, positive"
+  )
+
+  pumping_wells <- make_valid_pumping_wells()
+  pumping_wells$D <- units::set_units(c(20, -1), "m")
+
+  expect_error(
+    isw:::.validate_pumping_wells(pumping_wells),
+    "finite, positive"
+  )
+
+  pumping_wells <- make_valid_pumping_wells()
+  pumping_wells$V <- c(0.15, 1.1)
+
+  expect_error(
+    isw:::.validate_pumping_wells(pumping_wells),
+    "greater than 0 and at most 1"
+  )
+})
