@@ -63,7 +63,9 @@
 #' @details
 #' Each pumping well must have a unique identifier, nonempty point geometry,
 #' and a defined coordinate reference system. Hydraulic conductivity, aquifer
-#' thickness, and well diameter must retain their physical units.
+#' thickness, and well diameter must retain their physical units. The identifier
+#' `t` is reserved for the pumping-schedule time column and cannot be used as a
+#' `pump_id`.
 #'
 #' This function validates inputs but does not transform geometry or add a
 #' default `well_diam` column.
@@ -97,6 +99,13 @@
 
   if (anyDuplicated(pumping_wells$pump_id) > 0) {
     stop("pumping_wells$pump_id values must be unique.")
+  }
+
+  if ("t" %in% pumping_wells$pump_id) {
+    stop(
+      "pumping_wells$pump_id cannot be \"t\" because that name is reserved ",
+      "for the pumping-schedule time column."
+    )
   }
 
   check_dimensionality(
@@ -209,4 +218,116 @@
   }
 
   observation_wells
+}
+
+#' Validate pumping-schedule inputs
+#'
+#' Validate a shared, wide-format pumping schedule against the pumping wells
+#' included in an analysis.
+#'
+#' @param pumping_schedules A data frame or tibble containing a time column
+#'   named `t` and one pumping-rate column per pumping well. Pumping-rate column
+#'   names must match `pumping_wells$pump_id` exactly.
+#' @param pumping_wells A pumping-well object accepted by
+#'   [`.validate_pumping_wells()`].
+#'
+#' @return The `pumping_schedules` object, unchanged.
+#'
+#' @details
+#' The time column must contain either `Date` values or a `units` vector with
+#' time dimensions. Times must be finite, nonmissing, unique, and strictly
+#' increasing. Character representations of dates are not accepted.
+#'
+#' Each pumping-rate column must have units that are convertible to volume per
+#' time and contain only finite values. Positive rates represent pumping;
+#' negative rates may be used to represent injection. A rate begins at its
+#' corresponding time and remains constant until the next row.
+#'
+#' This function validates inputs but does not normalize time units or convert
+#' pumping rates to changes in pumping rate.
+#'
+#' @keywords internal
+.validate_pumping_schedules <- function(pumping_schedules, pumping_wells) {
+
+  .validate_pumping_wells(pumping_wells)
+
+  if (!is.data.frame(pumping_schedules)) {
+    stop("pumping_schedules must be a data frame or tibble.")
+  }
+
+  if (nrow(pumping_schedules) == 0) {
+    stop("pumping_schedules must contain at least one row.")
+  }
+
+  if (anyDuplicated(names(pumping_schedules)) > 0) {
+    stop("pumping_schedules cannot contain duplicate column names.")
+  }
+
+  pump_ids <- pumping_wells$pump_id
+  expected_columns <- c("t", pump_ids)
+  missing_columns <- setdiff(expected_columns, names(pumping_schedules))
+  extra_columns <- setdiff(names(pumping_schedules), expected_columns)
+
+  if (length(missing_columns) > 0) {
+    stop(
+      "pumping_schedules is missing required columns: ",
+      paste(missing_columns, collapse = ", "),
+      "."
+    )
+  }
+
+  if (length(extra_columns) > 0) {
+    stop(
+      "pumping_schedules contains columns that do not match pump_id values: ",
+      paste(extra_columns, collapse = ", "),
+      "."
+    )
+  }
+
+  schedule_times <- pumping_schedules$t
+
+  if (inherits(schedule_times, "Date")) {
+    if (anyNA(schedule_times)) {
+      stop("pumping_schedules$t cannot contain missing dates.")
+    }
+  } else if (inherits(schedule_times, "units")) {
+    check_dimensionality(
+      schedule_times,
+      desired_units = "days",
+      variable_name = "pumping_schedules$t"
+    )
+
+    if (any(!is.finite(as.numeric(schedule_times)))) {
+      stop("pumping_schedules$t must contain finite time values.")
+    }
+  } else {
+    stop(
+      "pumping_schedules$t must be a Date vector or a units vector with ",
+      "time dimensions."
+    )
+  }
+
+  if (
+    length(schedule_times) > 1 &&
+      any(diff(as.numeric(schedule_times)) <= 0)
+  ) {
+    stop("pumping_schedules$t must be unique and strictly increasing.")
+  }
+
+  for (pump_id in pump_ids) {
+    pumping_rate <- pumping_schedules[[pump_id]]
+    variable_name <- paste0("pumping_schedules$", pump_id)
+
+    check_dimensionality(
+      pumping_rate,
+      desired_units = "m^3/s",
+      variable_name = variable_name
+    )
+
+    if (any(!is.finite(as.numeric(pumping_rate)))) {
+      stop(variable_name, " must contain finite pumping rates.")
+    }
+  }
+
+  pumping_schedules
 }

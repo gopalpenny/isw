@@ -25,6 +25,14 @@ make_valid_observation_wells <- function() {
   )
 }
 
+make_valid_pumping_schedules <- function() {
+  tibble::tibble(
+    t = as.Date(c("2025-01-01", "2025-02-01", "2025-03-01")),
+    pump_1 = units::set_units(c(100, 80, 0), "m^3/day"),
+    pump_2 = units::set_units(c(50, 40, 0), "m^3/day")
+  )
+}
+
 test_that("valid pumping_wells are returned unchanged", {
   pumping_wells <- make_valid_pumping_wells()
 
@@ -132,6 +140,14 @@ test_that("pump_id values must be valid and unique", {
   expect_error(
     isw:::.validate_pumping_wells(pumping_wells),
     "must be unique"
+  )
+
+  pumping_wells <- make_valid_pumping_wells()
+  pumping_wells$pump_id[2] <- "t"
+
+  expect_error(
+    isw:::.validate_pumping_wells(pumping_wells),
+    "reserved for the pumping-schedule time column"
   )
 })
 
@@ -250,5 +266,121 @@ test_that("observation_id values must be valid and unique", {
   expect_error(
     isw:::.validate_observation_wells(observation_wells),
     "must be unique"
+  )
+})
+
+test_that("valid Date pumping schedules are returned unchanged", {
+  pumping_wells <- make_valid_pumping_wells()
+  pumping_schedules <- make_valid_pumping_schedules()
+
+  expect_identical(
+    isw:::.validate_pumping_schedules(pumping_schedules, pumping_wells),
+    pumping_schedules
+  )
+})
+
+test_that("valid unit-based pumping schedules are returned unchanged", {
+  pumping_wells <- make_valid_pumping_wells()
+  pumping_schedules <- make_valid_pumping_schedules()
+  pumping_schedules$t <- units::set_units(c(0, 31, 59), "days")
+
+  expect_identical(
+    isw:::.validate_pumping_schedules(pumping_schedules, pumping_wells),
+    pumping_schedules
+  )
+})
+
+test_that("pumping schedule columns must match pump_id values", {
+  pumping_wells <- make_valid_pumping_wells()
+  pumping_schedules <- make_valid_pumping_schedules()
+  pumping_schedules$pump_2 <- NULL
+
+  expect_error(
+    isw:::.validate_pumping_schedules(pumping_schedules, pumping_wells),
+    "missing required columns: pump_2"
+  )
+
+  pumping_schedules <- make_valid_pumping_schedules()
+  pumping_schedules$unknown_pump <- units::set_units(c(1, 1, 1), "m^3/day")
+
+  expect_error(
+    isw:::.validate_pumping_schedules(pumping_schedules, pumping_wells),
+    "do not match pump_id values: unknown_pump"
+  )
+})
+
+test_that("pumping schedule times must use an accepted time representation", {
+  pumping_wells <- make_valid_pumping_wells()
+  pumping_schedules <- make_valid_pumping_schedules()
+  pumping_schedules$t <- c("2025-01-01", "2025-02-01", "2025-03-01")
+
+  expect_error(
+    isw:::.validate_pumping_schedules(pumping_schedules, pumping_wells),
+    "must be a Date vector or a units vector"
+  )
+
+  pumping_schedules <- make_valid_pumping_schedules()
+  pumping_schedules$t <- units::set_units(c(0, 1, 2), "m")
+
+  expect_error(
+    isw:::.validate_pumping_schedules(pumping_schedules, pumping_wells),
+    "conversion failed"
+  )
+})
+
+test_that("pumping schedule times must be complete and increasing", {
+  pumping_wells <- make_valid_pumping_wells()
+  pumping_schedules <- make_valid_pumping_schedules()
+  pumping_schedules$t[2] <- NA
+
+  expect_error(
+    isw:::.validate_pumping_schedules(pumping_schedules, pumping_wells),
+    "cannot contain missing dates"
+  )
+
+  pumping_schedules <- make_valid_pumping_schedules()
+  pumping_schedules$t <- pumping_schedules$t[c(1, 3, 2)]
+
+  expect_error(
+    isw:::.validate_pumping_schedules(pumping_schedules, pumping_wells),
+    "unique and strictly increasing"
+  )
+
+  pumping_schedules <- make_valid_pumping_schedules()
+  pumping_schedules$t[2] <- pumping_schedules$t[1]
+
+  expect_error(
+    isw:::.validate_pumping_schedules(pumping_schedules, pumping_wells),
+    "unique and strictly increasing"
+  )
+})
+
+test_that("pumping rates must have flow-rate units and finite values", {
+  pumping_wells <- make_valid_pumping_wells()
+  pumping_schedules <- make_valid_pumping_schedules()
+  pumping_schedules$pump_1 <- units::set_units(c(100, 80, 0), "m^3")
+
+  expect_error(
+    isw:::.validate_pumping_schedules(pumping_schedules, pumping_wells),
+    "conversion failed"
+  )
+
+  pumping_schedules <- make_valid_pumping_schedules()
+  pumping_schedules$pump_1[2] <- Inf
+
+  expect_error(
+    isw:::.validate_pumping_schedules(pumping_schedules, pumping_wells),
+    "finite pumping rates"
+  )
+})
+
+test_that("signed pumping rates are accepted", {
+  pumping_wells <- make_valid_pumping_wells()
+  pumping_schedules <- make_valid_pumping_schedules()
+  pumping_schedules$pump_1[2] <- -20
+
+  expect_identical(
+    isw:::.validate_pumping_schedules(pumping_schedules, pumping_wells),
+    pumping_schedules
   )
 })
