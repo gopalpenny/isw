@@ -1,3 +1,54 @@
+#' Validate an sf point object
+#'
+#' Validate the spatial structure shared by pumping-well and observation-well
+#' inputs.
+#'
+#' @param x An object to validate.
+#' @param object_name A character string naming `x` for error messages.
+#'
+#' @return `x`, unchanged.
+#'
+#' @details
+#' The object must be a nonempty `sf` object with a defined coordinate
+#' reference system. Every feature must have nonempty `POINT` geometry with
+#' finite horizontal coordinates.
+#'
+#' @keywords internal
+.validate_point_sf <- function(x, object_name) {
+
+  if (!inherits(x, "sf")) {
+    stop(object_name, " must be an sf object.")
+  }
+
+  if (nrow(x) == 0) {
+    stop(object_name, " must contain at least one feature.")
+  }
+
+  if (is.na(sf::st_crs(x))) {
+    stop(object_name, " must have a defined CRS.")
+  }
+
+  geometry_types <- as.character(
+    sf::st_geometry_type(x, by_geometry = TRUE)
+  )
+
+  if (!all(geometry_types == "POINT")) {
+    stop("Every ", object_name, " geometry must be a POINT.")
+  }
+
+  if (any(sf::st_is_empty(x))) {
+    stop(object_name, " cannot contain empty geometries.")
+  }
+
+  coordinates <- sf::st_coordinates(x)
+
+  if (any(!is.finite(coordinates[, 1:2, drop = FALSE]))) {
+    stop(object_name, " cannot contain missing or nonfinite coordinates.")
+  }
+
+  x
+}
+
 #' Validate pumping-well inputs
 #'
 #' Validate the structure, geometry, identifiers, and aquifer properties in a
@@ -20,35 +71,7 @@
 #' @keywords internal
 .validate_pumping_wells <- function(pumping_wells) {
 
-  if (!inherits(pumping_wells, "sf")) {
-    stop("pumping_wells must be an sf object.")
-  }
-
-  if (nrow(pumping_wells) == 0) {
-    stop("pumping_wells must contain at least one pumping well.")
-  }
-
-  if (is.na(sf::st_crs(pumping_wells))) {
-    stop("pumping_wells must have a defined CRS.")
-  }
-
-  geometry_types <- as.character(
-    sf::st_geometry_type(pumping_wells, by_geometry = TRUE)
-  )
-
-  if (!all(geometry_types == "POINT")) {
-    stop("Every pumping_wells geometry must be a POINT.")
-  }
-
-  if (any(sf::st_is_empty(pumping_wells))) {
-    stop("pumping_wells cannot contain empty geometries.")
-  }
-
-  coordinates <- sf::st_coordinates(pumping_wells)
-
-  if (any(!is.finite(coordinates[, 1:2, drop = FALSE]))) {
-    stop("pumping_wells cannot contain missing or nonfinite coordinates.")
-  }
+  .validate_point_sf(pumping_wells, "pumping_wells")
 
   required_columns <- c("pump_id", "K", "D", "V")
   missing_columns <- setdiff(required_columns, names(pumping_wells))
@@ -134,4 +157,56 @@
   }
 
   pumping_wells
+}
+
+#' Validate observation-well inputs
+#'
+#' Validate the structure, geometry, and identifiers in an observation-well
+#' input object.
+#'
+#' @param observation_wells Either `NULL` or an `sf` object containing one
+#'   point feature per observation well and an `observation_id` column.
+#'
+#' @return `NULL` when `observation_wells` is `NULL`; otherwise, the
+#'   `observation_wells` object, unchanged.
+#'
+#' @details
+#' Observation wells are optional because stream depletion can be calculated
+#' without evaluating aquifer drawdown at observation locations. When supplied,
+#' each observation well must have a unique identifier, nonempty point
+#' geometry, and a defined coordinate reference system.
+#'
+#' This function validates inputs but does not transform geometry.
+#'
+#' @keywords internal
+.validate_observation_wells <- function(observation_wells) {
+
+  if (is.null(observation_wells)) {
+    return(NULL)
+  }
+
+  .validate_point_sf(observation_wells, "observation_wells")
+
+  if (!("observation_id" %in% names(observation_wells))) {
+    stop("observation_wells is missing required column: observation_id.")
+  }
+
+  if (!is.character(observation_wells$observation_id)) {
+    stop("observation_wells$observation_id must be a character vector.")
+  }
+
+  if (
+    anyNA(observation_wells$observation_id) ||
+      any(trimws(observation_wells$observation_id) == "")
+  ) {
+    stop(
+      "observation_wells$observation_id cannot contain missing or empty values."
+    )
+  }
+
+  if (anyDuplicated(observation_wells$observation_id) > 0) {
+    stop("observation_wells$observation_id values must be unique.")
+  }
+
+  observation_wells
 }

@@ -13,6 +13,18 @@ make_valid_pumping_wells <- function() {
   )
 }
 
+make_valid_observation_wells <- function() {
+  sf::st_as_sf(
+    tibble::tibble(
+      observation_id = c("obs_1", "obs_2"),
+      x = c(-93.22, -93.18),
+      y = c(44.97, 45.02)
+    ),
+    coords = c("x", "y"),
+    crs = 4326
+  )
+}
+
 test_that("valid pumping_wells are returned unchanged", {
   pumping_wells <- make_valid_pumping_wells()
 
@@ -154,5 +166,89 @@ test_that("aquifer properties have valid units and values", {
   expect_error(
     isw:::.validate_pumping_wells(pumping_wells),
     "greater than 0 and at most 1"
+  )
+})
+
+test_that("observation_wells may be NULL", {
+  expect_null(isw:::.validate_observation_wells(NULL))
+})
+
+test_that("valid observation_wells are returned unchanged", {
+  observation_wells <- make_valid_observation_wells()
+
+  expect_identical(
+    isw:::.validate_observation_wells(observation_wells),
+    observation_wells
+  )
+})
+
+test_that("observation_wells must have valid point geometry", {
+  observation_wells <- make_valid_observation_wells()
+
+  expect_error(
+    isw:::.validate_observation_wells(
+      sf::st_drop_geometry(observation_wells)
+    ),
+    "must be an sf object"
+  )
+
+  observation_wells_without_crs <- suppressWarnings(
+    sf::st_set_crs(observation_wells, NA)
+  )
+
+  expect_error(
+    isw:::.validate_observation_wells(observation_wells_without_crs),
+    "defined CRS"
+  )
+
+  line_geometry <- sf::st_sfc(
+    sf::st_linestring(matrix(c(0, 0, 1, 1), ncol = 2, byrow = TRUE)),
+    sf::st_linestring(matrix(c(1, 1, 2, 2), ncol = 2, byrow = TRUE)),
+    crs = 4326
+  )
+  sf::st_geometry(observation_wells) <- line_geometry
+
+  expect_error(
+    isw:::.validate_observation_wells(observation_wells),
+    "must be a POINT"
+  )
+})
+
+test_that("observation_id is required", {
+  observation_wells <- make_valid_observation_wells()
+  observation_wells$observation_id <- NULL
+
+  expect_error(
+    isw:::.validate_observation_wells(observation_wells),
+    "missing required column: observation_id"
+  )
+})
+
+test_that("observation_id values must be valid and unique", {
+  observation_wells <- make_valid_observation_wells()
+  observation_wells$observation_id <- factor(
+    observation_wells$observation_id
+  )
+
+  expect_error(
+    isw:::.validate_observation_wells(observation_wells),
+    "character vector"
+  )
+
+  observation_wells <- make_valid_observation_wells()
+  observation_wells$observation_id[2] <- NA_character_
+
+  expect_error(
+    isw:::.validate_observation_wells(observation_wells),
+    "missing or empty"
+  )
+
+  observation_wells <- make_valid_observation_wells()
+  observation_wells$observation_id[2] <-
+    observation_wells$observation_id[1]
+
+  expect_error(
+    isw:::.validate_observation_wells(observation_wells),
+    "must be unique"
   )
 })
