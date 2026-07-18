@@ -220,6 +220,102 @@
   observation_wells
 }
 
+#' Validate stream-reach inputs
+#'
+#' Validate the structure, geometry, and identifiers in a stream-reach input
+#' object before spatial preparation and model discretization.
+#'
+#' @param stream_reaches An `sf` object containing one line feature per
+#'   user-supplied stream geometry and a `reach_id` column.
+#'
+#' @return The `stream_reaches` object, unchanged.
+#'
+#' @details
+#' Each stream geometry must have a unique `reach_id`, nonempty `LINESTRING` or
+#' `MULTILINESTRING` geometry, positive length, finite horizontal coordinates,
+#' and a defined coordinate reference system. Any defined CRS is accepted;
+#' projection into the model CRS occurs during later spatial preparation.
+#'
+#' Additional attribute columns are permitted but are not required. The
+#' user-supplied `reach_id` identifies the original line geometry. A later
+#' discretization function will divide these geometries into model reaches and
+#' assign a separate `model_reach_id` to each one.
+#'
+#' This function validates inputs but does not transform, split, or otherwise
+#' modify their geometry.
+#'
+#' @keywords internal
+.validate_stream_reaches <- function(stream_reaches) {
+
+  if (!inherits(stream_reaches, "sf")) {
+    stop("stream_reaches must be an sf object.")
+  }
+
+  if (nrow(stream_reaches) == 0) {
+    stop("stream_reaches must contain at least one feature.")
+  }
+
+  if (is.na(sf::st_crs(stream_reaches))) {
+    stop("stream_reaches must have a defined CRS.")
+  }
+
+  if (!("reach_id" %in% names(stream_reaches))) {
+    stop("stream_reaches is missing required column: reach_id.")
+  }
+
+  if (!is.character(stream_reaches$reach_id)) {
+    stop("stream_reaches$reach_id must be a character vector.")
+  }
+
+  if (
+    anyNA(stream_reaches$reach_id) ||
+      any(trimws(stream_reaches$reach_id) == "")
+  ) {
+    stop("stream_reaches$reach_id cannot contain missing or empty values.")
+  }
+
+  if (anyDuplicated(stream_reaches$reach_id) > 0) {
+    stop("stream_reaches$reach_id values must be unique.")
+  }
+
+  geometry_types <- as.character(
+    sf::st_geometry_type(stream_reaches, by_geometry = TRUE)
+  )
+
+  if (!all(geometry_types %in% c("LINESTRING", "MULTILINESTRING"))) {
+    stop(
+      "Every stream_reaches geometry must be a LINESTRING or ",
+      "MULTILINESTRING."
+    )
+  }
+
+  if (any(sf::st_is_empty(stream_reaches))) {
+    stop("stream_reaches cannot contain empty geometries.")
+  }
+
+  coordinates_are_finite <- vapply(
+    sf::st_geometry(stream_reaches),
+    function(geometry) {
+      coordinates <- sf::st_coordinates(geometry)
+      all(is.finite(coordinates[, 1:2, drop = FALSE]))
+    },
+    logical(1)
+  )
+
+  if (!all(coordinates_are_finite)) {
+    stop("stream_reaches cannot contain missing or nonfinite coordinates.")
+  }
+
+  reach_lengths <- sf::st_length(stream_reaches)
+
+  if (any(!is.finite(as.numeric(reach_lengths))) ||
+      any(as.numeric(reach_lengths) <= 0)) {
+    stop("Every stream_reaches geometry must have finite, positive length.")
+  }
+
+  stream_reaches
+}
+
 #' Validate a time vector
 #'
 #' Validate the time representation shared by pumping schedules and evaluation

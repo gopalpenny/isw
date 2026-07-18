@@ -25,6 +25,26 @@ make_valid_observation_wells <- function() {
   )
 }
 
+make_valid_stream_reaches <- function() {
+  geometry <- sf::st_sfc(
+    sf::st_linestring(
+      matrix(c(-93.30, 44.90, -93.25, 44.95), ncol = 2, byrow = TRUE)
+    ),
+    sf::st_multilinestring(
+      list(
+        matrix(c(-93.25, 44.95, -93.20, 45.00), ncol = 2, byrow = TRUE)
+      )
+    ),
+    crs = 4326
+  )
+
+  sf::st_sf(
+    reach_id = c("reach_1", "reach_2"),
+    stream_name = c("Example River", "Example Creek"),
+    geometry = geometry
+  )
+}
+
 make_valid_pumping_schedules <- function() {
   tibble::tibble(
     t = as.Date(c("2025-01-01", "2025-02-01", "2025-03-01")),
@@ -266,6 +286,112 @@ test_that("observation_id values must be valid and unique", {
   expect_error(
     isw:::.validate_observation_wells(observation_wells),
     "must be unique"
+  )
+})
+
+test_that("valid stream reaches are returned unchanged", {
+  stream_reaches <- make_valid_stream_reaches()
+
+  expect_identical(
+    isw:::.validate_stream_reaches(stream_reaches),
+    stream_reaches
+  )
+})
+
+test_that("stream reaches must be a nonempty sf object with a CRS", {
+  stream_reaches <- make_valid_stream_reaches()
+
+  expect_error(
+    isw:::.validate_stream_reaches(sf::st_drop_geometry(stream_reaches)),
+    "must be an sf object"
+  )
+
+  expect_error(
+    isw:::.validate_stream_reaches(stream_reaches[0, ]),
+    "at least one"
+  )
+
+  stream_reaches_without_crs <- suppressWarnings(
+    sf::st_set_crs(stream_reaches, NA)
+  )
+
+  expect_error(
+    isw:::.validate_stream_reaches(stream_reaches_without_crs),
+    "defined CRS"
+  )
+})
+
+test_that("reach_id values must be present, valid, and unique", {
+  stream_reaches <- make_valid_stream_reaches()
+  stream_reaches$reach_id <- NULL
+
+  expect_error(
+    isw:::.validate_stream_reaches(stream_reaches),
+    "missing required column: reach_id"
+  )
+
+  stream_reaches <- make_valid_stream_reaches()
+  stream_reaches$reach_id <- factor(stream_reaches$reach_id)
+
+  expect_error(
+    isw:::.validate_stream_reaches(stream_reaches),
+    "character vector"
+  )
+
+  stream_reaches <- make_valid_stream_reaches()
+  stream_reaches$reach_id[2] <- " "
+
+  expect_error(
+    isw:::.validate_stream_reaches(stream_reaches),
+    "missing or empty"
+  )
+
+  stream_reaches <- make_valid_stream_reaches()
+  stream_reaches$reach_id[2] <- stream_reaches$reach_id[1]
+
+  expect_error(
+    isw:::.validate_stream_reaches(stream_reaches),
+    "must be unique"
+  )
+})
+
+test_that("stream reaches must have nonempty line geometry", {
+  stream_reaches <- make_valid_stream_reaches()
+  sf::st_geometry(stream_reaches) <- sf::st_sfc(
+    sf::st_point(c(-93.30, 44.90)),
+    sf::st_point(c(-93.20, 45.00)),
+    crs = 4326
+  )
+
+  expect_error(
+    isw:::.validate_stream_reaches(stream_reaches),
+    "LINESTRING or MULTILINESTRING"
+  )
+
+  stream_reaches <- make_valid_stream_reaches()[1, ]
+  sf::st_geometry(stream_reaches) <- sf::st_sfc(
+    sf::st_linestring(matrix(numeric(), ncol = 2)),
+    crs = 4326
+  )
+
+  expect_error(
+    isw:::.validate_stream_reaches(stream_reaches),
+    "empty geometries"
+  )
+})
+
+test_that("stream reaches must have finite, positive length", {
+  stream_reaches <- make_valid_stream_reaches()[1, ]
+  sf::st_geometry(stream_reaches) <- sf::st_sfc(
+    sf::st_linestring(
+      matrix(c(-93.25, 44.95, -93.25, 44.95), ncol = 2, byrow = TRUE)
+    ),
+    crs = 4326
+  )
+
+  expect_error(
+    isw:::.validate_stream_reaches(stream_reaches),
+    "finite, positive length"
   )
 })
 
