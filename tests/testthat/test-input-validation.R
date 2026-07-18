@@ -384,3 +384,103 @@ test_that("signed pumping rates are accepted", {
     pumping_schedules
   )
 })
+
+test_that("evaluation_times may be NULL", {
+  pumping_schedules <- make_valid_pumping_schedules()
+
+  expect_null(
+    isw:::.validate_evaluation_times(NULL, pumping_schedules$t)
+  )
+})
+
+test_that("valid Date evaluation_times are returned unchanged", {
+  pumping_schedules <- make_valid_pumping_schedules()
+  evaluation_times <- as.Date(
+    c("2025-01-01", "2025-01-15", "2025-04-01")
+  )
+
+  expect_identical(
+    isw:::.validate_evaluation_times(
+      evaluation_times,
+      pumping_schedules$t
+    ),
+    evaluation_times
+  )
+})
+
+test_that("valid unit-based evaluation_times are returned unchanged", {
+  schedule_times <- units::set_units(c(0, 31, 59), "days")
+  evaluation_times <- units::set_units(c(0, 12, 24, 2160), "hours")
+
+  expect_identical(
+    isw:::.validate_evaluation_times(evaluation_times, schedule_times),
+    evaluation_times
+  )
+})
+
+test_that("evaluation_times must match the schedule time representation", {
+  pumping_schedules <- make_valid_pumping_schedules()
+  evaluation_times <- units::set_units(c(0, 31, 59), "days")
+
+  expect_error(
+    isw:::.validate_evaluation_times(
+      evaluation_times,
+      pumping_schedules$t
+    ),
+    "must both use Date values or both use units time values"
+  )
+
+  schedule_times <- units::set_units(c(0, 31, 59), "days")
+  evaluation_times <- as.Date(c("2025-01-01", "2025-02-01"))
+
+  expect_error(
+    isw:::.validate_evaluation_times(evaluation_times, schedule_times),
+    "must both use Date values or both use units time values"
+  )
+})
+
+test_that("evaluation_times must be complete, unique, and increasing", {
+  pumping_schedules <- make_valid_pumping_schedules()
+  evaluation_times <- as.Date(c("2025-01-01", NA_character_))
+
+  expect_error(
+    isw:::.validate_evaluation_times(
+      evaluation_times,
+      pumping_schedules$t
+    ),
+    "cannot contain missing dates"
+  )
+
+  evaluation_times <- as.Date(
+    c("2025-01-01", "2025-01-15", "2025-01-15")
+  )
+
+  expect_error(
+    isw:::.validate_evaluation_times(
+      evaluation_times,
+      pumping_schedules$t
+    ),
+    "unique and strictly increasing"
+  )
+})
+
+test_that("evaluation_times cannot precede the pumping schedule", {
+  pumping_schedules <- make_valid_pumping_schedules()
+  evaluation_times <- as.Date(c("2024-12-31", "2025-01-15"))
+
+  expect_error(
+    isw:::.validate_evaluation_times(
+      evaluation_times,
+      pumping_schedules$t
+    ),
+    "cannot occur before the first pumping-schedule time"
+  )
+
+  schedule_times <- units::set_units(c(24, 48, 72), "hours")
+  evaluation_times <- units::set_units(c(0.5, 1, 2), "days")
+
+  expect_error(
+    isw:::.validate_evaluation_times(evaluation_times, schedule_times),
+    "cannot occur before the first pumping-schedule time"
+  )
+})

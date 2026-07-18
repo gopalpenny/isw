@@ -220,6 +220,58 @@
   observation_wells
 }
 
+#' Validate a time vector
+#'
+#' Validate the time representation shared by pumping schedules and evaluation
+#' times.
+#'
+#' @param x A `Date` vector or a `units` vector with time dimensions.
+#' @param object_name A character string naming `x` for error messages.
+#'
+#' @return `x`, unchanged.
+#'
+#' @details
+#' Time values must be nonempty, finite, nonmissing, unique, and strictly
+#' increasing. Character representations of dates are not accepted.
+#'
+#' This function validates inputs but does not convert dates or time units to
+#' elapsed days.
+#'
+#' @keywords internal
+.validate_time_vector <- function(x, object_name) {
+
+  if (length(x) == 0) {
+    stop(object_name, " must contain at least one time value.")
+  }
+
+  if (inherits(x, "Date")) {
+    if (anyNA(x)) {
+      stop(object_name, " cannot contain missing dates.")
+    }
+  } else if (inherits(x, "units")) {
+    check_dimensionality(
+      x,
+      desired_units = "days",
+      variable_name = object_name
+    )
+
+    if (any(!is.finite(as.numeric(x)))) {
+      stop(object_name, " must contain finite time values.")
+    }
+  } else {
+    stop(
+      object_name,
+      " must be a Date vector or a units vector with time dimensions."
+    )
+  }
+
+  if (length(x) > 1 && any(diff(as.numeric(x)) <= 0)) {
+    stop(object_name, " must be unique and strictly increasing.")
+  }
+
+  x
+}
+
 #' Validate pumping-schedule inputs
 #'
 #' Validate a shared, wide-format pumping schedule against the pumping wells
@@ -284,35 +336,7 @@
     )
   }
 
-  schedule_times <- pumping_schedules$t
-
-  if (inherits(schedule_times, "Date")) {
-    if (anyNA(schedule_times)) {
-      stop("pumping_schedules$t cannot contain missing dates.")
-    }
-  } else if (inherits(schedule_times, "units")) {
-    check_dimensionality(
-      schedule_times,
-      desired_units = "days",
-      variable_name = "pumping_schedules$t"
-    )
-
-    if (any(!is.finite(as.numeric(schedule_times)))) {
-      stop("pumping_schedules$t must contain finite time values.")
-    }
-  } else {
-    stop(
-      "pumping_schedules$t must be a Date vector or a units vector with ",
-      "time dimensions."
-    )
-  }
-
-  if (
-    length(schedule_times) > 1 &&
-      any(diff(as.numeric(schedule_times)) <= 0)
-  ) {
-    stop("pumping_schedules$t must be unique and strictly increasing.")
-  }
+  .validate_time_vector(pumping_schedules$t, "pumping_schedules$t")
 
   for (pump_id in pump_ids) {
     pumping_rate <- pumping_schedules[[pump_id]]
@@ -330,4 +354,67 @@
   }
 
   pumping_schedules
+}
+
+#' Validate evaluation-time inputs
+#'
+#' Validate optional model evaluation times against the pumping-schedule time
+#' representation and starting time.
+#'
+#' @param evaluation_times Either `NULL`, a `Date` vector, or a `units` vector
+#'   with time dimensions.
+#' @param schedule_times The validated `t` vector from `pumping_schedules`.
+#'
+#' @return `NULL` when `evaluation_times` is `NULL`; otherwise, the
+#'   `evaluation_times` vector, unchanged.
+#'
+#' @details
+#' Evaluation times must use the same representation as `schedule_times`:
+#' `Date` with `Date`, or unit-based time with unit-based time. The specific
+#' units may differ when both vectors are unit based.
+#'
+#' Evaluation times may extend beyond the final pumping-schedule time but
+#' cannot occur before the first pumping-schedule time. When
+#' `evaluation_times` is `NULL`, a later preparation function will use
+#' `schedule_times` as the default.
+#'
+#' This function validates inputs but does not apply that default or normalize
+#' time values to elapsed days.
+#'
+#' @keywords internal
+.validate_evaluation_times <- function(evaluation_times, schedule_times) {
+
+  .validate_time_vector(schedule_times, "pumping_schedules$t")
+
+  if (is.null(evaluation_times)) {
+    return(NULL)
+  }
+
+  .validate_time_vector(evaluation_times, "evaluation_times")
+
+  evaluation_is_date <- inherits(evaluation_times, "Date")
+  schedule_is_date <- inherits(schedule_times, "Date")
+
+  if (evaluation_is_date != schedule_is_date) {
+    stop(
+      "evaluation_times and pumping_schedules$t must both use Date values ",
+      "or both use units time values."
+    )
+  }
+
+  if (evaluation_is_date) {
+    before_schedule <- evaluation_times < schedule_times[1]
+  } else {
+    evaluation_days <- units::set_units(evaluation_times, "days")
+    schedule_start_days <- units::set_units(schedule_times[1], "days")
+    before_schedule <- evaluation_days < schedule_start_days
+  }
+
+  if (any(before_schedule)) {
+    stop(
+      "evaluation_times cannot occur before the first pumping-schedule time."
+    )
+  }
+
+  evaluation_times
 }
