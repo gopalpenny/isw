@@ -374,6 +374,20 @@ test_that("pumping rates must have flow-rate units and finite values", {
   )
 })
 
+test_that("pumping-rate columns must use the same units", {
+  pumping_wells <- make_valid_pumping_wells()
+  pumping_schedules <- make_valid_pumping_schedules()
+  pumping_schedules$pump_2 <- units::set_units(
+    c(50, 40, 0),
+    "ft^3/day"
+  )
+
+  expect_error(
+    isw:::.validate_pumping_schedules(pumping_schedules, pumping_wells),
+    "must use the same units"
+  )
+})
+
 test_that("signed pumping rates are accepted", {
   pumping_wells <- make_valid_pumping_wells()
   pumping_schedules <- make_valid_pumping_schedules()

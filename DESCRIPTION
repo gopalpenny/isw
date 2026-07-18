@@ -16,7 +16,6 @@ Suggests:
     ggplot2,
     dplyr,
     tidyr,
-    tibble,
     patchwork,
     png
 Depends:
@@ -27,5 +26,6 @@ RoxygenNote: 7.3.2
 Imports: 
     magrittr,
     sf,
-    stats
+    stats,
+    tibble
 VignetteBuilder: knitr

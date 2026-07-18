@@ -291,9 +291,10 @@
 #' increasing. Character representations of dates are not accepted.
 #'
 #' Each pumping-rate column must have units that are convertible to volume per
-#' time and contain only finite values. Positive rates represent pumping;
-#' negative rates may be used to represent injection. A rate begins at its
-#' corresponding time and remains constant until the next row.
+#' time and contain only finite values. All pumping-rate columns must use the
+#' same units. Positive rates represent pumping; negative rates may be used to
+#' represent injection. A rate begins at its corresponding time and remains
+#' constant until the next row.
 #'
 #' This function validates inputs but does not normalize time units or convert
 #' pumping rates to changes in pumping rate.
@@ -351,6 +352,16 @@
     if (any(!is.finite(as.numeric(pumping_rate)))) {
       stop(variable_name, " must contain finite pumping rates.")
     }
+  }
+
+  pumping_units <- vapply(
+    pumping_schedules[pump_ids],
+    units::deparse_unit,
+    character(1)
+  )
+
+  if (any(pumping_units != pumping_units[[1]])) {
+    stop("All pumping-rate columns in pumping_schedules must use the same units.")
   }
 
   pumping_schedules
