@@ -319,10 +319,16 @@
 #'
 #' @examples
 #' stream_reaches <- sf::st_sf(
-#'   reach_id = "reach_1",
+#'   reach_id = c("upstream_1", "upstream_2", "downstream"),
 #'   geometry = sf::st_sfc(
 #'     sf::st_linestring(
-#'       matrix(c(500000, 4980000, 500250, 4980000), ncol = 2, byrow = TRUE)
+#'       matrix(c(500000, 4980200, 500150, 4980050), ncol = 2, byrow = TRUE)
+#'     ),
+#'     sf::st_linestring(
+#'       matrix(c(500000, 4979900, 500150, 4980050), ncol = 2, byrow = TRUE)
+#'     ),
+#'     sf::st_linestring(
+#'       matrix(c(500150, 4980050, 500350, 4979850), ncol = 2, byrow = TRUE)
 #'     ),
 #'     crs = 32615
 #'   )
@@ -337,6 +343,28 @@
 #'   "reach_id", "reach_part_id", "model_reach_id", "represented_length"
 #' )]
 #' sf::st_coordinates(model_reaches$model_point)
+#'
+#' plot_stream_discretization <- function(stream_reaches, model_reaches) {
+#'   ggplot2::ggplot() +
+#'     ggplot2::geom_sf(data = stream_reaches, color = "grey75", linewidth = 3) +
+#'     ggplot2::geom_sf(
+#'       data = model_reaches,
+#'       ggplot2::aes(color = model_reach_id),
+#'       linewidth = 1.5
+#'     ) +
+#'     ggplot2::geom_sf(
+#'       data = model_reaches,
+#'       ggplot2::aes(geometry = model_point),
+#'       color = "black",
+#'       fill = "white",
+#'       shape = 21,
+#'       size = 2.5
+#'     ) +
+#'     ggplot2::labs(color = "Model reach") +
+#'     ggplot2::theme_minimal()
+#' }
+#'
+#' plot_stream_discretization(stream_reaches, model_reaches)
 #'
 #' @keywords internal
 .discretize_stream_reaches <- function(stream_reaches, reach_spacing) {
