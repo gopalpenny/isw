@@ -22,10 +22,10 @@ Depends:
     expint,
     units
 Config/testthat/edition: 3
-RoxygenNote: 7.3.2
 Imports: 
     magrittr,
     sf,
     stats,
     tibble
 VignetteBuilder: knitr
+Config/roxygen2/version: 8.0.0
