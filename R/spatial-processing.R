@@ -160,3 +160,116 @@
 
   sf::st_crs(utm_epsg)
 }
+
+#' Prepare spatial inputs for analysis
+#'
+#' Transform pumping wells, stream reaches, and optional observation wells to
+#' one projected coordinate reference system for distance-based modeling.
+#'
+#' @param pumping_wells A pumping-well object accepted by
+#'   [`.validate_pumping_wells()`].
+#' @param stream_reaches A stream-reach object accepted by
+#'   [`.validate_stream_reaches()`].
+#' @param observation_wells Either `NULL` or an observation-well object
+#'   accepted by [`.validate_observation_wells()`].
+#' @param analysis_crs Either `NULL` or a projected coordinate reference system
+#'   accepted by [sf::st_crs()]. When `NULL`, [`.select_analysis_crs()`] selects
+#'   a local UTM CRS automatically.
+#'
+#' @return A list containing:
+#' \describe{
+#'   \item{`pumping_wells`}{The prepared pumping-well `sf` object.}
+#'   \item{`stream_reaches`}{The prepared stream-reach `sf` object.}
+#'   \item{`observation_wells`}{The prepared observation-well `sf` object, or
+#'     `NULL` when observation wells were not supplied.}
+#'   \item{`analysis_crs`}{The projected `st_crs` object used for every prepared
+#'     spatial input.}
+#' }
+#'
+#' @details
+#' All prepared geometries are transformed to the selected projected CRS and
+#' reduced to their horizontal X and Y coordinates. Z and M coordinates are
+#' dropped because the analytical models operate in two horizontal dimensions.
+#'
+#' If `pumping_wells` does not include `well_diam`, the prepared copy receives
+#' a `well_diam` column containing zero meters for every pump. Existing aquifer
+#' properties and their physical units are otherwise retained unchanged.
+#'
+#' The function returns transformed copies and does not modify any object
+#' supplied by the user.
+#'
+#' @examples
+#' pumping_wells <- sf::st_as_sf(
+#'   tibble::tibble(
+#'     pump_id = "pump_1",
+#'     x = -93.25,
+#'     y = 44.95,
+#'     K = units::set_units(10, "m/day"),
+#'     D = units::set_units(20, "m"),
+#'     V = 0.15
+#'   ),
+#'   coords = c("x", "y"),
+#'   crs = 4326
+#' )
+#'
+#' stream_reaches <- sf::st_sf(
+#'   reach_id = "reach_1",
+#'   geometry = sf::st_sfc(
+#'     sf::st_linestring(
+#'       matrix(c(-93.30, 44.90, -93.20, 45.00), ncol = 2, byrow = TRUE)
+#'     ),
+#'     crs = 4326
+#'   )
+#' )
+#'
+#' prepared_inputs <- isw:::.prepare_spatial_inputs(
+#'   pumping_wells,
+#'   stream_reaches
+#' )
+#'
+#' prepared_inputs$analysis_crs$epsg
+#' prepared_inputs$pumping_wells$well_diam
+#' sf::st_crs(prepared_inputs$stream_reaches)$Name
+#'
+#' @keywords internal
+.prepare_spatial_inputs <- function(
+    pumping_wells,
+    stream_reaches,
+    observation_wells = NULL,
+    analysis_crs = NULL) {
+
+  selected_crs <- .select_analysis_crs(
+    pumping_wells,
+    stream_reaches,
+    observation_wells,
+    analysis_crs
+  )
+
+  prepare_geometry <- function(x) {
+    if (is.null(x)) {
+      return(NULL)
+    }
+
+    x <- sf::st_zm(x, drop = TRUE, what = "ZM")
+    sf::st_transform(x, selected_crs)
+  }
+
+  prepared_pumping_wells <- prepare_geometry(pumping_wells)
+  prepared_stream_reaches <- prepare_geometry(stream_reaches)
+  prepared_observation_wells <- prepare_geometry(observation_wells)
+
+  if (!("well_diam" %in% names(prepared_pumping_wells))) {
+    prepared_pumping_wells$well_diam <- units::set_units(
+      rep(0, nrow(prepared_pumping_wells)),
+      "m",
+      mode = "standard"
+    )
+  }
+
+  list(
+    pumping_wells = prepared_pumping_wells,
+    stream_reaches = prepared_stream_reaches,
+    observation_wells = prepared_observation_wells,
+    analysis_crs = selected_crs
+  )
+}

@@ -306,7 +306,7 @@
     stop("stream_reaches cannot contain missing or nonfinite coordinates.")
   }
 
-  reach_lengths <- sf::st_length(stream_reaches)
+  reach_lengths <- suppressMessages(sf::st_length(stream_reaches))
 
   if (any(!is.finite(as.numeric(reach_lengths))) ||
       any(as.numeric(reach_lengths) <= 0)) {
