@@ -273,3 +273,263 @@
     analysis_crs = selected_crs
   )
 }
+
+#' Discretize stream reaches for modeling
+#'
+#' Divide prepared stream geometries into approximately equal-length model
+#' reaches while retaining their line geometry and parent identifiers.
+#'
+#' @param stream_reaches A projected stream-reach object accepted by
+#'   [`.validate_stream_reaches()`], typically the `stream_reaches` element
+#'   returned by [`.prepare_spatial_inputs()`].
+#' @param reach_spacing A scalar `units` object with length dimensions giving
+#'   the maximum target length of a model reach.
+#'
+#' @return An `sf` object with one `LINESTRING` feature per model reach. The
+#'   following columns are added:
+#' \describe{
+#'   \item{`reach_part_id`}{Identifies the `LINESTRING` component of the
+#'     original `reach_id`.}
+#'   \item{`model_reach_id`}{Uniquely identifies the discretized model reach.}
+#'   \item{`represented_length`}{The actual length represented by the model
+#'     reach, retaining the linear units of the analysis CRS.}
+#'   \item{`model_point`}{An `sfc_POINT` column containing the midpoint along
+#'     the model-reach line. The sliced line remains the active geometry.}
+#' }
+#'
+#' @details
+#' Each `MULTILINESTRING` is first separated into its component
+#' `LINESTRING`s. Components receive `reach_part_id` values within their
+#' original `reach_id`. Ordinary `LINESTRING` features have one part.
+#'
+#' For each part, the number of model reaches is the part length divided by
+#' `reach_spacing` and rounded up. The complete part is then divided into that
+#' number of equal-length segments. Consequently, no model reach exceeds the
+#' requested spacing, and `represented_length` may be smaller than
+#' `reach_spacing` or differ among input parts.
+#'
+#' `model_point` is the midpoint measured along each sliced line, rather than
+#' its geometric centroid, so the point is guaranteed to lie on the modeled
+#' stream geometry. Additional input attributes are repeated for every model
+#' reach derived from the source feature.
+#'
+#' The names `reach_part_id`, `model_reach_id`, `represented_length`, and
+#' `model_point` are reserved for values created by this function. The input
+#' object is not modified.
+#'
+#' @examples
+#' stream_reaches <- sf::st_sf(
+#'   reach_id = "reach_1",
+#'   geometry = sf::st_sfc(
+#'     sf::st_linestring(
+#'       matrix(c(500000, 4980000, 500250, 4980000), ncol = 2, byrow = TRUE)
+#'     ),
+#'     crs = 32615
+#'   )
+#' )
+#'
+#' model_reaches <- isw:::.discretize_stream_reaches(
+#'   stream_reaches,
+#'   reach_spacing = units::set_units(100, "m")
+#' )
+#'
+#' model_reaches[c(
+#'   "reach_id", "reach_part_id", "model_reach_id", "represented_length"
+#' )]
+#' sf::st_coordinates(model_reaches$model_point)
+#'
+#' @keywords internal
+.discretize_stream_reaches <- function(stream_reaches, reach_spacing) {
+
+  .validate_stream_reaches(stream_reaches)
+
+  if (!grepl("^PROJCRS\\[", sf::st_crs(stream_reaches)$wkt)) {
+    stop(
+      "stream_reaches must use a projected CRS before model discretization."
+    )
+  }
+
+  check_dimensionality(
+    reach_spacing,
+    desired_units = "m",
+    variable_name = "reach_spacing"
+  )
+
+  if (length(reach_spacing) != 1 ||
+      !is.finite(as.numeric(reach_spacing)) ||
+      as.numeric(reach_spacing) <= 0) {
+    stop("reach_spacing must be a finite, positive scalar length.")
+  }
+
+  reserved_columns <- c(
+    "reach_part_id",
+    "model_reach_id",
+    "represented_length",
+    "model_point"
+  )
+  conflicting_columns <- intersect(reserved_columns, names(stream_reaches))
+
+  if (length(conflicting_columns) > 0) {
+    stop(
+      "stream_reaches contains columns reserved for model discretization: ",
+      paste(conflicting_columns, collapse = ", "),
+      "."
+    )
+  }
+
+  stream_reaches_xy <- sf::st_zm(
+    stream_reaches,
+    drop = TRUE,
+    what = "ZM"
+  )
+  line_parts <- suppressWarnings(
+    sf::st_cast(stream_reaches_xy, "LINESTRING")
+  )
+
+  part_number <- ave(
+    seq_len(nrow(line_parts)),
+    line_parts$reach_id,
+    FUN = seq_along
+  )
+  line_parts$reach_part_id <- paste0(
+    line_parts$reach_id,
+    "_part_",
+    part_number
+  )
+
+  part_lengths <- sf::st_length(line_parts)
+  spacing_in_crs_units <- units::set_units(
+    reach_spacing,
+    units::deparse_unit(part_lengths),
+    mode = "standard"
+  )
+  model_reaches_per_part <- ceiling(
+    as.numeric(part_lengths / spacing_in_crs_units)
+  )
+
+  get_point_at_distance <- function(coordinates, cumulative_length, distance) {
+    if (distance <= 0) {
+      return(coordinates[1, ])
+    }
+
+    if (distance >= cumulative_length[[length(cumulative_length)]]) {
+      return(coordinates[nrow(coordinates), ])
+    }
+
+    coordinate_indices <- seq_along(cumulative_length)
+    segment_index <- max(which(
+      cumulative_length <= distance &
+        coordinate_indices < length(cumulative_length)
+    ))
+    segment_length <- cumulative_length[[segment_index + 1]] -
+      cumulative_length[[segment_index]]
+    fraction <- (distance - cumulative_length[[segment_index]]) /
+      segment_length
+
+    coordinates[segment_index, ] + fraction * (
+      coordinates[segment_index + 1, ] - coordinates[segment_index, ]
+    )
+  }
+
+  total_model_reaches <- sum(model_reaches_per_part)
+  source_part_rows <- integer(total_model_reaches)
+  segment_numbers <- integer(total_model_reaches)
+  model_geometries <- vector("list", total_model_reaches)
+  model_points <- vector("list", total_model_reaches)
+  output_index <- 0L
+
+  for (part_index in seq_len(nrow(line_parts))) {
+    coordinates <- sf::st_coordinates(
+      sf::st_geometry(line_parts)[[part_index]]
+    )[, 1:2, drop = FALSE]
+    coordinate_differences <- coordinates[-1, , drop = FALSE] -
+      coordinates[-nrow(coordinates), , drop = FALSE]
+    coordinate_lengths <- sqrt(rowSums(coordinate_differences^2))
+    cumulative_length <- c(0, cumsum(coordinate_lengths))
+    break_distances <- seq(
+      0,
+      cumulative_length[[length(cumulative_length)]],
+      length.out = model_reaches_per_part[[part_index]] + 1
+    )
+
+    for (segment_number in seq_len(model_reaches_per_part[[part_index]])) {
+      output_index <- output_index + 1L
+      start_distance <- break_distances[[segment_number]]
+      end_distance <- break_distances[[segment_number + 1]]
+      midpoint_distance <- mean(c(start_distance, end_distance))
+
+      start_point <- get_point_at_distance(
+        coordinates,
+        cumulative_length,
+        start_distance
+      )
+      end_point <- get_point_at_distance(
+        coordinates,
+        cumulative_length,
+        end_distance
+      )
+      interior_coordinates <- coordinates[
+        cumulative_length > start_distance &
+          cumulative_length < end_distance,
+        ,
+        drop = FALSE
+      ]
+      segment_coordinates <- rbind(
+        start_point,
+        interior_coordinates,
+        end_point
+      )
+
+      source_part_rows[[output_index]] <- part_index
+      segment_numbers[[output_index]] <- segment_number
+      model_geometries[[output_index]] <- sf::st_linestring(
+        segment_coordinates
+      )
+      model_points[[output_index]] <- sf::st_point(
+        get_point_at_distance(
+          coordinates,
+          cumulative_length,
+          midpoint_distance
+        )
+      )
+    }
+  }
+
+  model_reaches <- line_parts[source_part_rows, , drop = FALSE]
+  sf::st_geometry(model_reaches) <- sf::st_sfc(
+    model_geometries,
+    crs = sf::st_crs(line_parts)
+  )
+  model_reaches$model_reach_id <- paste0(
+    model_reaches$reach_part_id,
+    "_model_",
+    segment_numbers
+  )
+  model_reaches$represented_length <- sf::st_length(model_reaches)
+  model_reaches$model_point <- sf::st_sfc(
+    model_points,
+    crs = sf::st_crs(model_reaches)
+  )
+
+  geometry_column <- attr(model_reaches, "sf_column")
+  identifying_columns <- c(
+    "reach_id",
+    "reach_part_id",
+    "model_reach_id",
+    "represented_length"
+  )
+  additional_columns <- setdiff(
+    names(model_reaches),
+    c(identifying_columns, "model_point", geometry_column)
+  )
+
+  model_reaches <- model_reaches[c(
+    identifying_columns,
+    additional_columns,
+    "model_point",
+    geometry_column
+  )]
+
+  row.names(model_reaches) <- NULL
+  model_reaches
+}

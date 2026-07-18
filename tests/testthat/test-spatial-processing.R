@@ -335,3 +335,261 @@ test_that("spatial preparation does not modify input objects", {
   expect_identical(inputs$pumping_wells, original_pumping_wells)
   expect_identical(inputs$stream_reaches, original_stream_reaches)
 })
+
+make_projected_stream_reach <- function(length = 250) {
+  sf::st_sf(
+    reach_id = "reach_1",
+    stream_name = "Example River",
+    geometry = sf::st_sfc(
+      sf::st_linestring(
+        matrix(c(500000, 4980000, 500000 + length, 4980000),
+          ncol = 2,
+          byrow = TRUE
+        )
+      ),
+      crs = 32615
+    )
+  )
+}
+
+test_that("stream reaches are divided into equal model reaches", {
+  stream_reaches <- make_projected_stream_reach()
+
+  model_reaches <- isw:::.discretize_stream_reaches(
+    stream_reaches,
+    units::set_units(100, "m")
+  )
+
+  expect_s3_class(model_reaches, "sf")
+  expect_equal(nrow(model_reaches), 3)
+  expect_identical(row.names(model_reaches), as.character(1:3))
+  expect_identical(
+    model_reaches$reach_id,
+    rep("reach_1", 3)
+  )
+  expect_identical(
+    model_reaches$reach_part_id,
+    rep("reach_1_part_1", 3)
+  )
+  expect_identical(
+    model_reaches$model_reach_id,
+    paste0("reach_1_part_1_model_", 1:3)
+  )
+  expect_equal(
+    model_reaches$represented_length,
+    units::set_units(rep(250 / 3, 3), "m")
+  )
+  expect_equal(
+    sum(model_reaches$represented_length),
+    sf::st_length(stream_reaches)
+  )
+  expect_true(all(
+    model_reaches$represented_length <= units::set_units(100, "m")
+  ))
+  expect_true(all(
+    sf::st_geometry_type(model_reaches) == "LINESTRING"
+  ))
+})
+
+test_that("model points are along-line midpoints", {
+  stream_reaches <- make_projected_stream_reach()
+
+  model_reaches <- isw:::.discretize_stream_reaches(
+    stream_reaches,
+    units::set_units(100, "m")
+  )
+  model_point_coordinates <- sf::st_coordinates(
+    model_reaches$model_point
+  )
+
+  expect_equal(
+    model_point_coordinates[, "X"],
+    c(500000 + 250 / 6, 500000 + 125, 500000 + 5 * 250 / 6)
+  )
+  expect_equal(
+    model_point_coordinates[, "Y"],
+    rep(4980000, 3)
+  )
+  expect_equal(
+    sf::st_distance(
+      model_reaches$model_point,
+      sf::st_geometry(model_reaches),
+      by_element = TRUE
+    ),
+    units::set_units(rep(0, 3), "m")
+  )
+})
+
+test_that("bent stream geometry is retained across model reaches", {
+  stream_reaches <- sf::st_sf(
+    reach_id = "reach_1",
+    geometry = sf::st_sfc(
+      sf::st_linestring(
+        matrix(c(0, 0, 100, 0, 100, 100), ncol = 2, byrow = TRUE)
+      ),
+      crs = 32615
+    )
+  )
+
+  model_reaches <- isw:::.discretize_stream_reaches(
+    stream_reaches,
+    units::set_units(75, "m")
+  )
+
+  expect_equal(nrow(model_reaches), 3)
+  expect_equal(
+    sum(model_reaches$represented_length),
+    units::set_units(200, "m")
+  )
+  expect_equal(
+    sf::st_distance(
+      model_reaches$model_point,
+      sf::st_geometry(model_reaches),
+      by_element = TRUE
+    ),
+    units::set_units(rep(0, 3), "m")
+  )
+  expect_true(nrow(sf::st_coordinates(model_reaches[2, ])) > 2)
+})
+
+test_that("short stream reaches produce one model reach", {
+  stream_reaches <- make_projected_stream_reach(length = 50)
+
+  model_reaches <- isw:::.discretize_stream_reaches(
+    stream_reaches,
+    units::set_units(100, "m")
+  )
+
+  expect_equal(nrow(model_reaches), 1)
+  expect_equal(
+    model_reaches$represented_length,
+    units::set_units(50, "m")
+  )
+})
+
+test_that("multipart reaches retain their parent and part identifiers", {
+  stream_reaches <- sf::st_sf(
+    reach_id = "reach_1",
+    geometry = sf::st_sfc(
+      sf::st_multilinestring(
+        list(
+          matrix(c(0, 0, 150, 0), ncol = 2, byrow = TRUE),
+          matrix(c(200, 0, 200, 50), ncol = 2, byrow = TRUE)
+        )
+      ),
+      crs = 32615
+    )
+  )
+
+  model_reaches <- isw:::.discretize_stream_reaches(
+    stream_reaches,
+    units::set_units(100, "m")
+  )
+
+  expect_equal(nrow(model_reaches), 3)
+  expect_identical(
+    model_reaches$reach_part_id,
+    c("reach_1_part_1", "reach_1_part_1", "reach_1_part_2")
+  )
+  expect_true(all(model_reaches$reach_id == "reach_1"))
+  expect_equal(
+    model_reaches$represented_length,
+    units::set_units(c(75, 75, 50), "m")
+  )
+})
+
+test_that("additional stream attributes are preserved", {
+  stream_reaches <- make_projected_stream_reach()
+
+  model_reaches <- isw:::.discretize_stream_reaches(
+    stream_reaches,
+    units::set_units(100, "m")
+  )
+
+  expect_identical(
+    model_reaches$stream_name,
+    rep("Example River", 3)
+  )
+})
+
+test_that("reach spacing accepts alternative length units", {
+  stream_reaches <- make_projected_stream_reach(length = 150)
+
+  model_reaches <- isw:::.discretize_stream_reaches(
+    stream_reaches,
+    units::set_units(300, "ft")
+  )
+
+  expect_equal(nrow(model_reaches), 2)
+  expect_equal(
+    model_reaches$represented_length,
+    units::set_units(c(75, 75), "m")
+  )
+})
+
+test_that("reach spacing must be a finite positive scalar length", {
+  stream_reaches <- make_projected_stream_reach()
+
+  expect_error(
+    isw:::.discretize_stream_reaches(stream_reaches, 100),
+    "not a units object"
+  )
+  expect_error(
+    isw:::.discretize_stream_reaches(
+      stream_reaches,
+      units::set_units(100, "days")
+    ),
+    "conversion failed"
+  )
+  expect_error(
+    isw:::.discretize_stream_reaches(
+      stream_reaches,
+      units::set_units(c(100, 200), "m")
+    ),
+    "finite, positive scalar length"
+  )
+  expect_error(
+    isw:::.discretize_stream_reaches(
+      stream_reaches,
+      units::set_units(0, "m")
+    ),
+    "finite, positive scalar length"
+  )
+})
+
+test_that("stream reaches must use a projected CRS", {
+  inputs <- make_spatial_test_inputs()
+
+  expect_error(
+    isw:::.discretize_stream_reaches(
+      inputs$stream_reaches,
+      units::set_units(100, "m")
+    ),
+    "must use a projected CRS"
+  )
+})
+
+test_that("model-discretization column names are reserved", {
+  stream_reaches <- make_projected_stream_reach()
+  stream_reaches$model_reach_id <- "existing_id"
+
+  expect_error(
+    isw:::.discretize_stream_reaches(
+      stream_reaches,
+      units::set_units(100, "m")
+    ),
+    "reserved for model discretization: model_reach_id"
+  )
+})
+
+test_that("stream discretization does not modify the input object", {
+  stream_reaches <- make_projected_stream_reach()
+  original_stream_reaches <- stream_reaches
+
+  isw:::.discretize_stream_reaches(
+    stream_reaches,
+    units::set_units(100, "m")
+  )
+
+  expect_identical(stream_reaches, original_stream_reaches)
+})
