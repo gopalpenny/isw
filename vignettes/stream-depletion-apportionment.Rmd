@@ -435,10 +435,23 @@ ggplot() +
 ```
 
 The continuously changing stream-depletion rate is approximated over each
-evaluation interval using the mean of its values at the beginning and end of
-the interval. The negative of that interval-average rate is applied as
-injection at the segment model point. Changes in the pumping and injection
-rates are both combined through superposition.
+pumping-schedule interval using the mean of its values at the beginning and
+end of the interval. The negative of that interval-average rate is applied as
+injection at the segment model point. Evaluation times control when drawdown
+is reported, not the internal injection timestep.
+
+The injection schedule can be inspected before calculating drawdown.
+
+```{r construct-stream-injection-schedule}
+stream_injection_schedule <- get_stream_injection_schedule(
+  pumping_wells,
+  pumping_schedules,
+  stream_apportionment,
+  evaluation_times
+)
+
+stream_injection_schedule
+```
 
 ```{r calculate-apportioned-aquifer-drawdown}
 aquifer_drawdown <- get_apportioned_aquifer_drawdown(
@@ -446,7 +459,8 @@ aquifer_drawdown <- get_apportioned_aquifer_drawdown(
   pumping_schedules,
   observation_wells,
   stream_apportionment,
-  stream_depletion
+  evaluation_times,
+  stream_injection_schedule = stream_injection_schedule
 )
 
 aquifer_drawdown

@@ -525,3 +525,53 @@
 
   evaluation_times
 }
+
+#' Validate optional stream-injection times
+#'
+#' Validate optional injection-grid refinement times against the
+#' pumping-schedule time representation and starting time.
+#'
+#' @param injection_times Either `NULL`, a `Date` vector, or a `units` vector
+#'   with time dimensions.
+#' @param schedule_times The validated `t` vector from `pumping_schedules`.
+#'
+#' @return `NULL` when `injection_times` is `NULL`; otherwise, the
+#'   `injection_times` vector, unchanged.
+#'
+#' @keywords internal
+.validate_injection_times <- function(injection_times, schedule_times) {
+
+  .validate_time_vector(schedule_times, "pumping_schedules$t")
+
+  if (is.null(injection_times)) {
+    return(NULL)
+  }
+
+  .validate_time_vector(injection_times, "injection_times")
+
+  injection_is_date <- inherits(injection_times, "Date")
+  schedule_is_date <- inherits(schedule_times, "Date")
+
+  if (injection_is_date != schedule_is_date) {
+    stop(
+      "injection_times and pumping_schedules$t must both use Date values ",
+      "or both use units time values."
+    )
+  }
+
+  if (injection_is_date) {
+    before_schedule <- injection_times < schedule_times[1]
+  } else {
+    injection_days <- units::set_units(injection_times, "days")
+    schedule_start_days <- units::set_units(schedule_times[1], "days")
+    before_schedule <- injection_days < schedule_start_days
+  }
+
+  if (any(before_schedule)) {
+    stop(
+      "injection_times cannot occur before the first pumping-schedule time."
+    )
+  }
+
+  injection_times
+}

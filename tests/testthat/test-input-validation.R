@@ -624,3 +624,38 @@ test_that("evaluation_times cannot precede the pumping schedule", {
     "cannot occur before the first pumping-schedule time"
   )
 })
+
+test_that("injection_times may be NULL or use matching time inputs", {
+  schedule_dates <- as.Date(c("2025-01-01", "2025-02-01"))
+  injection_dates <- as.Date(c("2025-01-15", "2025-01-20"))
+
+  expect_null(isw:::.validate_injection_times(NULL, schedule_dates))
+  expect_identical(
+    isw:::.validate_injection_times(injection_dates, schedule_dates),
+    injection_dates
+  )
+})
+
+test_that("injection_times must match the schedule representation", {
+  schedule_times <- units::set_units(c(0, 10), "days")
+
+  expect_error(
+    isw:::.validate_injection_times(
+      as.Date(c("2025-01-01", "2025-01-02")),
+      schedule_times
+    ),
+    "must both use Date values"
+  )
+})
+
+test_that("injection_times cannot precede the pumping schedule", {
+  schedule_times <- units::set_units(c(1, 10), "days")
+
+  expect_error(
+    isw:::.validate_injection_times(
+      units::set_units(c(0, 5), "days"),
+      schedule_times
+    ),
+    "cannot occur before"
+  )
+})

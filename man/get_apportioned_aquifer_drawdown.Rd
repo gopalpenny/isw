@@ -9,7 +9,9 @@ get_apportioned_aquifer_drawdown(
   pumping_schedules,
   observation_wells,
   stream_apportionment,
-  stream_depletion
+  evaluation_times = NULL,
+  injection_times = NULL,
+  stream_injection_schedule = NULL
 )
 }
 \arguments{
@@ -26,9 +28,17 @@ get_apportioned_aquifer_drawdown(
 [get_stream_depletion_apportionment()]. Its `model_point` column supplies
 one injection-well location per reach segment.}
 
-\item{stream_depletion}{A tibble returned by
-[get_apportioned_stream_depletion()]. Its evaluation times define the
-requested drawdown times.}
+\item{evaluation_times}{Either `NULL`, a `Date` vector, or a `units` time
+vector. These control when drawdown is returned. When `NULL`,
+`pumping_schedules$t` is used.}
+
+\item{injection_times}{Either `NULL`, a `Date` vector, or a `units` time
+vector. These optionally refine the internal stream-injection grid. When
+`NULL`, pumping-schedule times define the grid.}
+
+\item{stream_injection_schedule}{Either `NULL` or a tibble returned by
+[get_stream_injection_schedule()]. When supplied, this schedule is reused
+instead of being recalculated internally.}
 }
 \value{
 A tibble with one row per `pump_id`, `observation_id`, and
@@ -46,8 +56,8 @@ from stream-depletion injection wells using superposition.
 Physical pumping-well responses use the pumping schedule directly. Stream
 depletion assigned to each reach segment is represented as injection at the
 segment's along-line `model_point`. The injection schedule is constructed by
-[`.get_interval_average_injection_rate_changes()`] and uses the aquifer
-properties associated with the originating `pump_id`.
+[get_stream_injection_schedule()] and uses the aquifer properties associated
+with the originating `pump_id`.
 
 Both pumping and injection responses use the infinite-aquifer
 [get_aquifer_drawdown_ratio()] kernel. No image well is included because the
@@ -55,10 +65,16 @@ apportioned stream injection explicitly represents the stream contribution.
 Results remain pump-specific so users can inspect individual contributions
 or sum `aquifer_drawdown` across pumps by observation and evaluation time.
 
-This interval-average approach preserves the modeled stream-depletion rate
-over each evaluation interval but approximates its continuously changing
-timing. Sensitivity can be assessed by using more closely spaced evaluation
-times.
+The internal injection grid always includes pumping-schedule times through
+the final evaluation time, even when results are requested less frequently.
+Optional `injection_times` can refine that grid. This interval-average
+approach approximates continuously changing stream depletion; sensitivity
+can be assessed with more closely spaced injection times.
+
+When `stream_injection_schedule` is supplied, `injection_times` must be
+`NULL` because the supplied schedule already defines the injection grid.
+The schedule must contain continuous intervals for every pump and reach
+segment from the first pumping time through the final evaluation time.
 }
 \examples{
 pumping_wells <- sf::st_as_sf(
@@ -101,19 +117,19 @@ stream_apportionment <- get_stream_depletion_apportionment(
   sample_spacing = units::set_units(25, "m"),
   analysis_crs = 32615
 )
-stream_depletion <- get_apportioned_stream_depletion(
+stream_injection_schedule <- get_stream_injection_schedule(
   pumping_wells,
   pumping_schedules,
   stream_apportionment,
   evaluation_times
 )
-
 get_apportioned_aquifer_drawdown(
   pumping_wells,
   pumping_schedules,
   observation_wells,
   stream_apportionment,
-  stream_depletion
+  evaluation_times,
+  stream_injection_schedule = stream_injection_schedule
 )
 
 }

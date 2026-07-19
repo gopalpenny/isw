@@ -56,7 +56,8 @@ make_drawdown_test_inputs <- function() {
     pumping_schedules = pumping_schedules,
     observation_wells = observation_wells,
     stream_apportionment = stream_apportionment,
-    stream_depletion = stream_depletion
+    stream_depletion = stream_depletion,
+    evaluation_times = evaluation_times
   )
 }
 
@@ -158,12 +159,15 @@ test_that("apportioned drawdown superimposes pumping and stream injection", {
     inputs$pumping_schedules,
     inputs$observation_wells,
     inputs$stream_apportionment,
-    inputs$stream_depletion
+    inputs$evaluation_times
   )
-  injection_events <- isw:::.get_interval_average_injection_rate_changes(
-    inputs$stream_depletion,
-    inputs$pumping_schedules
+  injection_schedule <- get_stream_injection_schedule(
+    inputs$pumping_wells,
+    inputs$pumping_schedules,
+    inputs$stream_apportionment,
+    inputs$evaluation_times
   )
+  injection_events <- isw:::.get_injection_rate_changes(injection_schedule)
 
   pumping_ratio_10 <- isw:::.theis_aquifer_drawdown_ratio(
     distance = units::set_units(50, "m"),
@@ -204,15 +208,40 @@ test_that("apportioned drawdown superimposes pumping and stream injection", {
   )
 })
 
-test_that("apportioned drawdown requires complete depletion combinations", {
+test_that("apportioned drawdown reuses a supplied injection schedule", {
   inputs <- make_drawdown_test_inputs()
-  second_segment <- inputs$stream_apportionment
-  second_segment$reach_segment_id <- "stream_1_segment_2"
-  inputs$stream_apportionment$apportionment_fraction <- 0.5
-  second_segment$apportionment_fraction <- 0.5
-  expanded_apportionment <- rbind(
+  injection_schedule <- get_stream_injection_schedule(
+    inputs$pumping_wells,
+    inputs$pumping_schedules,
     inputs$stream_apportionment,
-    second_segment
+    inputs$evaluation_times
+  )
+  internal_result <- get_apportioned_aquifer_drawdown(
+    inputs$pumping_wells,
+    inputs$pumping_schedules,
+    inputs$observation_wells,
+    inputs$stream_apportionment,
+    inputs$evaluation_times
+  )
+  supplied_result <- get_apportioned_aquifer_drawdown(
+    inputs$pumping_wells,
+    inputs$pumping_schedules,
+    inputs$observation_wells,
+    inputs$stream_apportionment,
+    inputs$evaluation_times,
+    stream_injection_schedule = injection_schedule
+  )
+
+  expect_equal(supplied_result, internal_result)
+})
+
+test_that("a supplied injection schedule controls the injection grid", {
+  inputs <- make_drawdown_test_inputs()
+  injection_schedule <- get_stream_injection_schedule(
+    inputs$pumping_wells,
+    inputs$pumping_schedules,
+    inputs$stream_apportionment,
+    inputs$evaluation_times
   )
 
   expect_error(
@@ -220,9 +249,81 @@ test_that("apportioned drawdown requires complete depletion combinations", {
       inputs$pumping_wells,
       inputs$pumping_schedules,
       inputs$observation_wells,
-      expanded_apportionment,
-      inputs$stream_depletion
+      inputs$stream_apportionment,
+      inputs$evaluation_times,
+      injection_times = units::set_units(c(5, 15), "days"),
+      stream_injection_schedule = injection_schedule
     ),
-    "every pump, reach-segment, and evaluation-time combination"
+    "injection_times must be NULL"
+  )
+})
+
+test_that("a supplied injection schedule must cover the evaluation period", {
+  inputs <- make_drawdown_test_inputs()
+  injection_schedule <- get_stream_injection_schedule(
+    inputs$pumping_wells,
+    inputs$pumping_schedules,
+    inputs$stream_apportionment,
+    inputs$evaluation_times
+  )
+  incomplete_schedule <- injection_schedule[
+    injection_schedule$interval_end < units::set_units(20, "days"),
+    ,
+    drop = FALSE
+  ]
+
+  expect_error(
+    get_apportioned_aquifer_drawdown(
+      inputs$pumping_wells,
+      inputs$pumping_schedules,
+      inputs$observation_wells,
+      inputs$stream_apportionment,
+      inputs$evaluation_times,
+      stream_injection_schedule = incomplete_schedule
+    ),
+    "continuous intervals"
+  )
+})
+
+test_that("injection grid includes pumping times with sparse evaluations", {
+  inputs <- make_drawdown_test_inputs()
+  inputs$pumping_schedules <- tibble::tibble(
+    t = units::set_units(c(0, 10, 20), "days"),
+    pump_1 = units::set_units(c(100, 100, 0), "m^3/day")
+  )
+  injection_schedule <- get_stream_injection_schedule(
+    inputs$pumping_wells,
+    inputs$pumping_schedules,
+    inputs$stream_apportionment,
+    evaluation_times = units::set_units(30, "days")
+  )
+
+  expect_equal(
+    unique(injection_schedule$interval_start),
+    units::set_units(c(0, 10, 20), "days")
+  )
+  expect_equal(
+    unique(injection_schedule$interval_end),
+    units::set_units(c(10, 20, 30), "days")
+  )
+})
+
+test_that("optional injection times refine the schedule", {
+  inputs <- make_drawdown_test_inputs()
+  injection_schedule <- get_stream_injection_schedule(
+    inputs$pumping_wells,
+    inputs$pumping_schedules,
+    inputs$stream_apportionment,
+    evaluation_times = units::set_units(20, "days"),
+    injection_times = units::set_units(c(5, 15), "days")
+  )
+
+  expect_equal(
+    unique(injection_schedule$interval_start),
+    units::set_units(c(0, 5, 10, 15), "days")
+  )
+  expect_equal(
+    unique(injection_schedule$interval_end),
+    units::set_units(c(5, 10, 15, 20), "days")
   )
 })
