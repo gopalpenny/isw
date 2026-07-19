@@ -136,12 +136,12 @@ contains the point at the center of each reach segment. `represented_length`
 records the actual stream length represented by that point.
 
 ```{r discretize-stream-reaches}
-model_reaches <- isw:::.discretize_stream_reaches(
+reach_segments <- isw:::.discretize_stream_reaches(
   spatial_inputs$stream_reaches,
   reach_spacing = set_units(100, "m")
 )
 
-model_reaches[c(
+reach_segments[c(
   "reach_id",
   "reach_segment_id",
   "represented_length"
@@ -156,12 +156,12 @@ ggplot() +
     linewidth = 3
   ) +
   geom_sf(
-    data = model_reaches,
+    data = reach_segments,
     aes(color = reach_segment_id),
     linewidth = 1.5
   ) +
   geom_sf(
-    data = model_reaches,
+    data = reach_segments,
     aes(geometry = model_point),
     color = "black",
     fill = "white",
@@ -254,6 +254,157 @@ ggplot(df, aes(evaluation_time, stream_depletion_rate)) +
   theme_minimal()
 ```
 
-This calculation uses only the closest stream distance and does not yet
-distribute depletion among the reach segments. The next step is to construct
-the pump--reach-segment pairs needed for depletion apportionment.
+This calculation uses only the closest stream distance and does not distribute
+depletion among the reach segments. We will retain it as a baseline for
+comparison with the apportioned results.
+
+## Sample points within each reach segment
+
+Web apportionment represents the geometry of each reach segment with multiple
+points. `sample_spacing` controls this numerical resolution independently of
+the `reach_spacing` used to define the modeled reach segments.
+
+```{r sample-reach-segments}
+sample_points <- sample_reach_segments(
+  reach_segments,
+  sample_spacing = set_units(25, "m")
+)
+
+sample_points[c(
+  "reach_id",
+  "reach_segment_id",
+  "sample_point_id",
+  "sampled_length"
+)]
+```
+
+```{r plot-reach-sample-points}
+ggplot() +
+  geom_sf(data = reach_segments, color = "grey65", linewidth = 1.5) +
+  geom_sf(data = sample_points, color = "blue", size = 1.5) +
+  geom_sf(
+    data = reach_segments,
+    aes(geometry = model_point),
+    color = "black",
+    fill = "white",
+    shape = 21,
+    size = 3
+  ) +
+  geom_sf(
+    data = spatial_inputs$pumping_wells,
+    color = "red",
+    size = 3
+  ) +
+  theme_minimal()
+```
+
+The blue points are used to resolve geometry during apportionment. The larger
+white points are the single model locations associated with each reach
+segment.
+
+## Calculate stream-depletion apportionment
+
+The web-squared method weights each sample point using its represented stream
+length and inverse squared distance from the pumping well. Point weights are
+summed by `reach_segment_id` and normalized separately for every pump.
+
+The same function also calculates `pump_to_reach_distance`, the shortest
+distance from the pump to each reach-segment line. This segment-specific
+distance is used by the analytical stream-depletion function.
+
+```{r calculate-stream-apportionment}
+stream_apportionment <- get_stream_depletion_apportionment(
+  pumping_wells,
+  stream_reaches,
+  reach_spacing = set_units(100, "m"),
+  sample_spacing = set_units(25, "m"),
+  method = "web_squared"
+)
+
+stream_apportionment[c(
+  "pump_id",
+  "reach_id",
+  "reach_segment_id",
+  "pump_to_reach_distance",
+  "apportionment_fraction"
+)]
+```
+
+The apportionment fractions must sum to one within each pumping well:
+
+```{r check-apportionment-balance}
+stream_apportionment |>
+  st_drop_geometry() |>
+  group_by(pump_id) |>
+  summarize(total_apportionment_fraction = sum(apportionment_fraction))
+```
+
+```{r plot-stream-apportionment}
+ggplot(stream_apportionment) +
+  geom_sf(aes(color = apportionment_fraction), linewidth = 2) +
+  geom_sf(
+    data = spatial_inputs$pumping_wells,
+    color = "red",
+    size = 3
+  ) +
+  labs(color = "Apportionment fraction") +
+  theme_minimal()
+```
+
+## Apply the pumping schedule
+
+We now apply the pumping schedule to every pump--reach-segment pair. The
+analytical stream-depletion fraction is specific to `pump_id`,
+`reach_segment_id`, and `elapsed_time`. Internally, the function calculates a
+lookup table of unique elapsed-time fractions so repeated response periods do
+not repeat the analytical calculation.
+
+Each pumping-rate change is multiplied by its time-dependent analytical
+fraction and the static apportionment fraction. Contributions from all earlier
+pumping events are then summed using superposition.
+
+```{r calculate-apportioned-stream-depletion}
+stream_depletion <- get_apportioned_stream_depletion(
+  pumping_wells,
+  pumping_schedules,
+  stream_apportionment,
+  evaluation_times
+)
+
+stream_depletion
+```
+
+The returned data remain separated by pumping well and reach segment. This
+allows individual contributions to be inspected before combining them.
+
+```{r plot-apportioned-stream-depletion}
+ggplot(
+  stream_depletion,
+  aes(
+    evaluation_time,
+    stream_depletion_rate,
+    color = reach_segment_id
+  )
+) +
+  geom_line() +
+  labs(
+    x = "Evaluation time",
+    y = "Stream-depletion rate",
+    color = "Reach segment"
+  ) +
+  theme_minimal()
+```
+
+Total modeled depletion across the stream network can be calculated by
+summing the reach-segment contributions:
+
+```{r total-apportioned-stream-depletion}
+total_stream_depletion <- stream_depletion |>
+  group_by(evaluation_time) |>
+  summarize(
+    stream_depletion_rate = sum(stream_depletion_rate),
+    .groups = "drop"
+  )
+
+total_stream_depletion
+```

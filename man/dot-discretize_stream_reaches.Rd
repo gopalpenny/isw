@@ -69,26 +69,26 @@ stream_reaches <- sf::st_sf(
   )
 )
 
-model_reaches <- isw:::.discretize_stream_reaches(
+reach_segments <- isw:::.discretize_stream_reaches(
   stream_reaches,
   reach_spacing = units::set_units(100, "m")
 )
 
-model_reaches[c(
+reach_segments[c(
   "reach_id", "reach_segment_id", "represented_length"
 )]
-sf::st_coordinates(model_reaches$model_point)
+sf::st_coordinates(reach_segments$model_point)
 
-plot_stream_discretization <- function(stream_reaches, model_reaches) {
+plot_stream_discretization <- function(stream_reaches, reach_segments) {
   ggplot2::ggplot() +
     ggplot2::geom_sf(data = stream_reaches, color = "grey75", linewidth = 3) +
     ggplot2::geom_sf(
-      data = model_reaches,
+      data = reach_segments,
       ggplot2::aes(color = reach_segment_id),
       linewidth = 1.5
     ) +
     ggplot2::geom_sf(
-      data = model_reaches,
+      data = reach_segments,
       ggplot2::aes(geometry = model_point),
       color = "black",
       fill = "white",
@@ -99,7 +99,7 @@ plot_stream_discretization <- function(stream_reaches, model_reaches) {
     ggplot2::theme_minimal()
 }
 
-plot_stream_discretization(stream_reaches, model_reaches)
+plot_stream_discretization(stream_reaches, reach_segments)
 
 }
 \keyword{internal}

@@ -335,26 +335,26 @@
 #'   )
 #' )
 #'
-#' model_reaches <- isw:::.discretize_stream_reaches(
+#' reach_segments <- isw:::.discretize_stream_reaches(
 #'   stream_reaches,
 #'   reach_spacing = units::set_units(100, "m")
 #' )
 #'
-#' model_reaches[c(
+#' reach_segments[c(
 #'   "reach_id", "reach_segment_id", "represented_length"
 #' )]
-#' sf::st_coordinates(model_reaches$model_point)
+#' sf::st_coordinates(reach_segments$model_point)
 #'
-#' plot_stream_discretization <- function(stream_reaches, model_reaches) {
+#' plot_stream_discretization <- function(stream_reaches, reach_segments) {
 #'   ggplot2::ggplot() +
 #'     ggplot2::geom_sf(data = stream_reaches, color = "grey75", linewidth = 3) +
 #'     ggplot2::geom_sf(
-#'       data = model_reaches,
+#'       data = reach_segments,
 #'       ggplot2::aes(color = reach_segment_id),
 #'       linewidth = 1.5
 #'     ) +
 #'     ggplot2::geom_sf(
-#'       data = model_reaches,
+#'       data = reach_segments,
 #'       ggplot2::aes(geometry = model_point),
 #'       color = "black",
 #'       fill = "white",
@@ -365,7 +365,7 @@
 #'     ggplot2::theme_minimal()
 #' }
 #'
-#' plot_stream_discretization(stream_reaches, model_reaches)
+#' plot_stream_discretization(stream_reaches, reach_segments)
 #'
 #' @keywords internal
 .discretize_stream_reaches <- function(stream_reaches, reach_spacing) {
@@ -424,30 +424,6 @@
     as.numeric(part_lengths / spacing_in_crs_units)
   )
 
-  get_point_at_distance <- function(coordinates, cumulative_length, distance) {
-    if (distance <= 0) {
-      return(coordinates[1, ])
-    }
-
-    if (distance >= cumulative_length[[length(cumulative_length)]]) {
-      return(coordinates[nrow(coordinates), ])
-    }
-
-    coordinate_indices <- seq_along(cumulative_length)
-    segment_index <- max(which(
-      cumulative_length <= distance &
-        coordinate_indices < length(cumulative_length)
-    ))
-    segment_length <- cumulative_length[[segment_index + 1]] -
-      cumulative_length[[segment_index]]
-    fraction <- (distance - cumulative_length[[segment_index]]) /
-      segment_length
-
-    coordinates[segment_index, ] + fraction * (
-      coordinates[segment_index + 1, ] - coordinates[segment_index, ]
-    )
-  }
-
   total_model_reaches <- sum(model_reaches_per_part)
   source_part_rows <- integer(total_model_reaches)
   model_geometries <- vector("list", total_model_reaches)
@@ -474,12 +450,12 @@
       end_distance <- break_distances[[segment_number + 1]]
       midpoint_distance <- mean(c(start_distance, end_distance))
 
-      start_point <- get_point_at_distance(
+      start_point <- .point_along_linestring(
         coordinates,
         cumulative_length,
         start_distance
       )
-      end_point <- get_point_at_distance(
+      end_point <- .point_along_linestring(
         coordinates,
         cumulative_length,
         end_distance
@@ -501,7 +477,7 @@
         segment_coordinates
       )
       model_points[[output_index]] <- sf::st_point(
-        get_point_at_distance(
+        .point_along_linestring(
           coordinates,
           cumulative_length,
           midpoint_distance
@@ -515,7 +491,7 @@
     model_geometries,
     crs = sf::st_crs(line_parts)
   )
-  reach_segment_numbers <- ave(
+  reach_segment_numbers <- stats::ave(
     seq_len(nrow(model_reaches)),
     model_reaches$reach_id,
     FUN = seq_along
@@ -551,4 +527,241 @@
 
   row.names(model_reaches) <- NULL
   model_reaches
+}
+
+# Return coordinates at a distance measured along a LINESTRING.
+.point_along_linestring <- function(
+    coordinates,
+    cumulative_length,
+    distance) {
+
+  if (distance <= 0) {
+    return(coordinates[1, ])
+  }
+
+  if (distance >= cumulative_length[[length(cumulative_length)]]) {
+    return(coordinates[nrow(coordinates), ])
+  }
+
+  coordinate_indices <- seq_along(cumulative_length)
+  segment_index <- max(which(
+    cumulative_length <= distance &
+      coordinate_indices < length(cumulative_length)
+  ))
+  segment_length <- cumulative_length[[segment_index + 1]] -
+    cumulative_length[[segment_index]]
+  fraction <- (distance - cumulative_length[[segment_index]]) /
+    segment_length
+
+  coordinates[segment_index, ] + fraction * (
+    coordinates[segment_index + 1, ] - coordinates[segment_index, ]
+  )
+}
+
+#' Sample points within stream-reach segments
+#'
+#' Create regularly distributed points within each discretized reach segment
+#' for web-based stream-depletion apportionment.
+#'
+#' @param reach_segments A projected `sf` object returned by
+#'   [`.discretize_stream_reaches()`]. It must contain `reach_id`,
+#'   `reach_segment_id`, and `represented_length` columns and one `LINESTRING`
+#'   geometry per row.
+#' @param sample_spacing A scalar `units` object with length dimensions giving
+#'   the maximum stream length represented by an apportionment sample point.
+#'
+#' @return An `sf` point object with columns `reach_id`, `reach_segment_id`,
+#'   `sample_point_id`, and `sampled_length`. Every reach segment receives at
+#'   least one point. `sampled_length` retains the linear units of the analysis
+#'   CRS.
+#'
+#' @details
+#' The number of points in each reach segment is its length divided by
+#' `sample_spacing` and rounded up. Points are placed at the along-line centers
+#' of equal-length sampling intervals. This avoids duplicated points at shared
+#' segment boundaries and assigns every point an explicit `sampled_length`.
+#'
+#' These points are distinct from the single `model_point` stored with each
+#' reach segment. `model_point` represents the segment in the model, while the
+#' finer sample points describe its geometry during web apportionment.
+#'
+#' @examples
+#' stream_reaches <- sf::st_sf(
+#'   reach_id = "reach_1",
+#'   geometry = sf::st_sfc(
+#'     sf::st_linestring(
+#'       matrix(c(500000, 4980000, 500200, 4980200), ncol = 2, byrow = TRUE)
+#'     ),
+#'     crs = 32615
+#'   )
+#' )
+#'
+#' reach_segments <- isw:::.discretize_stream_reaches(
+#'   stream_reaches,
+#'   reach_spacing = units::set_units(150, "m")
+#' )
+#'
+#' sample_points <- sample_reach_segments(
+#'   reach_segments,
+#'   sample_spacing = units::set_units(40, "m")
+#' )
+#'
+#' sample_points[c(
+#'   "reach_id", "reach_segment_id", "sample_point_id", "sampled_length"
+#' )]
+#'
+#' @export
+sample_reach_segments <- function(reach_segments, sample_spacing) {
+
+  if (!inherits(reach_segments, "sf")) {
+    stop("reach_segments must be an sf object.")
+  }
+
+  required_columns <- c(
+    "reach_id",
+    "reach_segment_id",
+    "represented_length"
+  )
+  missing_columns <- setdiff(required_columns, names(reach_segments))
+
+  if (length(missing_columns) > 0) {
+    stop(
+      "reach_segments is missing required columns: ",
+      paste(missing_columns, collapse = ", "),
+      "."
+    )
+  }
+
+  if (nrow(reach_segments) == 0) {
+    stop("reach_segments must contain at least one feature.")
+  }
+
+  if (is.na(sf::st_crs(reach_segments)) ||
+      !grepl("^PROJCRS\\[", sf::st_crs(reach_segments)$wkt)) {
+    stop("reach_segments must use a projected CRS.")
+  }
+
+  geometry_types <- as.character(
+    sf::st_geometry_type(reach_segments, by_geometry = TRUE)
+  )
+
+  if (!all(geometry_types == "LINESTRING")) {
+    stop("Every reach_segments geometry must be a LINESTRING.")
+  }
+
+  if (!is.character(reach_segments$reach_id) ||
+      !is.character(reach_segments$reach_segment_id) ||
+      anyNA(reach_segments$reach_id) ||
+      anyNA(reach_segments$reach_segment_id) ||
+      any(trimws(reach_segments$reach_id) == "") ||
+      any(trimws(reach_segments$reach_segment_id) == "")) {
+    stop(
+      "reach_segments$reach_id and reach_segments$reach_segment_id must be ",
+      "nonmissing, nonempty character vectors."
+    )
+  }
+
+  if (anyDuplicated(reach_segments$reach_segment_id) > 0) {
+    stop("reach_segments$reach_segment_id values must be unique.")
+  }
+
+  check_dimensionality(
+    reach_segments$represented_length,
+    desired_units = "m",
+    variable_name = "reach_segments$represented_length"
+  )
+  check_dimensionality(
+    sample_spacing,
+    desired_units = "m",
+    variable_name = "sample_spacing"
+  )
+
+  if (length(sample_spacing) != 1 ||
+      !is.finite(as.numeric(sample_spacing)) ||
+      as.numeric(sample_spacing) <= 0) {
+    stop("sample_spacing must be a finite, positive scalar length.")
+  }
+
+  segment_lengths <- sf::st_length(reach_segments)
+
+  if (!isTRUE(all.equal(
+    segment_lengths,
+    units::set_units(
+      reach_segments$represented_length,
+      units::deparse_unit(segment_lengths),
+      mode = "standard"
+    )
+  ))) {
+    stop(
+      "reach_segments$represented_length must equal the active geometry ",
+      "length."
+    )
+  }
+
+  spacing_in_crs_units <- units::set_units(
+    sample_spacing,
+    units::deparse_unit(segment_lengths),
+    mode = "standard"
+  )
+  points_per_segment <- ceiling(
+    as.numeric(segment_lengths / spacing_in_crs_units)
+  )
+  total_points <- sum(points_per_segment)
+  source_segment_rows <- integer(total_points)
+  point_numbers <- integer(total_points)
+  point_geometries <- vector("list", total_points)
+  sampled_lengths <- numeric(total_points)
+  output_index <- 0L
+
+  for (segment_index in seq_len(nrow(reach_segments))) {
+    coordinates <- sf::st_coordinates(
+      sf::st_geometry(reach_segments)[[segment_index]]
+    )[, 1:2, drop = FALSE]
+    coordinate_differences <- coordinates[-1, , drop = FALSE] -
+      coordinates[-nrow(coordinates), , drop = FALSE]
+    cumulative_length <- c(
+      0,
+      cumsum(sqrt(rowSums(coordinate_differences^2)))
+    )
+    segment_length <- cumulative_length[[length(cumulative_length)]]
+    number_of_points <- points_per_segment[[segment_index]]
+    interval_length <- segment_length / number_of_points
+    point_distances <- (seq_len(number_of_points) - 0.5) * interval_length
+
+    for (point_number in seq_len(number_of_points)) {
+      output_index <- output_index + 1L
+      source_segment_rows[[output_index]] <- segment_index
+      point_numbers[[output_index]] <- point_number
+      sampled_lengths[[output_index]] <- interval_length
+      point_geometries[[output_index]] <- sf::st_point(
+        .point_along_linestring(
+          coordinates,
+          cumulative_length,
+          point_distances[[point_number]]
+        )
+      )
+    }
+  }
+
+  length_units <- units::deparse_unit(segment_lengths)
+
+  sf::st_sf(
+    reach_id = reach_segments$reach_id[source_segment_rows],
+    reach_segment_id =
+      reach_segments$reach_segment_id[source_segment_rows],
+    sample_point_id = paste0(
+      reach_segments$reach_segment_id[source_segment_rows],
+      "_point_",
+      point_numbers
+    ),
+    sampled_length = units::set_units(
+      sampled_lengths,
+      length_units,
+      mode = "standard"
+    ),
+    geometry = sf::st_sfc(
+      point_geometries,
+      crs = sf::st_crs(reach_segments)
+    )
+  )
 }
