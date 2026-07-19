@@ -17,9 +17,11 @@ Suggests:
     dplyr,
     tidyr,
     patchwork,
-    png
+    png,
+    nhdplusTools
 Depends:
     expint,
+    R (>= 4.1.0),
     units
 Config/testthat/edition: 3
 Imports: 
