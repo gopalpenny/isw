@@ -12,44 +12,45 @@
 returned by [`.prepare_spatial_inputs()`].}
 
 \item{reach_spacing}{A scalar `units` object with length dimensions giving
-the maximum target length of a model reach.}
+the maximum target length of a reach segment.}
 }
 \value{
-An `sf` object with one `LINESTRING` feature per model reach. The
+An `sf` object with one `LINESTRING` feature per reach segment. The
   following columns are added:
 \describe{
-  \item{`reach_part_id`}{Identifies the `LINESTRING` component of the
-    original `reach_id`.}
-  \item{`model_reach_id`}{Uniquely identifies the discretized model reach.}
+  \item{`reach_segment_id`}{Uniquely identifies the discretized reach
+    segment within its original `reach_id`.}
   \item{`represented_length`}{The actual length represented by the model
-    reach, retaining the linear units of the analysis CRS.}
+    reach segment, retaining the linear units of the analysis CRS.}
   \item{`model_point`}{An `sfc_POINT` column containing the midpoint along
-    the model-reach line. The sliced line remains the active geometry.}
+    the reach-segment line. The sliced line remains the active geometry.}
 }
 }
 \description{
-Divide prepared stream geometries into approximately equal-length model
-reaches while retaining their line geometry and parent identifiers.
+Divide prepared stream geometries into approximately equal-length reach
+segments while retaining their line geometry and parent identifiers.
 }
 \details{
 Each `MULTILINESTRING` is first separated into its component
-`LINESTRING`s. Components receive `reach_part_id` values within their
-original `reach_id`. Ordinary `LINESTRING` features have one part.
+`LINESTRING`s so a reach segment is never created across a spatial gap.
+Components are handled internally and do not receive a separate identifier.
 
-For each part, the number of model reaches is the part length divided by
+For each component, the number of reach segments is its length divided by
 `reach_spacing` and rounded up. The complete part is then divided into that
-number of equal-length segments. Consequently, no model reach exceeds the
+number of equal-length segments. Consequently, no reach segment exceeds the
 requested spacing, and `represented_length` may be smaller than
-`reach_spacing` or differ among input parts.
+`reach_spacing` or differ among components. Segment numbers are sequential
+within each original `reach_id`, including when it contains multiple
+components.
 
 `model_point` is the midpoint measured along each sliced line, rather than
-its geometric centroid, so the point is guaranteed to lie on the modeled
+its geometric centroid, so the point is guaranteed to lie on the
 stream geometry. Additional input attributes are repeated for every model
-reach derived from the source feature.
+reach segment derived from the source feature.
 
-The names `reach_part_id`, `model_reach_id`, `represented_length`, and
-`model_point` are reserved for values created by this function. The input
-object is not modified.
+The names `reach_segment_id`, `represented_length`, and `model_point` are
+reserved for values created by this function. The input object is not
+modified.
 }
 \examples{
 stream_reaches <- sf::st_sf(
@@ -74,7 +75,7 @@ model_reaches <- isw:::.discretize_stream_reaches(
 )
 
 model_reaches[c(
-  "reach_id", "reach_part_id", "model_reach_id", "represented_length"
+  "reach_id", "reach_segment_id", "represented_length"
 )]
 sf::st_coordinates(model_reaches$model_point)
 
@@ -83,7 +84,7 @@ plot_stream_discretization <- function(stream_reaches, model_reaches) {
     ggplot2::geom_sf(data = stream_reaches, color = "grey75", linewidth = 3) +
     ggplot2::geom_sf(
       data = model_reaches,
-      ggplot2::aes(color = model_reach_id),
+      ggplot2::aes(color = reach_segment_id),
       linewidth = 1.5
     ) +
     ggplot2::geom_sf(
@@ -94,7 +95,7 @@ plot_stream_discretization <- function(stream_reaches, model_reaches) {
       shape = 21,
       size = 2.5
     ) +
-    ggplot2::labs(color = "Model reach") +
+    ggplot2::labs(color = "Reach segment") +
     ggplot2::theme_minimal()
 }
 

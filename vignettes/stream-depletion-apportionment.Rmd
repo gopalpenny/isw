@@ -130,9 +130,9 @@ spatial_inputs$pumping_wells$well_diam
 
 ## Discretize the stream network
 
-Each input reach is divided into model reaches that do not exceed the requested
+Each input reach is divided into reach segments that do not exceed the requested
 spacing. The active geometry remains a line segment, while `model_point`
-contains the point at the center of each model reach. `represented_length`
+contains the point at the center of each reach segment. `represented_length`
 records the actual stream length represented by that point.
 
 ```{r discretize-stream-reaches}
@@ -143,8 +143,7 @@ model_reaches <- isw:::.discretize_stream_reaches(
 
 model_reaches[c(
   "reach_id",
-  "reach_part_id",
-  "model_reach_id",
+  "reach_segment_id",
   "represented_length"
 )]
 ```
@@ -158,7 +157,7 @@ ggplot() +
   ) +
   geom_sf(
     data = model_reaches,
-    aes(color = model_reach_id),
+    aes(color = reach_segment_id),
     linewidth = 1.5
   ) +
   geom_sf(
@@ -174,7 +173,7 @@ ggplot() +
     color = "red",
     size = 3
   ) +
-  labs(color = "Model reach") +
+  labs(color = "Reach segment") +
   theme_minimal()
 ```
 
@@ -256,5 +255,5 @@ ggplot(df, aes(evaluation_time, stream_depletion_rate)) +
 ```
 
 This calculation uses only the closest stream distance and does not yet
-distribute depletion among the model reaches. The next step is to construct
-the pump--model-reach pairs needed for depletion apportionment.
+distribute depletion among the reach segments. The next step is to construct
+the pump--reach-segment pairs needed for depletion apportionment.

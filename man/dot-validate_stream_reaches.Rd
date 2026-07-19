@@ -25,8 +25,8 @@ projection into the model CRS occurs during later spatial preparation.
 
 Additional attribute columns are permitted but are not required. The
 user-supplied `reach_id` identifies the original line geometry. A later
-discretization function will divide these geometries into model reaches and
-assign a separate `model_reach_id` to each one.
+discretization function will divide these geometries into reach segments and
+assign a separate `reach_segment_id` to each one.
 
 This function validates inputs but does not transform, split, or otherwise
 modify their geometry.

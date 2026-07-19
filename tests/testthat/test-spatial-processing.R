@@ -352,7 +352,7 @@ make_projected_stream_reach <- function(length = 250) {
   )
 }
 
-test_that("stream reaches are divided into equal model reaches", {
+test_that("stream reaches are divided into equal reach segments", {
   stream_reaches <- make_projected_stream_reach()
 
   model_reaches <- isw:::.discretize_stream_reaches(
@@ -368,12 +368,8 @@ test_that("stream reaches are divided into equal model reaches", {
     rep("reach_1", 3)
   )
   expect_identical(
-    model_reaches$reach_part_id,
-    rep("reach_1_part_1", 3)
-  )
-  expect_identical(
-    model_reaches$model_reach_id,
-    paste0("reach_1_part_1_model_", 1:3)
+    model_reaches$reach_segment_id,
+    paste0("reach_1_segment_", 1:3)
   )
   expect_equal(
     model_reaches$represented_length,
@@ -420,7 +416,7 @@ test_that("model points are along-line midpoints", {
   )
 })
 
-test_that("bent stream geometry is retained across model reaches", {
+test_that("bent stream geometry is retained across reach segments", {
   stream_reaches <- sf::st_sf(
     reach_id = "reach_1",
     geometry = sf::st_sfc(
@@ -452,7 +448,7 @@ test_that("bent stream geometry is retained across model reaches", {
   expect_true(nrow(sf::st_coordinates(model_reaches[2, ])) > 2)
 })
 
-test_that("short stream reaches produce one model reach", {
+test_that("short stream reaches produce one reach segment", {
   stream_reaches <- make_projected_stream_reach(length = 50)
 
   model_reaches <- isw:::.discretize_stream_reaches(
@@ -467,7 +463,7 @@ test_that("short stream reaches produce one model reach", {
   )
 })
 
-test_that("multipart reaches retain their parent and part identifiers", {
+test_that("multipart reaches receive sequential segment identifiers", {
   stream_reaches <- sf::st_sf(
     reach_id = "reach_1",
     geometry = sf::st_sfc(
@@ -488,8 +484,8 @@ test_that("multipart reaches retain their parent and part identifiers", {
 
   expect_equal(nrow(model_reaches), 3)
   expect_identical(
-    model_reaches$reach_part_id,
-    c("reach_1_part_1", "reach_1_part_1", "reach_1_part_2")
+    model_reaches$reach_segment_id,
+    paste0("reach_1_segment_", 1:3)
   )
   expect_true(all(model_reaches$reach_id == "reach_1"))
   expect_equal(
@@ -571,14 +567,14 @@ test_that("stream reaches must use a projected CRS", {
 
 test_that("model-discretization column names are reserved", {
   stream_reaches <- make_projected_stream_reach()
-  stream_reaches$model_reach_id <- "existing_id"
+  stream_reaches$reach_segment_id <- "existing_id"
 
   expect_error(
     isw:::.discretize_stream_reaches(
       stream_reaches,
       units::set_units(100, "m")
     ),
-    "reserved for model discretization: model_reach_id"
+    "reserved for model discretization: reach_segment_id"
   )
 })
 
