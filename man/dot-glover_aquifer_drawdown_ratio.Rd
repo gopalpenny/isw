@@ -2,31 +2,17 @@
 % Please edit documentation in R/glover_model.R
 \name{.glover_aquifer_drawdown_ratio}
 \alias{.glover_aquifer_drawdown_ratio}
-\title{Calculate the Glover aquifer-drawdown ratio}
+\title{Calculate the straight-stream aquifer-drawdown ratio}
 \usage{
-.glover_aquifer_drawdown_ratio(
-  x1,
-  x2,
-  along_stream_distance,
-  K,
-  D,
-  V,
-  t,
-  well_diam
-)
+.glover_aquifer_drawdown_ratio(x1, x2, y_diff, K, D, V, t, well_diam)
 }
 \arguments{
-\item{x1}{Perpendicular distance from the pumping well to the stream. Use
-`Inf` together with `x2 = Inf` for a calculation without a stream
-boundary.}
+\item{x1}{Perpendicular distance from the pumping well to the stream.}
 
-\item{x2}{Perpendicular distance from the observation well to the stream. Use
-`Inf` together with `x1 = Inf` for a calculation without a stream
-boundary.}
+\item{x2}{Perpendicular distance from the observation well to the stream.}
 
-\item{along_stream_distance}{Distance between the pumping and observation
-wells parallel to the stream. When no stream boundary is included,
-`along_stream_distance` is the direct distance between the wells.}
+\item{y_diff}{Distance between the pumping and observation wells parallel
+to the stream.}
 
 \item{K}{Saturated hydraulic conductivity. Must have units of length per
 time.}
@@ -46,19 +32,17 @@ A units vector containing the ratio of aquifer drawdown to pumping
 }
 \description{
 Internal numerical kernel for calculating aquifer drawdown at an observation
-well caused by pumping from another well. The calculation can include a
-single straight stream represented as a constant-head boundary.
+well caused by pumping from another well near a single straight stream
+represented as a constant-head boundary.
 }
 \details{
 For a stream boundary, the function calculates drawdown from the pumping
 well and subtracts the response associated with its image well. The pumping-
 well and image-well distances from the observation well are:
 
-\deqn{r_w = \sqrt{(x_2-x_1)^2+along\_stream\_distance^2}}
+\deqn{r_w = \sqrt{(x_2-x_1)^2+y_{diff}^2}}
 
-\deqn{r_{wi} = \sqrt{(x_2+x_1)^2+along\_stream\_distance^2}}
-
-When `x1` and `x2` are both `Inf`, only the pumping-well response is used.
+\deqn{r_{wi} = \sqrt{(x_2+x_1)^2+y_{diff}^2}}
 }
 \references{
 Glover, R. E., and Balmer, G. G. (1954). River Depletion Resulting from
@@ -66,6 +50,6 @@ Pumping a Well near a River. *Transactions, American Geophysical Union*,
 35(3), 468–470. \doi{10.1029/TR035i003p00468}
 }
 \seealso{
-[get_aquifer_drawdown_ratio()]
+[get_straight_stream_drawdown_ratio()]
 }
 \keyword{internal}

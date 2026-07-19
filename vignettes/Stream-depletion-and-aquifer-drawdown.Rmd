@@ -46,7 +46,7 @@ K <- set_units(0.001, 'ft/sec')
 V <- 0.2
 
 df <- crossing(x1 = set_units(seq(0, 4, by = 0.02) * 5280,'ft'),
-               along_stream_distance = set_units(seq(0, 3, by = 0.02) * 5280,'ft'),
+               y_diff = set_units(seq(0, 3, by = 0.02) * 5280,'ft'),
                nesting(t = set_units(c(2, 5, 10),'year'), years = c(2, 5, 10))) %>%
   mutate(x2 = set_units(5280/2,"ft"), K = K, D = D, V = V,
          years = factor(years, levels = c(2, 5, 10), labels = paste(c(2, 5, 10), "years")))
@@ -80,7 +80,7 @@ theme_std <- theme(line = element_line(size = 1,
 
 
 ```{r}
-# df2 %>% dplyr::select(x1, along_stream_distance, t, s_ratio) %>%
+# df2 %>% dplyr::select(x1, y_diff, t, s_ratio) %>%
 #   pivot_wider(names_from = "t", values_from = "s_ratio")
 
 p_q_fraction <- ggplot(df2) +
@@ -96,9 +96,9 @@ p_q_fraction
 
 ```{r}
 p_drawdown <- ggplot(df2 %>% dplyr::filter(aquifer_drawdown_ratio <= set_units(-1/100/12,'s/ft^2'))) +
-  geom_raster(aes(as.numeric(x1/5280), as.numeric(along_stream_distance/5280), fill = -log(-as.numeric(aquifer_drawdown_ratio)))) +
+  geom_raster(aes(as.numeric(x1/5280), as.numeric(y_diff/5280), fill = -log(-as.numeric(aquifer_drawdown_ratio)))) +
   # geom_point(data = df2 %>% dplyr::filter(s_ratio <= -1/100/12, t == t_sec*10),
-  #            aes(x1/5280, along_stream_distance/5280, color = -log(-s_ratio))) +
+  #            aes(x1/5280, y_diff/5280, color = -log(-s_ratio))) +
   scale_fill_viridis_c("Drawdown\n(ft) per cusec\npumping", limits = -log(c(16, 1/100/12)), breaks = -log(c(1/64/12, 1/16/12, 1/3/12, 1/12, 1/4, 1, 4, 16)), labels = c("1/64 in","1/16 in","1/4 in","1 in", "4 in", "1 ft", "4 ft", "16 ft")) +
   scale_color_viridis_c("Drawdown\n(ft) per cusec\npumping", breaks = -log(c(1/64/12, 1/16/12, 1/3/12, 1/12, 1/4, 1, 4, 16)), labels = c("1/64 in","1/16 in","1/4 in","1 in", "4 in", "1 ft", "4 ft", "16 ft")) +
   scale_size_continuous("Stream\ndepletion\nfraction") +
@@ -117,8 +117,8 @@ p_drawdown
 transects_data <- df2 %>% dplyr::filter(x1 %in% (c(0.24, 0.5, 1, 2, 3)*5280))
 p_drawdown_transects <- ggplot(transects_data) + #, t %in% (c(2, 5) * t_sec))) +
   geom_line(data = transects_data %>% dplyr::filter(years == "5 years") %>% dplyr::select(-years),
-            aes(as.numeric(-aquifer_drawdown_ratio), along_stream_distance/5280, linetype = as.factor(x1/5280)), alpha = 0.15) +
-  geom_line(aes(as.numeric(-aquifer_drawdown_ratio), along_stream_distance/5280, color = years, linetype = as.factor(x1/5280))) +
+            aes(as.numeric(-aquifer_drawdown_ratio), y_diff/5280, linetype = as.factor(x1/5280)), alpha = 0.15) +
+  geom_line(aes(as.numeric(-aquifer_drawdown_ratio), y_diff/5280, color = years, linetype = as.factor(x1/5280))) +
   scale_color_discrete("Years after\npumping initiates") +
   scale_x_continuous("Drawdown (ft) per cusec pumping", limits = c(0, 2.5)) + facet_wrap(~years, ncol = 1) +
   scale_linetype_manual("Distance\nfrom well\nto river\n(x1, mi)",values = c("dotted", "dashed", "twodash", "longdash", "solid"), labels = c(0.25, 0.5, 1, 2, 3)) +

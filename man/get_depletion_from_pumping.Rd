@@ -8,7 +8,7 @@ get_depletion_from_pumping(
   df,
   x1 = NULL,
   x2 = NULL,
-  along_stream_distance = NULL,
+  y_diff = NULL,
   K = NULL,
   D = NULL,
   V = NULL,
@@ -21,10 +21,10 @@ get_depletion_from_pumping(
 
 \item{x1}{Distance between well and river}
 
-\item{x2}{Distance of observation well to stream}
+\item{x2}{Perpendicular distance from the observation well to the stream.}
 
-\item{along_stream_distance}{Distance between the pumping and observation
-wells parallel to the stream.}
+\item{y_diff}{Distance between the pumping and observation wells parallel to
+the stream.}
 
 \item{K}{Saturated hydraulic conductivity}
 
@@ -35,7 +35,8 @@ wells parallel to the stream.}
 \item{t}{Time from pumping onset at which to calculate stream depletion
 fraction}
 
-\item{well_diam}{Diameter of the well, inside which drawdown does not increase. Defaults to 0.}
+\item{well_diam}{Pumping-well diameter. Drawdown does not increase within
+one well radius. Defaults to zero.}
 }
 \value{
 A `data.frame` with two columns: `stream_depletion_fraction` and
@@ -45,10 +46,10 @@ A `data.frame` with two columns: `stream_depletion_fraction` and
 \description{
 This function estimates stream depletion fraction (using
   `get_stream_depletion_fraction`) and changes in water level at an
-  observation well (`get_aquifer_drawdown_ratio`) due to abstraction from a
+  observation well (`get_straight_stream_drawdown_ratio`) due to abstraction from a
   pumping well at time `t` after pumping initiates. Like
-  `get_stream_depletion_fraction`, and unlike `get_aquifer_drawdown_ratio`,
-  The function accounts for a the effect of the stream as a constant head
+  `get_stream_depletion_fraction`, the drawdown calculation accounts for
+  the effect of a straight stream as a constant-head
   boundary. See Glover (1954).
 }
 \details{
@@ -58,14 +59,14 @@ Get stream depletion and changes in water level from pumping
 library(units)
 x1 <- set_units(c(1, 5, 10) * 1e3, "ft")
 x2 <- set_units(1e3, "ft")
-along_stream_distance <- set_units(1e3, "ft")
+y_diff <- set_units(1e3, "ft")
 D <- set_units(100, "ft")
 K <- set_units(0.001, "ft/sec")
 t <- set_units(5, "year")
 V <- 0.2 # unitless
 depletion_from_pumping <- get_depletion_from_pumping(x1 = x1,
                                                      x2 = x2,
-                                                     along_stream_distance = along_stream_distance,
+                                                     y_diff = y_diff,
                                                      K = K,
                                                      D = D,
                                                      V = V,
@@ -74,8 +75,7 @@ depletion_from_pumping
 
 # Specifying parameters as named data.frame columns
 library(tibble) # simplifies specifying data.frames with units objects
-df <- tibble(x1 = x1, x2 = x2,
-             along_stream_distance = along_stream_distance,
+df <- tibble(x1 = x1, x2 = x2, y_diff = y_diff,
              K = K, D = D, V = V, t = t)
 depletion_from_pumping <- get_depletion_from_pumping(df)
 depletion_from_pumping

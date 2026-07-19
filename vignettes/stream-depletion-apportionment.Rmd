@@ -408,3 +408,73 @@ total_stream_depletion <- stream_depletion |>
 
 total_stream_depletion
 ```
+
+## Estimate aquifer drawdown and stream recovery
+
+We now add an observation well. Aquifer drawdown is calculated using the
+direct distance from the pumping well to the observation well, without an
+image well. Each reach segment's `model_point` is then treated as an injection
+well whose rate is derived from that segment's stream depletion.
+
+```{r observation-wells}
+observation_wells <- st_as_sf(
+  tibble(
+    observation_id = "obs_1",
+    x = 499900,
+    y = 4980100
+  ),
+  coords = c("x", "y"),
+  crs = 32615
+)
+
+ggplot() +
+  geom_sf(data = stream_reaches, color = "blue") +
+  geom_sf(data = pumping_wells, color = "red", size = 3) +
+  geom_sf(data = observation_wells, color = "black", size = 3) +
+  theme_minimal()
+```
+
+The continuously changing stream-depletion rate is approximated over each
+evaluation interval using the mean of its values at the beginning and end of
+the interval. The negative of that interval-average rate is applied as
+injection at the segment model point. Changes in the pumping and injection
+rates are both combined through superposition.
+
+```{r calculate-apportioned-aquifer-drawdown}
+aquifer_drawdown <- get_apportioned_aquifer_drawdown(
+  pumping_wells,
+  pumping_schedules,
+  observation_wells,
+  stream_apportionment,
+  stream_depletion
+)
+
+aquifer_drawdown
+```
+
+The output separates the decline caused by the physical pumping well from the
+recovery caused by stream injection. `aquifer_drawdown` is the pumping
+drawdown minus stream recovery.
+
+```{r plot-apportioned-aquifer-drawdown}
+aquifer_drawdown |>
+  select(
+    evaluation_time,
+    pumping_drawdown,
+    stream_recovery,
+    aquifer_drawdown
+  ) |>
+  tidyr::pivot_longer(
+    cols = -evaluation_time,
+    names_to = "component",
+    values_to = "water_level"
+  ) |>
+  ggplot(aes(evaluation_time, water_level, color = component)) +
+  geom_line() +
+  labs(
+    x = "Evaluation time",
+    y = "Water-level response",
+    color = "Component"
+  ) +
+  theme_minimal()
+```

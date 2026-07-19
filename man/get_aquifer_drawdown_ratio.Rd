@@ -2,13 +2,11 @@
 % Please edit documentation in R/glover_model.R
 \name{get_aquifer_drawdown_ratio}
 \alias{get_aquifer_drawdown_ratio}
-\title{Drawdown from a single pumping well}
+\title{Drawdown from a single well without aquifer boundaries}
 \usage{
 get_aquifer_drawdown_ratio(
   df,
-  x1 = NULL,
-  x2 = NULL,
-  along_stream_distance = NULL,
+  distance = NULL,
   K = NULL,
   D = NULL,
   V = NULL,
@@ -19,12 +17,7 @@ get_aquifer_drawdown_ratio(
 \arguments{
 \item{df}{\code{data.frame} with columns specifying all parameters}
 
-\item{x1}{Distance of pumping well to stream}
-
-\item{x2}{Distance of observation well to stream}
-
-\item{along_stream_distance}{Distance between the pumping and observation
-wells parallel to the stream.}
+\item{distance}{Direct distance between the well and observation location.}
 
 \item{K}{Saturated hydraulic conductivity}
 
@@ -40,23 +33,21 @@ fraction}
 \description{
 This function estimates the ratio of water level drawdown to pumping rate
 at an observation well at time `t` after pumping initiates from an individual
-pumping well. Note that this function does not account for the presence of any
-aquifer boundaries. See Glover (1954).
+pumping well. It does not include an image well or any other aquifer
+boundary. See Theis (1935).
 }
 \details{
-Estimate drawdown at observation well due to pumping at another well, either
-with a nearby stream or without a stream.
+Estimate water-level change at an observation location due to pumping or
+injection at one well in an infinite aquifer.
 }
 \examples{
 library(units)
-along_stream_distance <- set_units(c(1, 5, 10) * 1e3, "ft")
+distance <- set_units(c(1, 5, 10) * 1e3, "ft")
 D <- set_units(100, "ft")
 K <- set_units(0.001, "ft/sec")
 t <- set_units(5, "year")
 V <- 0.2 # unitless
-aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(along_stream_distance = along_stream_distance,
-                                                     x1 = Inf,
-                                                     x2 = Inf,
+aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(distance = distance,
                                                      K = K,
                                                      D = D,
                                                      V = V,
@@ -69,16 +60,14 @@ change_in_waterlevel_per_cusec
 
 # Specifying parameters as named data.frame columns
 library(tibble) # simplifies specifying data.frames with units objects
-df <- tibble(along_stream_distance = along_stream_distance, x1 = Inf,
-             x2 = Inf, K = K, D = D, V = V, t = t)
+df <- tibble(distance = distance, K = K, D = D, V = V, t = t)
 aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(df)
 aquifer_drawdown_ratio
 
 # for radius < well_diam/2, drawdown does not increase.
-along_stream_distance <- set_units(seq(0.25,2, by = 0.25), "ft")
+distance <- set_units(seq(0.25,2, by = 0.25), "ft")
 well_diam <- set_units(2, "ft")
-aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(x1 = Inf, x2 = Inf,
-                                                     along_stream_distance = along_stream_distance,
+aquifer_drawdown_ratio <- get_aquifer_drawdown_ratio(distance = distance,
                                                      K = K, D = D,
                                                      V = V, t = t,
                                                      well_diam = well_diam)

@@ -17,15 +17,15 @@ D <- units::set_units(100, "ft")
 K <- units::set_units(0.001, "ft/sec")
 t <- units::set_units(5, "year")
 V <- 0.2 # unitless
-along_stream_distance <- units::set_units(1, "mi")
+distance <- units::set_units(1, "mi")
 t <- units::set_units(5, "year")
 
-val <- round(get_aquifer_drawdown_ratio(along_stream_distance = along_stream_distance, x1 = Inf, x2 = Inf, K = K, D = D, V = V, t = t),6)
+val <- round(get_aquifer_drawdown_ratio(distance = distance, K = K, D = D, V = V, t = t),6)
 
 test_that("get_aquifer_drawdown_ratio gives error with wrong input units", {
   expect_equal(val, units::set_units(-1.540413, "s/ft^2"))
-  expect_error(get_aquifer_drawdown_ratio(along_stream_distance = 1, x1 = Inf, x2 = Inf, K = K, D = D, V = V, t = t))
-  expect_error(get_aquifer_drawdown_ratio(along_stream_distance = along_stream_distance, x1 = Inf, x2 = Inf, K = 1, D = D, V = V, t = t))
-  expect_error(get_aquifer_drawdown_ratio(along_stream_distance = along_stream_distance, x1 = Inf, x2 = Inf, K = K, D = 1, V = set_units(1,"ft"), t = t))
-  expect_error(get_aquifer_drawdown_ratio(along_stream_distance = along_stream_distance, x1 = Inf, x2 = Inf, K = K, D = D, V = V, t = 1))
+  expect_error(get_aquifer_drawdown_ratio(distance = 1, K = K, D = D, V = V, t = t))
+  expect_error(get_aquifer_drawdown_ratio(distance = distance, K = 1, D = D, V = V, t = t))
+  expect_error(get_aquifer_drawdown_ratio(distance = distance, K = K, D = 1, V = set_units(1,"ft"), t = t))
+  expect_error(get_aquifer_drawdown_ratio(distance = distance, K = K, D = D, V = V, t = 1))
 })

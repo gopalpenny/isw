@@ -35,7 +35,7 @@ We need to keep track of the following variables:
 
 - `x1`: Distance from the pumping well to the river
 - `x2`: Distance from the observation well to the river
-- `along_stream_distance`: Component of the distance between the two wells that
+- `y_diff`: Component of the distance between the two wells that
   is *parallel* to the river
 
 
@@ -141,18 +141,18 @@ wells <- crossing(pump_wells,
                   obs_wells,
                   t = set_units(t_years,'year')) %>%
   mutate(K = K, D = D, V = V,
-         along_stream_distance = abs(y2 - y1),
+         y_diff = abs(y2 - y1),
          id = row_number())
 
 
 
-# locations <- tribble(~x1, ~along_stream_distance, ~`Obs. well`, ~`Pumping well`,
+# locations <- tribble(~x1, ~y_diff, ~`Obs. well`, ~`Pumping well`,
 #                      0.2, 1.5, "a", "c",
 #                      0.8, 1.5, "a", "d",
 #                      0.2, 0, "b", "c",
 #                      0.8, 0, "b", "d") %>%
 #   mutate(x2 = 0.5,
-#          across(all_of(c("x1", "x2", "along_stream_distance")),
+#          across(all_of(c("x1", "x2", "y_diff")),
 #                 function(x) set_units(x, "mi")), id = row_number())
 ```
 
