@@ -20,85 +20,241 @@ library(units)
 library(tibble)
 library(dplyr)
 library(ggplot2)
+library(sf)
 ```
 
 ## Introduction
 
-```{r define-parameters}
-# Times at which stream depletion will be evaluated
-times <- set_units(seq(1, 100), "day")
+This vignette develops a stream-depletion apportionment example from the
+package's spatial and pumping-schedule inputs. We begin with the inputs and
+functions that are currently available. At this stage, depletion is calculated
+using the distance to the closest stream reach. Later sections will distribute
+that depletion among the discretized stream reaches.
 
-# Aquifer properties
-K <- set_units(1e-5, "m/s")
-D <- set_units(50, "m")
-V <- 0.1
+## Define the pumping well
 
-# Distance from the pumping well to the stream
-x1 <- set_units(250, "m")
-```
+`pumping_wells` is an `sf` point object. Each pumping well has a unique
+`pump_id` and the aquifer properties associated with that well. Aquifer
+properties retain their physical units.
 
-We can run the stream depletion function either by inputting individual variables, like this:
-
-```{r}
-stream_depletion_fraction <- get_stream_depletion_fraction(
-  x1 = x1,
-  K = K,
-  D = D,
-  V = V,
-  t = times
+```{r pumping-wells}
+pumping_wells <- st_as_sf(
+  tibble(
+    pump_id = "pump_1",
+    x = 499800,
+    y = 4980050,
+    K = set_units(1e-5, "m/s"),
+    D = set_units(50, "m"),
+    V = 0.1
+  ),
+  coords = c("x", "y"),
+  crs = 32615
 )
 
-depletion <- tibble(
-  t = times,
-  stream_depletion_fraction = stream_depletion_fraction
+pumping_wells
+```
+
+## Define the pumping schedule and evaluation times
+
+`pumping_schedules` uses wide format. Its first column contains the schedule
+times, and every remaining column is named using a `pump_id` from
+`pumping_wells`. The pumping rate begins at its corresponding schedule time.
+
+This first example uses one constant pumping event of 500 cubic meters per day.
+We evaluate its response at the end of each of the following 100 days.
+
+```{r pumping-schedule}
+pumping_schedules <- tibble(
+  t = as.Date("2025-01-01"),
+  pump_1 = set_units(500, "m^3/day")
 )
 
-depletion
-```
-
-Alternatively, we can supply the parameters as named columns in a tibble:
-
-```{r}
-df <- tibble(
-  x1 = x1,
-  K = K,
-  D = D,
-  V = V,
-  t = times
+evaluation_times <- seq.Date(
+  from = pumping_schedules$t + 1,
+  by = "day",
+  length.out = 100
 )
 
-df$stream_depletion_fraction <-
-  get_stream_depletion_fraction(df)
-
-df
+pumping_schedules
+head(evaluation_times)
 ```
 
+## Define the stream network
 
-```{r}
-ggplot(df) + geom_line(aes(t, stream_depletion_fraction))
+`stream_reaches` is an `sf` line object with one row and one unique `reach_id`
+for each input stream reach. Here, two upstream reaches meet at a confluence
+and flow into a downstream reach.
+
+```{r stream-reaches}
+stream_reaches <- st_sf(
+  reach_id = c("upstream_1", "upstream_2", "downstream"),
+  geometry = st_sfc(
+    st_linestring(
+      matrix(c(500000, 4980200, 500150, 4980050), ncol = 2, byrow = TRUE)
+    ),
+    st_linestring(
+      matrix(c(500000, 4979900, 500150, 4980050), ncol = 2, byrow = TRUE)
+    ),
+    st_linestring(
+      matrix(c(500150, 4980050, 500350, 4979850), ncol = 2, byrow = TRUE)
+    ),
+    crs = 32615
+  )
+)
+
+ggplot() +
+  geom_sf(data = stream_reaches, linewidth = 1) +
+  geom_sf(data = pumping_wells, color = "red", size = 3) +
+  theme_minimal()
 ```
 
+## Prepare the spatial inputs
 
-## Convert the stream-depletion fraction to a depletion rate
+The spatial inputs can be supplied in any defined coordinate reference system.
+For distance-based calculations, they are transformed to one projected
+analysis CRS. Because `well_diam` was not supplied, the prepared pumping-well
+object assigns it a default value of zero meters.
 
-The `stream_depletion_fraction` variable describes depletion relative to the pumping rate. We will now calculate volumetric stream depletion, multiplying the fraction by pumping rate. In this example, the well pumps 500 cubic meters per day:
+The spatial-preparation function is currently internal. It will eventually be
+called by the public stream-depletion interface.
 
-```{r calculate-stream-depletion-rate}
-pumping_rate <- set_units(500, "m^3/day")
+```{r prepare-spatial-inputs}
+spatial_inputs <- isw:::.prepare_spatial_inputs(
+  pumping_wells,
+  stream_reaches
+)
 
-df <- df |>
+spatial_inputs$analysis_crs$Name
+spatial_inputs$pumping_wells$well_diam
+```
+
+## Discretize the stream network
+
+Each input reach is divided into model reaches that do not exceed the requested
+spacing. The active geometry remains a line segment, while `model_point`
+contains the point at the center of each model reach. `represented_length`
+records the actual stream length represented by that point.
+
+```{r discretize-stream-reaches}
+model_reaches <- isw:::.discretize_stream_reaches(
+  spatial_inputs$stream_reaches,
+  reach_spacing = set_units(100, "m")
+)
+
+model_reaches[c(
+  "reach_id",
+  "reach_part_id",
+  "model_reach_id",
+  "represented_length"
+)]
+```
+
+```{r plot-discretized-stream-network}
+ggplot() +
+  geom_sf(
+    data = spatial_inputs$stream_reaches,
+    color = "grey75",
+    linewidth = 3
+  ) +
+  geom_sf(
+    data = model_reaches,
+    aes(color = model_reach_id),
+    linewidth = 1.5
+  ) +
+  geom_sf(
+    data = model_reaches,
+    aes(geometry = model_point),
+    color = "black",
+    fill = "white",
+    shape = 21,
+    size = 2.5
+  ) +
+  geom_sf(
+    data = spatial_inputs$pumping_wells,
+    color = "red",
+    size = 3
+  ) +
+  labs(color = "Model reach") +
+  theme_minimal()
+```
+
+## Prepare the pumping response times
+
+The pumping schedule is converted into changes in pumping rate. Each nonzero
+change is then paired with the evaluation times at which it can affect stream
+depletion. `elapsed_time` is the time passed to the analytical response
+function.
+
+```{r prepare-pumping-response-times}
+pumping_response_times <- isw:::.get_pumping_response_times(
+  pumping_schedules,
+  spatial_inputs$pumping_wells,
+  evaluation_times
+)
+
+pumping_response_times
+```
+
+## Calculate depletion from the closest stream
+
+Before adding apportionment, we can reproduce the conventional analytical
+calculation by treating the closest reach as the single infinite stream. The
+distance is calculated from the pumping well to the original stream geometry.
+
+```{r closest-stream-distance}
+pump_to_reach_distances <- st_distance(
+  spatial_inputs$pumping_wells,
+  spatial_inputs$stream_reaches
+)
+
+distance_to_stream <- min(pump_to_reach_distances)
+distance_to_stream
+```
+
+The aquifer properties are joined to the pumping-event table using `pump_id`.
+The descriptive `distance_to_stream` variable is passed to the existing Glover
+kernel as its `x1` argument.
+
+```{r calculate-stream-depletion}
+df <- pumping_response_times |>
+  left_join(
+    st_drop_geometry(spatial_inputs$pumping_wells),
+    by = "pump_id"
+  ) |>
   mutate(
+    distance_to_stream = distance_to_stream,
+    stream_depletion_fraction = get_stream_depletion_fraction(
+      x1 = distance_to_stream,
+      K = K,
+      D = D,
+      V = V,
+      t = elapsed_time
+    ),
     stream_depletion_rate =
-      stream_depletion_fraction * pumping_rate
+      stream_depletion_fraction * pumping_rate_change
   )
 
-df
+df |>
+  select(
+    pump_id,
+    evaluation_time,
+    elapsed_time,
+    distance_to_stream,
+    stream_depletion_fraction,
+    stream_depletion_rate
+  )
 ```
 
-The `stream_depletion_rate` column retains units of cubic meters per day. Its values represent the modeled reduction in streamflow caused by pumping.
-
-
-
-```{r}
-ggplot(df) + geom_line(aes(t, stream_depletion_rate))
+```{r plot-stream-depletion}
+ggplot(df, aes(evaluation_time, stream_depletion_rate)) +
+  geom_line() +
+  labs(
+    x = "Evaluation time",
+    y = "Stream-depletion rate"
+  ) +
+  theme_minimal()
 ```
+
+This calculation uses only the closest stream distance and does not yet
+distribute depletion among the model reaches. The next step is to construct
+the pump--model-reach pairs needed for depletion apportionment.
