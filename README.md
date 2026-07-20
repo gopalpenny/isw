@@ -36,7 +36,7 @@ library(isw)
 Consider the following configuration of stream, pumping well, and
 observation well.
 
-![](man/figures/pumping_observation_wells_sm.png)
+![Example pumping and observation well configuration](man/figures/pumping_observation_wells_sm.png)
 
 Stream depletion and aquifer drawdown in this scenario can be modeled
 using the function `get_depletion_from_pumping` in this package.

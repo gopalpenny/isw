@@ -39,7 +39,7 @@ library(isw)
 
 Consider the following configuration of stream, pumping well, and observation well.
 
-![](man/figures/pumping_observation_wells_sm.png)
+![Example pumping and observation well configuration](man/figures/pumping_observation_wells_sm.png)
 
 ```{r include = FALSE, fig.width = 3, fig.height = 2, echo = FALSE}
 # library(png)

@@ -1,5 +1,5 @@
 pandoc: 3.6.2
-pkgdown: 2.1.1
+pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
   depletion-observation-example: depletion-observation-example.html
@@ -8,4 +8,4 @@ articles:
   ISW-reporting-scenarios: ISW-reporting-scenarios.html
   Stream-depletion-and-aquifer-drawdown: Stream-depletion-and-aquifer-drawdown.html
   stream-depletion-apportionment: stream-depletion-apportionment.html
-last_built: 2026-07-17T20:34Z
+last_built: 2026-07-20T15:29Z
