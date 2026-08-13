@@ -194,7 +194,7 @@ test_that("apportioned drawdown superimposes pumping and stream injection", {
       "evaluation_time",
       "pumping_drawdown",
       "stream_recovery",
-      "aquifer_drawdown"
+      "water_level_change"
     )
   )
   expect_equal(nrow(result), 3)
@@ -203,8 +203,8 @@ test_that("apportioned drawdown superimposes pumping and stream injection", {
   expect_equal(result$pumping_drawdown[[2]], expected_pumping_10)
   expect_equal(result$stream_recovery[[2]], expected_recovery_10)
   expect_equal(
-    result$aquifer_drawdown,
-    result$pumping_drawdown - result$stream_recovery
+    result$water_level_change,
+    -result$pumping_drawdown + result$stream_recovery
   )
 })
 

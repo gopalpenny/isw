@@ -232,15 +232,16 @@ head(stream_injection_schedule)
 
 `get_apportioned_aquifer_drawdown()` superimposes two sets of Theis responses.
 Physical pumping wells produce positive drawdown at every observation well,
-while the segment injection wells produce positive stream recovery. The net
-`aquifer_drawdown` is pumping drawdown minus stream recovery.
+while the segment injection wells produce positive stream recovery.
+`water_level_change` is negative when pumping lowers the water level and
+positive when stream recovery raises it.
 
 The calculation remains separated by originating pump, observation well, and
 evaluation time. Supplying the schedule calculated above avoids repeating the
 stream-depletion calculation and uses exactly the inspected injection grid.
 
 ```{r calculate-apportioned-aquifer-drawdown}
-aquifer_drawdown <- get_apportioned_aquifer_drawdown(
+water_level_changes <- get_apportioned_aquifer_drawdown(
   pumping_wells,
   pumping_schedules,
   observation_wells,
@@ -249,21 +250,20 @@ aquifer_drawdown <- get_apportioned_aquifer_drawdown(
   stream_injection_schedule = stream_injection_schedule
 )
 
-aquifer_drawdown
+water_level_changes
 ```
 
 ```{r plot-apportioned-aquifer-drawdown}
-aquifer_drawdown |>
-  select(
-    pump_id,
-    observation_id,
-    evaluation_time,
-    pumping_drawdown,
-    stream_recovery,
-    aquifer_drawdown
+water_level_changes |>
+  mutate(
+    pumping_water_level_change = -pumping_drawdown
   ) |>
   tidyr::pivot_longer(
-    cols = c(pumping_drawdown, stream_recovery, aquifer_drawdown),
+    cols = c(
+      pumping_water_level_change,
+      stream_recovery,
+      water_level_change
+    ),
     names_to = "component",
     values_to = "water_level"
   ) |>
@@ -272,7 +272,7 @@ aquifer_drawdown |>
   facet_grid(observation_id ~ pump_id) +
   labs(
     x = "Evaluation time",
-    y = "Water-level response",
+    y = "Water-level change",
     color = "Component"
   ) +
   theme_minimal()

@@ -45,8 +45,8 @@ A tibble with one row per `pump_id`, `observation_id`, and
   `evaluation_time`. `pumping_drawdown` is the positive decline caused by
   the physical pumping well, `stream_recovery` is the positive water-level
   recovery caused by its apportioned stream injection wells, and
-  `aquifer_drawdown` is `pumping_drawdown - stream_recovery`. All three
-  retain length units.
+  `water_level_change` is `-pumping_drawdown + stream_recovery`, so declines
+  are negative and rises are positive. All three retain length units.
 }
 \description{
 Calculate observation-well drawdown from physical pumping wells and recovery
@@ -65,8 +65,13 @@ length instead of increasing without bound at a point source.
 Both pumping and injection responses use the infinite-aquifer
 [get_aquifer_drawdown_ratio()] kernel. No image well is included because the
 apportioned stream injection explicitly represents the stream contribution.
+`pumping_drawdown` and `stream_recovery` are positive component magnitudes.
+The signed net response is `water_level_change = -pumping_drawdown +
+stream_recovery`; negative values indicate falling water levels and positive
+values indicate rising water levels.
+
 Results remain pump-specific so users can inspect individual contributions
-or sum `aquifer_drawdown` across pumps by observation and evaluation time.
+or sum `water_level_change` across pumps by observation and evaluation time.
 
 The internal injection grid always includes pumping-schedule times through
 the final evaluation time, even when results are requested less frequently.

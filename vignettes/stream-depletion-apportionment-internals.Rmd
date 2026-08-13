@@ -568,7 +568,7 @@ The final ADF modeling step calculates direct pumping drawdown, recovery caused
 by the equivalent stream injections, and their net effect.
 
 ```{r calculate-apportioned-aquifer-drawdown}
-aquifer_drawdown <- get_apportioned_aquifer_drawdown(
+water_level_changes <- get_apportioned_aquifer_drawdown(
   pumping_wells,
   pumping_schedules,
   observation_wells,
@@ -577,7 +577,7 @@ aquifer_drawdown <- get_apportioned_aquifer_drawdown(
   stream_injection_schedule = stream_injection_schedule
 )
 
-aquifer_drawdown
+water_level_changes
 ```
 
 ### What happens inside `get_apportioned_aquifer_drawdown()`
@@ -644,8 +644,6 @@ interval injection schedule to changes in injection rate. Injection events are
 kept in this compact form because there is one event series for every pump and
 reach segment. During the drawdown calculation, each evaluation time is paired
 with its earlier injection events and their elapsed times are calculated then.
-The two outputs are used separately to calculate pumping drawdown and stream
-recovery; they are not compared with each other.
 
 If `stream_injection_schedule = NULL`, the function constructs one internally.
 In that case, optional `injection_times` may refine its time grid. The two
@@ -678,11 +676,12 @@ responses from all earlier injection events assigned to that pump. Both use
 the aquifer properties `K`, `D`, and `V` of the originating pumping well.
 
 `pumping_drawdown` and `stream_recovery` are reported as positive magnitudes.
-The net result is
+`water_level_change` uses a signed convention in which falling water levels are
+negative and rising water levels are positive:
 
 \[
-\text{aquifer_drawdown} =
-\text{pumping_drawdown} - \text{stream_recovery}.
+\text{water_level_change} =
+-\text{pumping_drawdown} + \text{stream_recovery}.
 \]
 
 Results remain separated by `pump_id` and `observation_id`, allowing users to
@@ -691,17 +690,16 @@ evaluation times, injection-grid resolution, pumping-well diameter, and
 aquifer properties are therefore the main choices controlling this step.
 
 ```{r plot-apportioned-aquifer-drawdown}
-aquifer_drawdown |>
-  select(
-    pump_id,
-    observation_id,
-    evaluation_time,
-    pumping_drawdown,
-    stream_recovery,
-    aquifer_drawdown
+water_level_changes |>
+  mutate(
+    pumping_water_level_change = -pumping_drawdown
   ) |>
   tidyr::pivot_longer(
-    cols = c(pumping_drawdown, stream_recovery, aquifer_drawdown),
+    cols = c(
+      pumping_water_level_change,
+      stream_recovery,
+      water_level_change
+    ),
     names_to = "component",
     values_to = "water_level"
   ) |>
@@ -710,7 +708,7 @@ aquifer_drawdown |>
   facet_grid(observation_id ~ pump_id) +
   labs(
     x = "Evaluation time",
-    y = "Water-level response",
+    y = "Water-level change",
     color = "Component"
   ) +
   theme_minimal()
