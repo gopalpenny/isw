@@ -468,6 +468,17 @@ ggplot(
 In order to estimate aquifer drawdown, we represent stream depletion as
 injection wells. Each reach segment becomes an equivalent injection well whose
 schedule is derived from the stream depletion apportioned to that segment.
+This is a mathematical representation of stream water entering the aquifer,
+not a physical injection operation. It allows the package to calculate the
+recovery caused by stream capture with the same analytical well-response
+framework used to calculate pumping drawdown.
+
+The schedule describes a piecewise-constant injection rate for every
+`pump_id`--`reach_segment_id` pair. Each row gives the start and end of an
+interval and the injection rate applied at that segment's `model_point` during
+the interval. Keeping `pump_id` identifies which pumping well caused that
+portion of stream depletion and determines which aquifer properties are used
+for the resulting recovery response.
 
 ```{r construct-stream-injection-schedule}
 stream_injection_schedule <- get_stream_injection_schedule(
@@ -480,6 +491,16 @@ stream_injection_schedule <- get_stream_injection_schedule(
 head(stream_injection_schedule)
 ```
 
+The functions and intermediate objects in this step have distinct roles:
+
+| Function or object | What it represents | Why it is important |
+|:-------------------|:-------------------|:--------------------|
+| `get_stream_injection_schedule()` | The complete conversion from apportioned depletion to interval injection rates. | It produces the user-facing schedule that can be inspected, reused, or passed to `get_apportioned_aquifer_drawdown()`. |
+| `.get_stream_injection_times()` and `injection_grid` | The set of times used to start and end injection intervals, represented both in the user's time format and as elapsed days. | The spacing of these times controls the temporal resolution of the piecewise-constant approximation. |
+| `get_apportioned_stream_depletion()` and `depletion_at_injection_times` | The depletion rate for every pump and reach segment at every time in `injection_grid`. | These endpoint values provide the rates from which each interval's injection is approximated. |
+| `.get_interval_average_injection_schedule()` and `internal_injection_schedule` | One constant injection rate for every pump, segment, and time interval. | This is the schedule format that connects segment-level stream depletion to equivalent injection at each `model_point`. |
+| `.get_injection_rate_changes()` and `injection_rate_changes` | Nonzero changes between consecutive interval injection rates. | The aquifer-drawdown calculation superimposes the response to these change events through time. |
+
 ### What happens inside `get_stream_injection_schedule()`
 
 #### 1. Construct the injection time grid
@@ -487,6 +508,10 @@ head(stream_injection_schedule)
 The internal grid combines every requested evaluation time with all
 pumping-schedule times through the final evaluation. Each time starts a new
 injection interval, except the final time, which closes the last interval.
+Including pumping-schedule times ensures that a change in pumping begins a new
+interval even when results are requested less frequently. If the first
+evaluation occurs after pumping begins, the first pumping-schedule time is also
+included and depletion is assumed to be zero at that initial time.
 
 ```{r injection-time-grid}
 injection_grid <- isw:::.get_stream_injection_times(
@@ -495,7 +520,12 @@ injection_grid <- isw:::.get_stream_injection_times(
   injection_times = NULL
 )
 
-injection_grid$injection_times
+tibble(
+  component = names(injection_grid),
+  number_of_times = lengths(injection_grid)
+)
+head(injection_grid$injection_times)
+tail(injection_grid$injection_times)
 ```
 
 #### 2. Approximate continuously changing depletion by intervals
@@ -503,7 +533,10 @@ injection_grid$injection_times
 Depletion is evaluated at the start and end of each interval. The negative
 arithmetic mean of those two depletion rates becomes the constant injection
 rate for that interval. The negative sign represents water entering the
-aquifer from the stream.
+aquifer from the stream, opposite to the sign used for pumping. Averaging the
+two endpoint rates approximates the continuously changing depletion between
+them; geometrically, it is the interval's trapezoidal-average rate. Shorter
+intervals follow changes in depletion more closely.
 
 ```{r internal-injection-schedule}
 depletion_at_injection_times <- get_apportioned_stream_depletion(
@@ -512,6 +545,8 @@ depletion_at_injection_times <- get_apportioned_stream_depletion(
   stream_apportionment,
   injection_grid$injection_times
 )
+
+head(depletion_at_injection_times)
 
 internal_injection_schedule <-
   isw:::.get_interval_average_injection_schedule(
@@ -526,6 +561,13 @@ injection_rate_changes <- isw:::.get_injection_rate_changes(
 head(internal_injection_schedule)
 head(injection_rate_changes)
 ```
+
+The first table is the schedule returned to the user. The second converts
+successive interval rates into changes at each `interval_start`. Those change
+events are what the drawdown calculation superimposes through time at the
+segment `model_point`. Thus, `get_stream_injection_schedule()` translates a
+time series of segment-level stream depletion into an equivalent set of
+injection-well events, but it does not itself calculate aquifer recovery.
 
 Optional `injection_times` add times at which new intervals start, creating a
 finer piecewise-constant approximation. They do not change the requested
