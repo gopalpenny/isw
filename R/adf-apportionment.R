@@ -238,6 +238,7 @@ get_stream_reach_apportionment <- function(
     "pump_id",
     "reach_id",
     "reach_segment_id",
+    "represented_length",
     "pump_to_reach_distance",
     "apportionment_fraction"
   )
@@ -270,6 +271,23 @@ get_stream_reach_apportionment <- function(
     stop(
       "stream_apportionment must contain one row per ",
       "pump_id and reach_segment_id pair."
+    )
+  }
+
+  check_dimensionality(
+    stream_apportionment$represented_length,
+    desired_units = "m",
+    variable_name = "stream_apportionment$represented_length"
+  )
+
+  if (any(!is.finite(as.numeric(
+    stream_apportionment$represented_length
+  ))) || any(as.numeric(
+    stream_apportionment$represented_length
+  ) <= 0)) {
+    stop(
+      "stream_apportionment$represented_length must contain finite, ",
+      "positive values."
     )
   }
 

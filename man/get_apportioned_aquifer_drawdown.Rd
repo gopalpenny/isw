@@ -57,7 +57,10 @@ Physical pumping-well responses use the pumping schedule directly. Stream
 depletion assigned to each reach segment is represented as injection at the
 segment's along-line `model_point`. The injection schedule is constructed by
 [get_stream_injection_schedule()] and uses the aquifer properties associated
-with the originating `pump_id`.
+with the originating `pump_id`. Each injection point uses the segment's
+`represented_length` as its effective well diameter. Thus, the analytical
+response is held constant inside a radius of half the represented stream
+length instead of increasing without bound at a point source.
 
 Both pumping and injection responses use the infinite-aquifer
 [get_aquifer_drawdown_ratio()] kernel. No image well is included because the

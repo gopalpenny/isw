@@ -10,7 +10,11 @@ vignette: >
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  fig.width = 10,
+  fig.height = 5.5,
+  out.width = "100%",
+  fig.align = "center"
 )
 ```
 
@@ -345,7 +349,10 @@ head(stream_injection_schedule)
 `get_apportioned_aquifer_drawdown()` calculates the direct Theis response from
 each physical pumping well to each observation well. It separately calculates
 the response from every segment model point using the injection-rate changes.
-Both calculations use the aquifer properties of the originating pump.
+Both calculations use the aquifer properties of the originating pump. The
+effective diameter of each injection well is its segment's
+`represented_length`, which holds the point-well response constant within
+half a segment length and avoids a singular response on the stream.
 
 Pumping drawdown and stream recovery are reported as positive magnitudes. Net
 aquifer drawdown is their difference. Results remain separated by pump and

@@ -208,6 +208,52 @@ test_that("apportioned drawdown superimposes pumping and stream injection", {
   )
 })
 
+test_that("stream injection diameter equals represented segment length", {
+  inputs <- make_drawdown_test_inputs()
+  stream_point <- sf::st_as_sf(
+    tibble::tibble(
+      observation_id = "on_stream",
+      x = 100,
+      y = 0
+    ),
+    coords = c("x", "y"),
+    crs = 32615
+  )
+  evaluation_time <- units::set_units(10, "days")
+  injection_schedule <- get_stream_injection_schedule(
+    inputs$pumping_wells,
+    inputs$pumping_schedules,
+    inputs$stream_apportionment,
+    evaluation_time
+  )
+  injection_events <- isw:::.get_injection_rate_changes(injection_schedule)
+
+  result <- get_apportioned_aquifer_drawdown(
+    inputs$pumping_wells,
+    inputs$pumping_schedules,
+    stream_point,
+    inputs$stream_apportionment,
+    evaluation_time,
+    stream_injection_schedule = injection_schedule
+  )
+
+  expected_ratio <- isw:::.theis_aquifer_drawdown_ratio(
+    distance = units::set_units(0, "m"),
+    K = inputs$pumping_wells$K,
+    D = inputs$pumping_wells$D,
+    V = inputs$pumping_wells$V,
+    t = evaluation_time,
+    well_diam = inputs$stream_apportionment$represented_length
+  )
+  expected_recovery <- units::set_units(
+    injection_events$injection_rate_change[[1]] * expected_ratio,
+    "m"
+  )
+
+  expect_true(is.finite(as.numeric(result$stream_recovery)))
+  expect_equal(result$stream_recovery, expected_recovery)
+})
+
 test_that("apportioned drawdown reuses a supplied injection schedule", {
   inputs <- make_drawdown_test_inputs()
   injection_schedule <- get_stream_injection_schedule(

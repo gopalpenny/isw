@@ -1,0 +1,277 @@
+---
+title: "Stream Segmentation and Drawdown at the Stream"
+output: rmarkdown::html_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 10,
+  fig.height = 5.5,
+  out.width = "100%",
+  fig.align = "center"
+)
+```
+
+```{r packages}
+library(isw)
+library(units)
+library(tibble)
+library(dplyr)
+library(ggplot2)
+library(sf)
+```
+
+## Purpose
+
+The apportioned drawdown model represents stream depletion as injection at
+one point per modeled stream segment. A zero-diameter point well has an
+unbounded analytical response at zero distance and can therefore produce an
+artificially large recovery value at an observation point on the stream.
+
+`get_apportioned_aquifer_drawdown()` regularizes this response by assigning
+each injection well an effective diameter equal to the segment's actual
+`represented_length`. The response is consequently held constant inside a
+radius of half that length. This vignette examines the remaining sensitivity
+to stream-segment spacing:
+
+* at several fixed observation points on the stream; and
+* along perpendicular transects extending away from the stream.
+
+The model reports water-level change, not absolute hydraulic head. Therefore,
+`aquifer_drawdown = 0` is the relevant constant-head boundary condition at the
+stream. The effective-diameter approach limits a numerical artifact but does
+not enforce that boundary condition. A nonzero result at the stream is a
+boundary residual and motivates a future coupled solution for the injection
+rates.
+
+## Construct a controlled straight-stream example
+
+A straight stream makes distance from the boundary unambiguous. The pumping
+well is 400 m east of the stream, and the 2 km stream is long enough to reduce
+end effects near the observation transects. All coordinates are in meters in
+a projected CRS.
+
+```{r model-inputs}
+analysis_crs <- 32615
+
+pumping_wells <- st_as_sf(
+  tibble(
+    pump_id = "pump_1",
+    x = 400,
+    y = 0,
+    K = set_units(10, "m/day"),
+    D = set_units(30, "m"),
+    V = 0.15,
+    well_diam = set_units(0.3, "m")
+  ),
+  coords = c("x", "y"),
+  crs = analysis_crs
+)
+
+stream_reaches <- st_sf(
+  reach_id = "straight_stream",
+  geometry = st_sfc(
+    st_linestring(matrix(c(0, -1000, 0, 1000), ncol = 2, byrow = TRUE)),
+    crs = analysis_crs
+  )
+)
+
+pumping_schedules <- tibble(
+  t = set_units(c(0, 180), "days"),
+  pump_1 = set_units(c(500, 0), "m^3/day")
+)
+evaluation_times <- set_units(c(30, 90, 180), "days")
+injection_times <- set_units(seq(10, 170, by = 10), "days")
+```
+
+## Place observations on the stream and along transects
+
+The fixed on-stream locations do not depend on the segmentation. This avoids
+moving the diagnostic points when segment spacing changes. Three transects
+start at the stream and extend toward the pumping well. Their zero-distance
+points are also on-stream observations.
+
+```{r observation-grid}
+on_stream <- tibble(
+  observation_id = paste0("stream_y_", c("m500", "0", "p500")),
+  transect = "on-stream checks",
+  distance_from_stream = 0,
+  x = 0,
+  y = c(-500, 0, 500)
+)
+
+transects <- tidyr::expand_grid(
+  transect_y = c(-500, 0, 500),
+  distance_from_stream = c(0, 25, 50, 100, 200, 400, 800)
+) |>
+  mutate(
+    observation_id = paste0("transect_", transect_y, "_x_", distance_from_stream),
+    transect = paste0("y = ", transect_y, " m"),
+    x = distance_from_stream,
+    y = transect_y
+  ) |>
+  select(observation_id, transect, distance_from_stream, x, y)
+
+observation_table <- bind_rows(on_stream, transects) |>
+  distinct(observation_id, .keep_all = TRUE)
+
+observation_wells <- st_as_sf(
+  observation_table,
+  coords = c("x", "y"),
+  crs = analysis_crs
+)
+
+ggplot() +
+  geom_sf(data = stream_reaches, color = "steelblue", linewidth = 1) +
+  geom_sf(data = observation_wells, aes(color = transect), size = 1.8) +
+  geom_sf(data = pumping_wells, color = "firebrick", size = 3) +
+  coord_sf(xlim = c(-50, 850), ylim = c(-1050, 1050)) +
+  labs(color = "Observation set") +
+  theme_minimal()
+```
+
+## Run several stream-segment spacings
+
+The target spacings below create progressively denser injection points.
+`sample_spacing` is kept at one quarter of `reach_spacing` so the stream-web
+apportionment is refined at the same time. The injection time grid is held
+fixed across runs, separating spatial from temporal sensitivity.
+
+```{r run-spacing-scenarios}
+segment_spacings <- c(200, 100, 50, 20, 10)
+
+run_spacing <- function(spacing_m) {
+  stream_apportionment <- get_stream_reach_apportionment(
+    pumping_wells,
+    stream_reaches,
+    reach_spacing = set_units(spacing_m, "m"),
+    sample_spacing = set_units(spacing_m / 4, "m"),
+    method = "web_squared",
+    analysis_crs = analysis_crs
+  )
+
+  drawdown <- get_apportioned_aquifer_drawdown(
+    pumping_wells,
+    pumping_schedules,
+    observation_wells,
+    stream_apportionment,
+    evaluation_times,
+    injection_times = injection_times
+  )
+
+  drawdown |>
+    left_join(st_drop_geometry(observation_wells), by = "observation_id") |>
+    mutate(
+      segment_spacing_m = spacing_m,
+      number_of_segments = n_distinct(stream_apportionment$reach_segment_id),
+      aquifer_drawdown_m = drop_units(set_units(aquifer_drawdown, "m"))
+    )
+}
+
+sensitivity_results <- bind_rows(lapply(segment_spacings, run_spacing))
+
+sensitivity_results |>
+  distinct(segment_spacing_m, number_of_segments)
+```
+
+## Inspect the stream boundary residual
+
+Ideally, net drawdown is zero everywhere on a constant-head stream. This plot
+shows the modeled residual at fixed stream locations. Comparing curves reveals
+whether the result is converging as the stream representation is refined. A
+logarithmic y-axis separates the small positive residuals; zero itself cannot
+be displayed on this scale.
+
+```{r plot-on-stream-residual}
+sensitivity_results |>
+  filter(transect == "on-stream checks") |>
+  ggplot(aes(
+    evaluation_time,
+    aquifer_drawdown_m,
+    color = factor(segment_spacing_m),
+    group = segment_spacing_m
+  )) +
+  geom_line() +
+  geom_point() +
+  scale_y_log10() +
+  facet_wrap(~observation_id) +
+  labs(
+    x = "Time since pumping began",
+    y = "Net drawdown (m, log scale)",
+    color = "Segment spacing (m)"
+  ) +
+  theme_minimal()
+```
+
+A compact diagnostic is the largest absolute on-stream residual for each
+scenario and evaluation time.
+
+```{r summarize-on-stream-residual}
+stream_residual_summary <- sensitivity_results |>
+  filter(transect == "on-stream checks") |>
+  group_by(segment_spacing_m, number_of_segments, evaluation_time) |>
+  summarize(
+    maximum_absolute_residual_m = max(abs(aquifer_drawdown_m)),
+    .groups = "drop"
+  )
+
+stream_residual_summary
+```
+
+## Inspect drawdown away from the stream
+
+The transect profiles show how the modeled boundary residual relates to
+drawdown within the aquifer. The final evaluation time is used here for a
+readable spatial comparison. The pumping well lies at 400 m on the middle
+transect, so its finite physical diameter also prevents a point singularity.
+The logarithmic y-axis makes both the small near-stream response and larger
+drawdown near the pumping well visible in the same figure.
+
+```{r plot-transect-profiles}
+final_time <- max(evaluation_times)
+
+sensitivity_results |>
+  filter(
+    transect != "on-stream checks",
+    evaluation_time == final_time
+  ) |>
+  ggplot(aes(
+    distance_from_stream,
+    aquifer_drawdown_m,
+    color = factor(segment_spacing_m),
+    group = segment_spacing_m
+  )) +
+  geom_line() +
+  geom_point() +
+  scale_y_log10() +
+  facet_wrap(~transect) +
+  labs(
+    x = "Distance east of stream (m)",
+    y = "Net drawdown (m, log scale)",
+    color = "Segment spacing (m)"
+  ) +
+  theme_minimal()
+```
+
+## Interpretation
+
+The effective injection diameter should be understood as a spatial
+regularization tied to the length represented by each point. It makes values
+at and near an injection point finite and makes the assumed support of the
+point response change consistently with segment density.
+
+The most useful convergence checks are:
+
+1. whether the maximum absolute on-stream residual decreases or stabilizes as
+   segment spacing is reduced; and
+2. whether the off-stream transect profiles become insensitive to further
+   refinement.
+
+Neither result guarantees a constant-head boundary. Injection rates are still
+assigned from apportioned stream depletion and are not solved simultaneously
+to make net drawdown zero at all stream collocation points. Enforcing that
+condition requires the coupled response-matrix approach described in the
+introduction; the residuals calculated here provide direct diagnostics for
+designing and testing that extension.

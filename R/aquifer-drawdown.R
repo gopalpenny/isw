@@ -1,7 +1,7 @@
 # TODO: Before finalizing apportioned aquifer drawdown, review the
 # interval-average temporal approximation, use of one model_point injection
-# well per reach segment, zero injection-well diameter, convergence with reach
-# and evaluation-time spacing, and the pump-specific output structure.
+# well per reach segment, convergence with reach and evaluation-time spacing,
+# and the pump-specific output structure.
 # TODO: Review the optional stream_injection_schedule interface, including its
 # continuous-coverage validation, whether externally supplied schedules should
 # permit additional metadata, and opportunities to cache or reuse internally
@@ -690,7 +690,10 @@ get_stream_injection_schedule <- function(
 #' depletion assigned to each reach segment is represented as injection at the
 #' segment's along-line `model_point`. The injection schedule is constructed by
 #' [get_stream_injection_schedule()] and uses the aquifer properties associated
-#' with the originating `pump_id`.
+#' with the originating `pump_id`. Each injection point uses the segment's
+#' `represented_length` as its effective well diameter. Thus, the analytical
+#' response is held constant inside a radius of half the represented stream
+#' length instead of increasing without bound at a point source.
 #'
 #' Both pumping and injection responses use the infinite-aquifer
 #' [get_aquifer_drawdown_ratio()] kernel. No image well is included because the
@@ -806,6 +809,7 @@ get_apportioned_aquifer_drawdown <- function(
   injection_points <- sf::st_sf(
     pump_id = stream_apportionment$pump_id,
     reach_segment_id = stream_apportionment$reach_segment_id,
+    well_diam = stream_apportionment$represented_length,
     geometry = sf::st_transform(
       stream_apportionment$model_point,
       analysis_crs
@@ -929,7 +933,9 @@ get_apportioned_aquifer_drawdown <- function(
             D = prepared_pumping_wells$D[[pump_row]],
             V = prepared_pumping_wells$V[[pump_row]],
             t = elapsed_time,
-            well_diam = units::set_units(0, "m")
+            well_diam = injection_points$well_diam[
+              matched_injection_rows
+            ]
           )
           stream_change <- units::set_units(
             sum(
