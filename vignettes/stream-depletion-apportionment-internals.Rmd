@@ -114,7 +114,10 @@ pumping_schedules
 The schedule must be in wide format. Its first column is `t`, and every other
 column name must exactly match one `pump_id`. Times must increase strictly,
 and pumping rates must have flow units. A row's rates remain in effect until
-the next row.
+the next row. The rates in the final row continue indefinitely; the package
+does not assume that pumping stops after the final schedule time. To represent
+a shutdown, users must include a final row that sets the applicable pumping
+rates to zero, as this example does on 2025-04-01.
 
 Internally, `Date` values and unit-bearing relative times are normalized to
 elapsed days. The original representation is restored in the returned output.
@@ -374,10 +377,12 @@ stream_depletion
 
 #### 1. Convert scheduled rates to change events
 
-Analytical responses are linear, so intermittent pumping is represented by
-superposition of changes in pumping rate. The first scheduled rate is compared
-with zero pumping; later rates are compared with the preceding row. Exact zero
-changes are omitted.
+Analytical groundwater equations used in the package are linear and follow the
+principle of superposition. This allows an intermittent pumping schedule to be
+represented as a series of changes in pumping rate summed together. The first
+scheduled rate is treated as a change from zero pumping, and each later rate is
+compared with the preceding rate. Events with no change in pumping rate are
+omitted.
 
 ```{r pumping-rate-changes}
 pumping_rate_changes <- isw:::.get_pumping_rate_changes(
