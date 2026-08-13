@@ -29,20 +29,20 @@ library(sf)
 
 ## Purpose and scope
 
-This vignette follows the internal steps used to apportion stream depletion
-and calculate aquifer drawdown. It complements the public workflow in
-`vignette("stream-depletion-apportionment")`.
+This vignette repeats the workflow in
+`vignette("stream-depletion-apportionment")` in the same order. After each
+public function call, it opens that function to show the intermediate objects,
+calculations, and modeling choices involved.
 
-Functions called with `isw:::` are implementation details. They are shown to
-make the calculation transparent, but they may change without the compatibility
-guarantees associated with exported functions. Application code should
-normally call the exported functions demonstrated in the main vignette.
+Functions called with `isw:::` are implementation details. They are useful for
+understanding and diagnosing a calculation, but they may change without the
+compatibility guarantees associated with exported functions. Application code
+should normally use the public functions shown at the start of each section.
 
-## Inputs
+## Load the example spatial inputs
 
-The walkthrough uses the package's synthetic spatial inputs. There are two
-pumping wells, two observation wells, and three reaches that meet at a
-confluence.
+The walkthrough uses the same two pumping wells, three connected stream
+reaches, and two observation wells as the main vignette.
 
 ```{r spatial-inputs}
 pumping_wells <- example_pumping_wells
@@ -53,14 +53,47 @@ ggplot() +
   geom_sf(data = stream_reaches, color = "steelblue", linewidth = 1) +
   geom_sf(data = pumping_wells, color = "firebrick", size = 3) +
   geom_sf(data = observation_wells, color = "black", size = 3) +
+  geom_sf_text(data = pumping_wells, aes(label = pump_id), nudge_y = 25) +
+  geom_sf_text(
+    data = observation_wells,
+    aes(label = observation_id),
+    nudge_y = -25
+  ) +
   theme_minimal()
 ```
 
-The pumping schedule contains a constant interval, a rate reduction, and a
-shutdown for `pump_1`. `pump_2` starts later and then shuts down. Evaluation
-times are deliberately independent of these schedule boundaries.
+### What the spatial inputs control
 
-```{r temporal-inputs}
+`pumping_wells` supplies one point and one unique `pump_id` per physical well.
+It also supplies the hydraulic conductivity `K`, aquifer thickness `D`,
+drainable porosity `V`, and optional `well_diam` used by the analytical
+responses. Here, `well_diam` is 0.3 m for both wells.
+
+```{r inspect-pumping-wells}
+pumping_wells
+```
+
+`stream_reaches` supplies the line geometry to which depletion will be
+apportioned. The user supplies a unique `reach_id` for every input feature.
+The package later creates `reach_segment_id` values when it discretizes those
+features; users should not add that reserved column themselves.
+
+```{r inspect-stream-reaches}
+stream_reaches
+```
+
+`observation_wells` is needed only for aquifer drawdown. Each point has a
+unique `observation_id`. All spatial inputs must have a defined CRS, but they
+do not need to begin in the same CRS because the public functions transform
+copies to a common projected analysis CRS.
+
+## Define pumping schedules and evaluation times
+
+The temporal inputs are identical to those in the main vignette. Schedule
+times indicate changes in pumping rate; evaluation times indicate when output
+is requested.
+
+```{r pumping-schedule}
 pumping_schedules <- tibble(
   t = as.Date(c("2025-01-01", "2025-02-01", "2025-03-01", "2025-04-01")),
   pump_1 = set_units(c(500, 500, 300, 0), "m^3/day"),
@@ -68,35 +101,68 @@ pumping_schedules <- tibble(
 )
 
 evaluation_times <- seq.Date(
-  from = as.Date("2025-01-16"),
-  by = "15 days",
-  length.out = 8
+  from = pumping_schedules$t[1] + 1,
+  by = "day",
+  length.out = 120
 )
+
+pumping_schedules
 ```
 
-## Validate and prepare spatial inputs
+### What happens to the temporal inputs
 
-The public modeling functions first validate identifiers, geometry types,
-aquifer properties, physical units, and coordinate reference systems. The
-analysis requires projected coordinates because its distances must have
-linear units.
+The schedule must be in wide format. Its first column is `t`, and every other
+column name must exactly match one `pump_id`. Times must increase strictly,
+and pumping rates must have flow units. A row's rates remain in effect until
+the next row.
 
-`.select_analysis_crs()` finds a local UTM CRS from the combined spatial
-extent unless the user supplies another projected CRS. `.prepare_spatial_inputs()`
-then transforms copies of every object to that CRS, drops vertical coordinate
-dimensions, and supplies a zero-meter well diameter when none is given.
+Internally, `Date` values and unit-bearing relative times are normalized to
+elapsed days. The original representation is restored in public output.
+Evaluation times are independent of the schedule and may be more or less
+frequent. Passing `evaluation_times = NULL` to the modeling functions requests
+output at `pumping_schedules$t`.
+
+## Apportioning depletion among stream reaches
+
+The first public modeling step assigns a static fraction of each pump's
+eventual stream depletion to every modeled reach segment.
+
+```{r calculate-stream-apportionment}
+stream_apportionment <- get_stream_reach_apportionment(
+  pumping_wells,
+  stream_reaches,
+  reach_spacing = set_units(100, "m"),
+  sample_spacing = set_units(25, "m"),
+  method = "web_squared"
+)
+
+stream_apportionment[c(
+  "pump_id",
+  "reach_id",
+  "reach_segment_id",
+  "pump_to_reach_distance",
+  "apportionment_fraction"
+)]
+```
+
+### What happens inside `get_stream_reach_apportionment()`
+
+#### 1. Prepare a common analysis CRS
+
+The function validates the wells and reaches, selects a projected analysis
+CRS, transforms copies of the inputs, drops Z and M coordinates, and supplies
+a zero-meter diameter if `well_diam` is absent. By default, a local UTM CRS is
+selected from the combined spatial extent.
 
 ```{r prepare-spatial-inputs}
 analysis_crs <- isw:::.select_analysis_crs(
   pumping_wells,
-  stream_reaches,
-  observation_wells
+  stream_reaches
 )
 
 spatial_inputs <- isw:::.prepare_spatial_inputs(
   pumping_wells,
   stream_reaches,
-  observation_wells,
   analysis_crs = analysis_crs
 )
 
@@ -104,13 +170,18 @@ spatial_inputs$analysis_crs$Name
 spatial_inputs$pumping_wells$well_diam
 ```
 
-## Discretize the stream network
+Use `analysis_crs` in the public call when a particular projected CRS is
+required. This can be important when inputs span UTM zones or must align with
+another analysis. A geographic longitude-latitude CRS is not accepted because
+the model requires linear distances.
 
-`.discretize_stream_reaches()` divides each input reach into approximately
-equal segments whose lengths do not exceed `reach_spacing`. The active
-geometry remains the segment line. A second geometry column, `model_point`,
-stores the along-line midpoint later used as the location of the equivalent
-stream-injection well.
+#### 2. Discretize each input reach
+
+The function divides every reach into approximately equal segments no longer
+than `reach_spacing`. Each segment retains its parent `reach_id`, receives a
+generated `reach_segment_id`, and stores its actual `represented_length`.
+`model_point` is the along-line midpoint used later as the equivalent
+stream-injection location.
 
 ```{r discretize-stream-reaches}
 reach_segments <- isw:::.discretize_stream_reaches(
@@ -142,13 +213,19 @@ ggplot() +
   theme_minimal()
 ```
 
-## Generate points within each reach segment
+A smaller `reach_spacing` creates more model segments. This resolves the
+location and timing of depletion more finely, but it increases output size and
+the number of analytical responses. Segment lengths can be shorter than the
+requested maximum because each source line component is divided into equal
+parts.
 
-`generate_reach_sample_points()` represents the shape of each segment with
-points at the centers of equal-length intervals. `sampled_length` records how
-much stream length each point represents. This finer sampling geometry is used
-only to calculate spatial weights; it is distinct from the single `model_point`
-used in the drawdown model.
+#### 3. Generate integration points along the segments
+
+Each segment is divided again for the static spatial weighting calculation.
+`generate_reach_sample_points()` places one point at the center of each
+equal-length interval and records the interval as `sampled_length`. These
+points represent the shape of a segment; they are distinct from its single
+`model_point`.
 
 ```{r generate-reach-sample-points}
 sample_points <- generate_reach_sample_points(
@@ -180,45 +257,112 @@ ggplot() +
   theme_minimal()
 ```
 
-## Calculate static reach apportionment
+A smaller `sample_spacing` follows bends in the stream more closely when
+approximating the distance-weighted integral. It improves the static spatial
+approximation without increasing the number of reach segments returned by the
+model. Every segment receives at least one sample point.
 
-For each pump and sample point, web-squared apportionment is proportional to
-the point's represented length divided by squared pump-to-point distance.
-Point weights are normalized within each pump and then summed by reach
-segment. Zero-distance points receive special handling so division by zero
-cannot occur.
+#### 4. Weight points and aggregate them to segments
 
-`get_stream_reach_apportionment()` performs the preparation, discretization,
-sampling, weighting, and aggregation steps together. It also calculates the
-shortest distance from each pump to each segment line. That segment distance,
-rather than the sample-point distance, is supplied to the analytical response
-kernel.
+For sample point \(j\), the unnormalized weight is
 
-```{r stream-apportionment}
-stream_apportionment <- get_stream_reach_apportionment(
-  pumping_wells,
-  stream_reaches,
-  reach_spacing = set_units(100, "m"),
-  sample_spacing = set_units(25, "m"),
-  method = "web_squared"
+\[
+w_j = \frac{L_j}{d_j^p},
+\]
+
+where \(L_j\) is `sampled_length`, \(d_j\) is the pump-to-point distance, and
+\(p\) is 1 for `method = "web"` or 2 for `method = "web_squared"`. Weights are
+normalized separately for each pump and summed by `reach_segment_id`.
+
+`web_squared` concentrates weight more strongly near a pump; `web` produces a
+broader allocation. The optional `maximum_distance` excludes sample points
+beyond a specified distance. If it excludes every point for a pump, the
+function stops instead of silently returning an invalid allocation.
+
+`pump_to_reach_distance` is calculated separately as the shortest distance
+from the pump to the segment line. It does not depend on `sample_spacing` and
+is the distance passed to the time-dependent analytical response.
+
+The following code reproduces these calculations for `pump_1`. It exposes the
+point-level weights that the public function normally aggregates internally.
+The example has no zero-distance points and does not apply `maximum_distance`;
+the public function handles both cases before normalizing the weights.
+
+```{r inspect-point-weights}
+pump_1 <- spatial_inputs$pumping_wells[1, ]
+point_distances <- st_distance(pump_1, sample_points)[1, ]
+segment_distances <- st_distance(pump_1, reach_segments)[1, ]
+segment_distance_table <- tibble(
+  reach_segment_id = reach_segments$reach_segment_id,
+  pump_to_reach_distance = segment_distances
 )
 
+point_weight_table <- sample_points |>
+  st_drop_geometry() |>
+  mutate(
+    pump_to_point_distance = point_distances,
+    raw_weight = as.numeric(sampled_length) /
+      as.numeric(pump_to_point_distance)^2,
+    point_fraction = raw_weight / sum(raw_weight)
+  )
+
+segment_weight_table <- point_weight_table |>
+  group_by(reach_id, reach_segment_id) |>
+  summarize(
+    apportionment_fraction = sum(point_fraction),
+    .groups = "drop"
+  ) |>
+  left_join(segment_distance_table, by = "reach_segment_id")
+
+head(point_weight_table)
+segment_weight_table
+```
+
+Because each pump is apportioned independently, its fractions sum to one.
+
+```{r check-apportionment-balance}
 stream_apportionment |>
   st_drop_geometry() |>
   group_by(pump_id) |>
   summarize(
-    number_of_segments = n(),
-    total_fraction = sum(apportionment_fraction),
+    total_apportionment_fraction = sum(apportionment_fraction),
     .groups = "drop"
   )
 ```
 
-## Convert schedules to pumping events
+```{r plot-stream-apportionment}
+ggplot(stream_apportionment) +
+  geom_sf(aes(color = apportionment_fraction), linewidth = 2) +
+  geom_sf(data = pumping_wells, color = "firebrick", size = 2.5) +
+  facet_wrap(~pump_id) +
+  labs(color = "Apportionment\nfraction") +
+  theme_minimal()
+```
 
-Analytical response functions are linear, so intermittent pumping is handled
-by superposition of changes in pumping rate. `.get_pumping_rate_changes()`
-compares each scheduled rate with the preceding rate, assuming zero pumping
-before the first row. Exact zero changes are omitted.
+## Calculate apportioned stream depletion
+
+The next public call combines the static spatial allocation with the
+time-dependent Glover response to the pumping schedule.
+
+```{r calculate-apportioned-stream-depletion}
+stream_depletion <- get_apportioned_stream_depletion(
+  pumping_wells,
+  pumping_schedules,
+  stream_apportionment,
+  evaluation_times
+)
+
+stream_depletion
+```
+
+### What happens inside `get_apportioned_stream_depletion()`
+
+#### 1. Convert scheduled rates to change events
+
+Analytical responses are linear, so intermittent pumping is represented by
+superposition of changes in pumping rate. The first scheduled rate is compared
+with zero pumping; later rates are compared with the preceding row. Exact zero
+changes are omitted.
 
 ```{r pumping-rate-changes}
 pumping_rate_changes <- isw:::.get_pumping_rate_changes(
@@ -229,10 +373,11 @@ pumping_rate_changes <- isw:::.get_pumping_rate_changes(
 pumping_rate_changes
 ```
 
-`.get_pumping_response_times()` pairs every nonzero change with evaluation
-times strictly later than that event. It also calculates the positive elapsed
-time used by the analytical kernel. An event beginning exactly at an
-evaluation boundary has not yet produced a response at that boundary.
+#### 2. Pair events with later evaluations
+
+Every nonzero rate change is paired with evaluation times strictly later than
+the event, and elapsed time is calculated in days. A change beginning exactly
+at an evaluation time has not yet produced a response at that boundary.
 
 ```{r pumping-response-times}
 pumping_response_times <- isw:::.get_pumping_response_times(
@@ -244,12 +389,12 @@ pumping_response_times <- isw:::.get_pumping_response_times(
 head(pumping_response_times)
 ```
 
-## Evaluate analytical depletion fractions
+#### 3. Evaluate and reuse analytical fractions
 
-The Glover response depends on pump-to-stream distance, hydraulic diffusivity,
-and elapsed time. `.get_stream_depletion_fraction_lookup()` evaluates each
-unique pump, segment, and elapsed-time combination once. Repeated event rows
-can then reuse the lookup rather than recalculating the same analytical value.
+The Glover stream-depletion fraction depends on the pump's aquifer properties,
+its shortest distance to a reach segment, and elapsed time. The function
+evaluates every unique pump--segment--elapsed-time combination once and reuses
+the result for repeated event rows.
 
 ```{r depletion-fraction-lookup}
 depletion_fraction_lookup <- isw:::.get_stream_depletion_fraction_lookup(
@@ -261,51 +406,83 @@ depletion_fraction_lookup <- isw:::.get_stream_depletion_fraction_lookup(
 head(depletion_fraction_lookup)
 ```
 
-For each event and segment, the package multiplies the signed pumping-rate
-change by the analytical depletion fraction and the static apportionment
-fraction. Event contributions are then summed by pump, segment, and evaluation
-time. The exported function performs these joins and restores explicit zeroes
-for combinations without a contributing event.
+For event \(e\), pump \(p\), and segment \(s\), the contribution is
 
-```{r apportioned-stream-depletion}
-stream_depletion <- get_apportioned_stream_depletion(
+\[
+\Delta q_{p,s,e} = \Delta Q_{p,e} F_{p,s}(t_e) A_{p,s},
+\]
+
+where \(\Delta Q\) is the signed pumping-rate change, \(F\) is the analytical
+depletion fraction, and \(A\) is the static apportionment fraction. Earlier
+event contributions are summed by superposition. The output retains separate
+rows for every pump, evaluation time, and reach segment, including explicit
+zeroes where no earlier event contributes.
+
+The principal user choice at this stage is `evaluation_times`: a finer grid
+returns a smoother time series but creates more output rows and response
+combinations. It does not change the pumping schedule or static apportionment.
+
+```{r summarize-stream-depletion}
+total_stream_depletion <- stream_depletion |>
+  group_by(pump_id, evaluation_time) |>
+  summarize(
+    stream_depletion_rate = sum(stream_depletion_rate),
+    .groups = "drop"
+  )
+
+ggplot(
+  total_stream_depletion,
+  aes(evaluation_time, stream_depletion_rate, color = pump_id)
+) +
+  geom_line() +
+  labs(
+    x = "Evaluation time",
+    y = "Stream-depletion rate",
+    color = "Pumping well"
+  ) +
+  theme_minimal()
+```
+
+## Inspect the stream-injection schedule
+
+The public workflow next converts apportioned depletion into an equivalent
+stream-injection schedule for calculating aquifer recovery.
+
+```{r construct-stream-injection-schedule}
+stream_injection_schedule <- get_stream_injection_schedule(
   pumping_wells,
   pumping_schedules,
   stream_apportionment,
   evaluation_times
 )
 
-head(stream_depletion)
+head(stream_injection_schedule)
 ```
 
-## Construct the injection time grid
+### What happens inside `get_stream_injection_schedule()`
 
-Stream recovery is approximated with piecewise-constant injection at each
-segment model point. `.get_stream_injection_times()` combines pumping
-boundaries, evaluation times, and any optional refinement times. Pumping
-boundaries are retained even when output is requested less frequently.
+#### 1. Construct the injection time grid
+
+The internal grid combines every requested evaluation time with all
+pumping-schedule boundaries through the final evaluation. With no
+`injection_times` supplied, that union defines the interval boundaries.
 
 ```{r injection-time-grid}
-injection_times <- seq.Date(
-  from = pumping_schedules$t[1],
-  to = max(evaluation_times),
-  by = "10 days"
-)
-
 injection_grid <- isw:::.get_stream_injection_times(
   pumping_schedules,
   evaluation_times,
-  injection_times
+  injection_times = NULL
 )
 
 injection_grid$injection_times
 ```
 
-Depletion is evaluated at all injection boundaries. The negative arithmetic
-mean of adjacent endpoint rates becomes the constant injection rate for that
-interval. `.get_injection_rate_changes()` then converts consecutive interval
-rates to change events so the same superposition machinery can be used for
-injection and pumping.
+#### 2. Approximate continuously changing depletion by intervals
+
+Depletion is evaluated at the grid boundaries. For each interval, the negative
+arithmetic mean of its two endpoint depletion rates becomes a constant
+injection rate. The negative sign represents water entering the aquifer from
+the stream.
 
 ```{r internal-injection-schedule}
 depletion_at_injection_times <- get_apportioned_stream_depletion(
@@ -329,36 +506,22 @@ head(internal_injection_schedule)
 head(injection_rate_changes)
 ```
 
-The public function performs these steps and converts the internal elapsed-day
-boundaries back to the user's original time representation.
+Optional `injection_times` add boundaries and create a finer piecewise-constant
+approximation. They do not change the requested `evaluation_times`. This is the
+main convergence option for stream recovery: compare results obtained with
+progressively finer injection grids. Extra times outside the modeled period do
+not extend the calculation beyond its required bounds.
 
-```{r public-injection-schedule}
-stream_injection_schedule <- get_stream_injection_schedule(
-  pumping_wells,
-  pumping_schedules,
-  stream_apportionment,
-  evaluation_times,
-  injection_times = injection_times
-)
+Most users can let `get_apportioned_aquifer_drawdown()` create the schedule
+internally. Creating it explicitly is useful when it needs to be inspected,
+reused, or held fixed while other drawdown inputs are varied.
 
-head(stream_injection_schedule)
-```
+## Estimate aquifer drawdown and stream recovery
 
-## Superimpose pumping drawdown and stream recovery
+The final public call calculates direct pumping drawdown, recovery caused by
+the equivalent stream injections, and their net effect.
 
-`get_apportioned_aquifer_drawdown()` calculates the direct Theis response from
-each physical pumping well to each observation well. It separately calculates
-the response from every segment model point using the injection-rate changes.
-Both calculations use the aquifer properties of the originating pump. The
-effective diameter of each injection well is its segment's
-`represented_length`, which holds the point-well response constant within
-half a segment length and avoids a singular response on the stream.
-
-Pumping drawdown and stream recovery are reported as positive magnitudes. Net
-aquifer drawdown is their difference. Results remain separated by pump and
-observation well so users can inspect contributions before aggregating them.
-
-```{r apportioned-aquifer-drawdown}
+```{r calculate-apportioned-aquifer-drawdown}
 aquifer_drawdown <- get_apportioned_aquifer_drawdown(
   pumping_wells,
   pumping_schedules,
@@ -368,10 +531,108 @@ aquifer_drawdown <- get_apportioned_aquifer_drawdown(
   stream_injection_schedule = stream_injection_schedule
 )
 
-head(aquifer_drawdown)
+aquifer_drawdown
 ```
 
-```{r plot-aquifer-drawdown}
+### What happens inside `get_apportioned_aquifer_drawdown()`
+
+#### 1. Create physical and equivalent well geometries
+
+Pumping and observation wells are transformed to the projected CRS stored by
+`stream_apportionment`. Direct pumping distances are measured from each
+physical pumping well to each observation well. Each reach segment's
+`model_point` becomes an equivalent injection well, and its distance to every
+observation well is calculated.
+
+The physical response uses the user-supplied pumping-well diameter. An
+injection point instead uses its segment's `represented_length` as an effective
+diameter. This holds the point-well response constant inside half a segment
+length and prevents a singular response at the stream.
+
+These intermediate geometries and distance matrices can be constructed and
+inspected directly:
+
+```{r prepare-drawdown-geometries}
+drawdown_crs <- st_crs(stream_apportionment)
+prepared_pumping_wells <- pumping_wells |>
+  st_zm(drop = TRUE, what = "ZM") |>
+  st_transform(drawdown_crs)
+prepared_observation_wells <- observation_wells |>
+  st_zm(drop = TRUE, what = "ZM") |>
+  st_transform(drawdown_crs)
+
+injection_points <- st_sf(
+  pump_id = stream_apportionment$pump_id,
+  reach_segment_id = stream_apportionment$reach_segment_id,
+  well_diam = stream_apportionment$represented_length,
+  geometry = st_transform(stream_apportionment$model_point, drawdown_crs)
+)
+
+pump_to_observation_distances <- st_distance(
+  prepared_pumping_wells,
+  prepared_observation_wells
+)
+injection_to_observation_distances <- st_distance(
+  injection_points,
+  prepared_observation_wells
+)
+
+pump_to_observation_distances
+head(injection_points)
+head(injection_to_observation_distances)
+```
+
+#### 2. Convert pumping and injection schedules to events
+
+Physical pumping uses the rate-change events demonstrated earlier. The stream
+schedule is also converted from interval rates to injection-rate changes so
+both responses can use the same superposition principle. Because this example
+supplies `stream_injection_schedule`, the function validates and reuses it
+rather than calculating depletion again.
+
+If `stream_injection_schedule = NULL`, the function constructs one internally.
+In that case, optional `injection_times` may refine its time grid. The two
+arguments cannot be supplied together because an explicit schedule already
+defines its own intervals.
+
+The physical and injection event tables used for superposition are therefore
+available for inspection as follows:
+
+```{r inspect-drawdown-events}
+physical_pumping_events <- isw:::.get_pumping_response_times(
+  pumping_schedules,
+  pumping_wells,
+  evaluation_times
+)
+stream_injection_events <- isw:::.get_injection_rate_changes(
+  stream_injection_schedule
+)
+
+head(physical_pumping_events)
+head(stream_injection_events)
+```
+
+#### 3. Evaluate Theis responses and combine them
+
+For every pump, observation well, and evaluation time, the function sums the
+Theis responses from all earlier physical pumping events. It separately sums
+responses from all earlier injection events assigned to that pump. Both use
+the aquifer properties `K`, `D`, and `V` of the originating pumping well.
+
+`pumping_drawdown` and `stream_recovery` are reported as positive magnitudes.
+The net result is
+
+\[
+\text{aquifer_drawdown} =
+\text{pumping_drawdown} - \text{stream_recovery}.
+\]
+
+Results remain separated by `pump_id` and `observation_id`, allowing users to
+inspect individual contributions or sum across pumps. Observation locations,
+evaluation times, injection-grid resolution, pumping-well diameter, and
+aquifer properties are therefore the main choices controlling this step.
+
+```{r plot-apportioned-aquifer-drawdown}
 aquifer_drawdown |>
   select(
     pump_id,
