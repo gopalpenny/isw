@@ -59,7 +59,7 @@ test_that("reach segments are sampled at along-line interval centers", {
     units::set_units(100, "m")
   )
 
-  sample_points <- sample_reach_segments(
+  sample_points <- generate_reach_sample_points(
     reach_segments,
     units::set_units(30, "m")
   )
@@ -98,7 +98,7 @@ test_that("sampling retains bent reach geometry", {
     stream_reaches,
     units::set_units(250, "m")
   )
-  sample_points <- sample_reach_segments(
+  sample_points <- generate_reach_sample_points(
     reach_segments,
     units::set_units(50, "m")
   )
@@ -313,11 +313,11 @@ test_that("sampling and apportionment inputs are validated", {
   )
 
   expect_error(
-    sample_reach_segments(reach_segments, 25),
+    generate_reach_sample_points(reach_segments, 25),
     "not a units object"
   )
   expect_error(
-    sample_reach_segments(
+    generate_reach_sample_points(
       reach_segments,
       units::set_units(0, "m")
     ),

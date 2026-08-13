@@ -142,16 +142,16 @@ ggplot() +
   theme_minimal()
 ```
 
-## Sample each reach segment
+## Generate points within each reach segment
 
-`sample_reach_segments()` represents the shape of each segment with points at
-the centers of equal-length intervals. `sampled_length` records how much
-stream length each point represents. This finer sampling geometry is used only
-to calculate spatial weights; it is distinct from the single `model_point`
+`generate_reach_sample_points()` represents the shape of each segment with
+points at the centers of equal-length intervals. `sampled_length` records how
+much stream length each point represents. This finer sampling geometry is used
+only to calculate spatial weights; it is distinct from the single `model_point`
 used in the drawdown model.
 
-```{r sample-reach-segments}
-sample_points <- sample_reach_segments(
+```{r generate-reach-sample-points}
+sample_points <- generate_reach_sample_points(
   reach_segments,
   sample_spacing = set_units(25, "m")
 )

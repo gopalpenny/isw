@@ -29,7 +29,8 @@
 #'
 #' @details
 #' Stream reaches are divided using [`.discretize_stream_reaches()`], and each
-#' reach segment is sampled using [sample_reach_segments()]. For sample point
+#' reach segment is represented using [generate_reach_sample_points()]. For
+#' sample point
 #' \eqn{j}, the unnormalized web weight is:
 #'
 #' \deqn{w_j = \frac{L_j}{d_j^p}}
@@ -112,7 +113,7 @@ get_stream_reach_apportionment <- function(
     spatial_inputs$stream_reaches,
     reach_spacing
   )
-  sample_points <- sample_reach_segments(
+  sample_points <- generate_reach_sample_points(
     reach_segments,
     sample_spacing
   )
