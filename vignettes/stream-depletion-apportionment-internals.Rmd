@@ -183,6 +183,14 @@ generated `reach_segment_id`, and stores its actual `represented_length`.
 `model_point` is the along-line midpoint used later as the equivalent
 stream-injection location.
 
+This creates three distinct spatial units in the ADF workflow:
+
+| Spatial object | Role in the analysis |
+|:---------------|:---------------------|
+| **Reach** | A user-supplied source geometry identified by `reach_id`. Reaches can be used to group or summarize results, but analytical responses are not calculated directly at this level. |
+| **Reach segment** | The primary ADF computational unit, created from each reach according to `reach_spacing`. Each pump--segment pair receives an `apportionment_fraction` and `pump_to_reach_distance`. Depletion is returned by segment; for drawdown, `model_point` becomes an equivalent injection well and `represented_length` becomes its effective diameter. |
+| **Sample point** | A temporary weighting location created within a segment according to `sample_spacing`. Its distance and `sampled_length` determine a web or web-squared weight. These weights are summed to the segment before time-dependent depletion and drawdown are calculated. |
+
 ```{r discretize-stream-reaches}
 reach_segments <- isw:::.discretize_stream_reaches(
   spatial_inputs$stream_reaches,
@@ -283,7 +291,11 @@ function stops instead of silently returning an invalid allocation.
 
 `pump_to_reach_distance` is calculated separately as the shortest distance
 from the pump to the segment line. It does not depend on `sample_spacing` and
-is the distance passed to the time-dependent analytical response.
+is used as the distance input to the Glover response in
+`get_apportioned_stream_depletion()`. It therefore controls the timing and
+magnitude of the segment's time-dependent depletion response. It is not used
+to calculate the static `apportionment_fraction`, which instead uses distances
+from the pump to all sample points.
 
 The following code reproduces these calculations for `pump_1`. It exposes the
 point-level weights that `get_stream_reach_apportionment()` normally aggregates.
