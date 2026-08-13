@@ -37,7 +37,7 @@ make_drawdown_test_inputs <- function() {
     pump_1 = units::set_units(c(100, 0), "m^3/day")
   )
   evaluation_times <- units::set_units(c(0, 10, 20), "days")
-  stream_apportionment <- get_stream_depletion_apportionment(
+  stream_apportionment <- get_stream_reach_apportionment(
     pumping_wells,
     stream_reaches,
     reach_spacing = units::set_units(100, "m"),

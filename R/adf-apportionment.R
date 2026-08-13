@@ -1,4 +1,4 @@
-#' Calculate stream-depletion apportionment
+#' Calculate stream-reach apportionment
 #'
 #' Discretize a stream network and calculate the static fraction of a pumping
 #' well's analytical stream depletion assigned to each reach segment.
@@ -84,7 +84,7 @@
 #'   )
 #' )
 #'
-#' stream_apportionment <- get_stream_depletion_apportionment(
+#' stream_apportionment <- get_stream_reach_apportionment(
 #'   pumping_wells,
 #'   stream_reaches,
 #'   reach_spacing = units::set_units(100, "m"),
@@ -99,7 +99,7 @@
 #' sum(stream_apportionment$apportionment_fraction)
 #'
 #' @export
-get_stream_depletion_apportionment <- function(
+get_stream_reach_apportionment <- function(
     pumping_wells,
     stream_reaches,
     reach_spacing,
@@ -441,7 +441,7 @@ get_stream_depletion_apportionment <- function(
 #' @param pumping_schedules A shared, wide-format pumping schedule accepted by
 #'   [`.validate_pumping_schedules()`].
 #' @param stream_apportionment An `sf` object returned by
-#'   [get_stream_depletion_apportionment()].
+#'   [get_stream_reach_apportionment()].
 #' @param evaluation_times Either `NULL`, a `Date` vector, or a `units` time
 #'   vector. When `NULL`, `pumping_schedules$t` is used.
 #'
@@ -494,7 +494,7 @@ get_stream_depletion_apportionment <- function(
 #'   )
 #' )
 #'
-#' stream_apportionment <- get_stream_depletion_apportionment(
+#' stream_apportionment <- get_stream_reach_apportionment(
 #'   pumping_wells,
 #'   stream_reaches,
 #'   reach_spacing = units::set_units(100, "m"),

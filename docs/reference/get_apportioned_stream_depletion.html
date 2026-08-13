@@ -96,7 +96,7 @@ apportionment object and pumping-schedule columns.</p></dd>
 
 <dt id="arg-stream-apportionment">stream_apportionment<a class="anchor" aria-label="anchor" href="#arg-stream-apportionment"></a></dt>
 <dd><p>An `sf` object returned by
-[get_stream_depletion_apportionment()].</p></dd>
+[get_stream_reach_apportionment()].</p></dd>
 
 
 <dt id="arg-evaluation-times">evaluation_times<a class="anchor" aria-label="anchor" href="#arg-evaluation-times"></a></dt>
@@ -155,7 +155,7 @@ returned, with zero depletion when no earlier pumping event contributes.</p>
 <span class="r-in"><span>  <span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">stream_apportionment</span> <span class="op">&lt;-</span> <span class="fu"><a href="get_stream_depletion_apportionment.html">get_stream_depletion_apportionment</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span><span class="va">stream_apportionment</span> <span class="op">&lt;-</span> <span class="fu"><a href="get_stream_reach_apportionment.html">get_stream_reach_apportionment</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="va">pumping_wells</span>,</span></span>
 <span class="r-in"><span>  <span class="va">stream_reaches</span>,</span></span>
 <span class="r-in"><span>  reach_spacing <span class="op">=</span> <span class="fu">units</span><span class="fu">::</span><span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">100</span>, <span class="st">"m"</span><span class="op">)</span>,</span></span>

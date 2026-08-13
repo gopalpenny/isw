@@ -112,7 +112,7 @@ test_that("sampling retains bent reach geometry", {
 test_that("web apportionment is length weighted by reach segment", {
   inputs <- make_adf_test_inputs()
 
-  stream_apportionment <- get_stream_depletion_apportionment(
+  stream_apportionment <- get_stream_reach_apportionment(
     inputs$pumping_wells,
     inputs$stream_reaches,
     reach_spacing = units::set_units(500, "m"),
@@ -140,7 +140,7 @@ test_that("web apportionment is length weighted by reach segment", {
 test_that("apportionment fractions sum to one for every pump", {
   inputs <- make_adf_test_inputs(two_pumps = TRUE)
 
-  stream_apportionment <- get_stream_depletion_apportionment(
+  stream_apportionment <- get_stream_reach_apportionment(
     inputs$pumping_wells,
     inputs$stream_reaches,
     reach_spacing = units::set_units(75, "m"),
@@ -168,7 +168,7 @@ test_that("apportionment fractions sum to one for every pump", {
 test_that("maximum distance excludes remote sample points", {
   inputs <- make_adf_test_inputs()
 
-  stream_apportionment <- get_stream_depletion_apportionment(
+  stream_apportionment <- get_stream_reach_apportionment(
     inputs$pumping_wells,
     inputs$stream_reaches,
     reach_spacing = units::set_units(500, "m"),
@@ -180,7 +180,7 @@ test_that("maximum distance excludes remote sample points", {
   expect_equal(sum(stream_apportionment$apportionment_fraction), 1)
 
   expect_error(
-    get_stream_depletion_apportionment(
+    get_stream_reach_apportionment(
       inputs$pumping_wells,
       inputs$stream_reaches,
       reach_spacing = units::set_units(500, "m"),
@@ -199,7 +199,7 @@ test_that("zero-distance sample points receive all apportionment", {
     crs = 32615
   )
 
-  stream_apportionment <- get_stream_depletion_apportionment(
+  stream_apportionment <- get_stream_reach_apportionment(
     inputs$pumping_wells,
     inputs$stream_reaches,
     reach_spacing = units::set_units(500, "m"),
@@ -215,7 +215,7 @@ test_that("zero-distance sample points receive all apportionment", {
 
 test_that("fraction lookup evaluates unique elapsed times once per segment", {
   inputs <- make_adf_test_inputs()
-  stream_apportionment <- get_stream_depletion_apportionment(
+  stream_apportionment <- get_stream_reach_apportionment(
     inputs$pumping_wells,
     inputs$stream_reaches,
     reach_spacing = units::set_units(500, "m"),
@@ -245,7 +245,7 @@ test_that("fraction lookup evaluates unique elapsed times once per segment", {
 
 test_that("intermittent depletion uses elapsed-time fractions and superposition", {
   inputs <- make_adf_test_inputs()
-  stream_apportionment <- get_stream_depletion_apportionment(
+  stream_apportionment <- get_stream_reach_apportionment(
     inputs$pumping_wells,
     inputs$stream_reaches,
     reach_spacing = units::set_units(500, "m"),
@@ -324,7 +324,7 @@ test_that("sampling and apportionment inputs are validated", {
     "finite, positive"
   )
   expect_error(
-    get_stream_depletion_apportionment(
+    get_stream_reach_apportionment(
       inputs$pumping_wells,
       inputs$stream_reaches,
       units::set_units(500, "m"),

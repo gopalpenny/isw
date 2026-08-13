@@ -612,7 +612,7 @@
 #'   t = units::set_units(c(0, 10, 20), "days"),
 #'   pump_1 = units::set_units(c(100, 100, 0), "m^3/day")
 #' )
-#' stream_apportionment <- get_stream_depletion_apportionment(
+#' stream_apportionment <- get_stream_reach_apportionment(
 #'   pumping_wells, stream_reaches,
 #'   reach_spacing = units::set_units(100, "m"),
 #'   sample_spacing = units::set_units(25, "m"),
@@ -678,7 +678,7 @@ get_stream_injection_schedule <- function(
 #' @param observation_wells An `sf` observation-well object accepted by
 #'   [`.validate_observation_wells()`].
 #' @param stream_apportionment An `sf` object returned by
-#'   [get_stream_depletion_apportionment()]. Its `model_point` column supplies
+#'   [get_stream_reach_apportionment()]. Its `model_point` column supplies
 #'   one injection-well location per reach segment.
 #' @param evaluation_times Either `NULL`, a `Date` vector, or a `units` time
 #'   vector. These control when drawdown is returned. When `NULL`,
@@ -755,7 +755,7 @@ get_stream_injection_schedule <- function(
 #' )
 #' evaluation_times <- units::set_units(c(0, 10, 20), "days")
 #'
-#' stream_apportionment <- get_stream_depletion_apportionment(
+#' stream_apportionment <- get_stream_reach_apportionment(
 #'   pumping_wells,
 #'   stream_reaches,
 #'   reach_spacing = units::set_units(100, "m"),

@@ -25,7 +25,7 @@ get_apportioned_aquifer_drawdown(
 [`.validate_observation_wells()`].}
 
 \item{stream_apportionment}{An `sf` object returned by
-[get_stream_depletion_apportionment()]. Its `model_point` column supplies
+[get_stream_reach_apportionment()]. Its `model_point` column supplies
 one injection-well location per reach segment.}
 
 \item{evaluation_times}{Either `NULL`, a `Date` vector, or a `units` time
@@ -110,7 +110,7 @@ pumping_schedules <- tibble::tibble(
 )
 evaluation_times <- units::set_units(c(0, 10, 20), "days")
 
-stream_apportionment <- get_stream_depletion_apportionment(
+stream_apportionment <- get_stream_reach_apportionment(
   pumping_wells,
   stream_reaches,
   reach_spacing = units::set_units(100, "m"),

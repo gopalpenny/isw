@@ -313,7 +313,7 @@ distance from the pump to each reach-segment line. This segment-specific
 distance is used by the analytical stream-depletion function.
 
 ```{r calculate-stream-apportionment}
-stream_apportionment <- get_stream_depletion_apportionment(
+stream_apportionment <- get_stream_reach_apportionment(
   pumping_wells,
   stream_reaches,
   reach_spacing = set_units(100, "m"),

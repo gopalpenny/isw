@@ -20,7 +20,7 @@ apportionment object and pumping-schedule columns.}
 [`.validate_pumping_schedules()`].}
 
 \item{stream_apportionment}{An `sf` object returned by
-[get_stream_depletion_apportionment()].}
+[get_stream_reach_apportionment()].}
 
 \item{evaluation_times}{Either `NULL`, a `Date` vector, or a `units` time
 vector. When `NULL`, `pumping_schedules$t` is used.}
@@ -79,7 +79,7 @@ stream_reaches <- sf::st_sf(
   )
 )
 
-stream_apportionment <- get_stream_depletion_apportionment(
+stream_apportionment <- get_stream_reach_apportionment(
   pumping_wells,
   stream_reaches,
   reach_spacing = units::set_units(100, "m"),
