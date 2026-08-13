@@ -118,21 +118,22 @@ Walkthrough</h1>
 <div class="section level2">
 <h2 id="purpose-and-scope">Purpose and scope<a class="anchor" aria-label="anchor" href="#purpose-and-scope"></a>
 </h2>
-<p>This vignette follows the internal steps used to apportion stream
-depletion and calculate aquifer drawdown. It complements the public
-workflow in <code><a href="../articles/stream-depletion-apportionment.html">vignette("stream-depletion-apportionment")</a></code>.</p>
+<p>This vignette repeats the workflow in
+<code><a href="../articles/stream-depletion-apportionment.html">vignette("stream-depletion-apportionment")</a></code> in the same
+order. After each top-level ADF function call, it opens that function to
+show the intermediate objects, calculations, and modeling choices
+involved.</p>
 <p>Functions called with <code>isw:::</code> are implementation details.
-They are shown to make the calculation transparent, but they may change
-without the compatibility guarantees associated with exported functions.
-Application code should normally call the exported functions
-demonstrated in the main vignette.</p>
+They are useful for understanding and diagnosing a calculation, but they
+may change without the compatibility guarantees associated with exported
+functions. Application code should normally use the top-level functions
+shown at the start of each section.</p>
 </div>
 <div class="section level2">
-<h2 id="inputs">Inputs<a class="anchor" aria-label="anchor" href="#inputs"></a>
+<h2 id="load-the-example-spatial-inputs">Load the example spatial inputs<a class="anchor" aria-label="anchor" href="#load-the-example-spatial-inputs"></a>
 </h2>
-<p>The walkthrough uses the package’s synthetic spatial inputs. There
-are two pumping wells, two observation wells, and three reaches that
-meet at a confluence.</p>
+<p>The walkthrough uses the same two pumping wells, three connected
+stream reaches, and two observation wells as the main vignette.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pumping_wells</span> <span class="op">&lt;-</span> <span class="va">example_pumping_wells</span></span>
 <span><span class="va">stream_reaches</span> <span class="op">&lt;-</span> <span class="va">example_stream_reaches</span></span>
@@ -142,13 +143,65 @@ meet at a confluence.</p>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">stream_reaches</span>, color <span class="op">=</span> <span class="st">"steelblue"</span>, linewidth <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">pumping_wells</span>, color <span class="op">=</span> <span class="st">"firebrick"</span>, size <span class="op">=</span> <span class="fl">3</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">observation_wells</span>, color <span class="op">=</span> <span class="st">"black"</span>, size <span class="op">=</span> <span class="fl">3</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf_text</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">pumping_wells</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>label <span class="op">=</span> <span class="va">pump_id</span><span class="op">)</span>, nudge_y <span class="op">=</span> <span class="fl">25</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf_text</a></span><span class="op">(</span></span>
+<span>    data <span class="op">=</span> <span class="va">observation_wells</span>,</span>
+<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>label <span class="op">=</span> <span class="va">observation_id</span><span class="op">)</span>,</span>
+<span>    nudge_y <span class="op">=</span> <span class="op">-</span><span class="fl">25</span></span>
+<span>  <span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="stream-depletion-apportionment-internals_files/figure-html/spatial-inputs-1.png" class="r-plt" alt="" width="700"></p>
-<p>The pumping schedule contains a constant interval, a rate reduction,
-and a shutdown for <code>pump_1</code>. <code>pump_2</code> starts later
-and then shuts down. Evaluation times are deliberately independent of
-these schedule boundaries.</p>
+<p><img src="stream-depletion-apportionment-internals_files/figure-html/spatial-inputs-1.png" class="r-plt" alt="" width="100%" style="display: block; margin: auto;"></p>
+<div class="section level3">
+<h3 id="what-the-spatial-inputs-control">What the spatial inputs control<a class="anchor" aria-label="anchor" href="#what-the-spatial-inputs-control"></a>
+</h3>
+<p><code>pumping_wells</code> supplies one point and one unique
+<code>pump_id</code> per physical well. It also supplies the hydraulic
+conductivity <code>K</code>, aquifer thickness <code>D</code>, drainable
+porosity <code>V</code>, and optional <code>well_diam</code> used by the
+analytical responses. Here, <code>well_diam</code> is 0.3 m for both
+wells.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">pumping_wells</span></span>
+<span><span class="co">#&gt; Simple feature collection with 2 features and 5 fields</span></span>
+<span><span class="co">#&gt; Geometry type: POINT</span></span>
+<span><span class="co">#&gt; Dimension:     XY</span></span>
+<span><span class="co">#&gt; Bounding box:  xmin: 499800 ymin: 4980050 xmax: 500450 ymax: 4980150</span></span>
+<span><span class="co">#&gt; Projected CRS: WGS 84 / UTM zone 15N</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 6</span></span></span>
+<span><span class="co">#&gt;   pump_id         K   D     V well_diam         geometry</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">*</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494;">[m/s]</span> <span style="color: #949494;">[m]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494;">[m]</span>      <span style="color: #949494; font-style: italic;">&lt;POINT [m]&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> pump_1  0.000<span style="text-decoration: underline;">01</span>    50  0.1        0.3 (499800 4980050)</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> pump_2  0.000<span style="text-decoration: underline;">007</span>5  40  0.12       0.3 (500450 4980150)</span></span></code></pre></div>
+<p><code>stream_reaches</code> supplies the line geometry to which
+depletion will be apportioned. The user supplies a unique
+<code>reach_id</code> for every input feature. The package later creates
+<code>reach_segment_id</code> values when it discretizes those features;
+users should not add that reserved column themselves.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">stream_reaches</span></span>
+<span><span class="co">#&gt; Simple feature collection with 3 features and 1 field</span></span>
+<span><span class="co">#&gt; Geometry type: LINESTRING</span></span>
+<span><span class="co">#&gt; Dimension:     XY</span></span>
+<span><span class="co">#&gt; Bounding box:  xmin: 5e+05 ymin: 4979850 xmax: 500350 ymax: 4980200</span></span>
+<span><span class="co">#&gt; Projected CRS: WGS 84 / UTM zone 15N</span></span>
+<span><span class="co">#&gt;     reach_id                       geometry</span></span>
+<span><span class="co">#&gt; 1 upstream_1 LINESTRING (5e+05 4980200, ...</span></span>
+<span><span class="co">#&gt; 2 upstream_2 LINESTRING (5e+05 4979900, ...</span></span>
+<span><span class="co">#&gt; 3 downstream LINESTRING (500150 4980050,...</span></span></code></pre></div>
+<p><code>observation_wells</code> is needed only for aquifer drawdown.
+Each point has a unique <code>observation_id</code>. All spatial inputs
+must have a defined CRS, but they do not need to begin in the same CRS
+because the modeling functions transform copies to a common projected
+analysis CRS.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="define-pumping-schedules-and-evaluation-times">Define pumping schedules and evaluation times<a class="anchor" aria-label="anchor" href="#define-pumping-schedules-and-evaluation-times"></a>
+</h2>
+<p>The temporal inputs are identical to those in the main vignette.
+Schedule times indicate changes in pumping rate; evaluation times
+indicate when output is requested.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pumping_schedules</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
 <span>  t <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2025-01-01"</span>, <span class="st">"2025-02-01"</span>, <span class="st">"2025-03-01"</span>, <span class="st">"2025-04-01"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  pump_1 <span class="op">=</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">500</span>, <span class="fl">500</span>, <span class="fl">300</span>, <span class="fl">0</span><span class="op">)</span>, <span class="st">"m^3/day"</span><span class="op">)</span>,</span>
@@ -156,34 +209,108 @@ these schedule boundaries.</p>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">evaluation_times</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.Date.html" class="external-link">seq.Date</a></span><span class="op">(</span></span>
-<span>  from <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="st">"2025-01-16"</span><span class="op">)</span>,</span>
-<span>  by <span class="op">=</span> <span class="st">"15 days"</span>,</span>
-<span>  length.out <span class="op">=</span> <span class="fl">8</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span>  from <span class="op">=</span> <span class="va">pumping_schedules</span><span class="op">$</span><span class="va">t</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">+</span> <span class="fl">1</span>,</span>
+<span>  by <span class="op">=</span> <span class="st">"day"</span>,</span>
+<span>  length.out <span class="op">=</span> <span class="fl">120</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">pumping_schedules</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 4 × 3</span></span></span>
+<span><span class="co">#&gt;   t           pump_1  pump_2</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>     <span style="color: #949494;">[m^3/d]</span> <span style="color: #949494;">[m^3/d]</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> 2025-01-01     500       0</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> 2025-02-01     500     250</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> 2025-03-01     300     250</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 2025-04-01       0       0</span></span></code></pre></div>
+<div class="section level3">
+<h3 id="what-happens-to-the-temporal-inputs">What happens to the temporal inputs<a class="anchor" aria-label="anchor" href="#what-happens-to-the-temporal-inputs"></a>
+</h3>
+<p>The schedule must be in wide format. Its first column is
+<code>t</code>, and every other column name must exactly match one
+<code>pump_id</code>. Times must increase strictly, and pumping rates
+must have flow units. A row’s rates remain in effect until the next row.
+The rates in the final row continue indefinitely; the package does not
+assume that pumping stops after the final schedule time. To represent a
+shutdown, users must include a final row that sets the applicable
+pumping rates to zero, as this example does on 2025-04-01.</p>
+<p>Internally, <code>Date</code> values and unit-bearing relative times
+are normalized to elapsed days. The original representation is restored
+in the returned output. Evaluation times are independent of the schedule
+and may be more or less frequent. Passing
+<code>evaluation_times = NULL</code> to the modeling functions requests
+output at <code>pumping_schedules$t</code>.</p>
+</div>
 </div>
 <div class="section level2">
-<h2 id="validate-and-prepare-spatial-inputs">Validate and prepare spatial inputs<a class="anchor" aria-label="anchor" href="#validate-and-prepare-spatial-inputs"></a>
+<h2 id="apportioning-depletion-among-stream-reaches">Apportioning depletion among stream reaches<a class="anchor" aria-label="anchor" href="#apportioning-depletion-among-stream-reaches"></a>
 </h2>
-<p>The public modeling functions first validate identifiers, geometry
-types, aquifer properties, physical units, and coordinate reference
-systems. The analysis requires projected coordinates because its
-distances must have linear units.</p>
-<p><code><a href="../reference/dot-select_analysis_crs.html">.select_analysis_crs()</a></code> finds a local UTM CRS from the
-combined spatial extent unless the user supplies another projected CRS.
-<code><a href="../reference/dot-prepare_spatial_inputs.html">.prepare_spatial_inputs()</a></code> then transforms copies of every
-object to that CRS, drops vertical coordinate dimensions, and supplies a
-zero-meter well diameter when none is given.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">analysis_crs</span> <span class="op">&lt;-</span> <span class="fu">isw</span><span class="fu">:::</span><span class="fu"><a href="../reference/dot-select_analysis_crs.html">.select_analysis_crs</a></span><span class="op">(</span></span>
+<p>The first ADF modeling step assigns a static fraction of each pump’s
+eventual stream depletion to every modeled reach segment.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">stream_apportionment</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_stream_reach_apportionment.html">get_stream_reach_apportionment</a></span><span class="op">(</span></span>
 <span>  <span class="va">pumping_wells</span>,</span>
 <span>  <span class="va">stream_reaches</span>,</span>
-<span>  <span class="va">observation_wells</span></span>
+<span>  reach_spacing <span class="op">=</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">100</span>, <span class="st">"m"</span><span class="op">)</span>,</span>
+<span>  sample_spacing <span class="op">=</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">25</span>, <span class="st">"m"</span><span class="op">)</span>,</span>
+<span>  method <span class="op">=</span> <span class="st">"web_squared"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">stream_apportionment</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  <span class="st">"pump_id"</span>,</span>
+<span>  <span class="st">"reach_id"</span>,</span>
+<span>  <span class="st">"reach_segment_id"</span>,</span>
+<span>  <span class="st">"pump_to_reach_distance"</span>,</span>
+<span>  <span class="st">"apportionment_fraction"</span></span>
+<span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt; Simple feature collection with 18 features and 5 fields</span></span>
+<span><span class="co">#&gt; Geometry type: LINESTRING</span></span>
+<span><span class="co">#&gt; Dimension:     XY</span></span>
+<span><span class="co">#&gt; Bounding box:  xmin: 5e+05 ymin: 4979850 xmax: 500350 ymax: 4980200</span></span>
+<span><span class="co">#&gt; Projected CRS: WGS 84 / UTM zone 15N</span></span>
+<span><span class="co">#&gt; First 10 features:</span></span>
+<span><span class="co">#&gt;    pump_id   reach_id     reach_segment_id pump_to_reach_distance</span></span>
+<span><span class="co">#&gt; 1   pump_1 upstream_1 upstream_1_segment_1           250.0000 [m]</span></span>
+<span><span class="co">#&gt; 2   pump_1 upstream_1 upstream_1_segment_2           269.2582 [m]</span></span>
+<span><span class="co">#&gt; 3   pump_1 upstream_1 upstream_1_segment_3           304.1381 [m]</span></span>
+<span><span class="co">#&gt; 4   pump_1 upstream_2 upstream_2_segment_1           250.0000 [m]</span></span>
+<span><span class="co">#&gt; 5   pump_1 upstream_2 upstream_2_segment_2           269.2582 [m]</span></span>
+<span><span class="co">#&gt; 6   pump_1 upstream_2 upstream_2_segment_3           304.1381 [m]</span></span>
+<span><span class="co">#&gt; 7   pump_1 downstream downstream_segment_1           350.0000 [m]</span></span>
+<span><span class="co">#&gt; 8   pump_1 downstream downstream_segment_2           421.9663 [m]</span></span>
+<span><span class="co">#&gt; 9   pump_1 downstream downstream_segment_3           501.3870 [m]</span></span>
+<span><span class="co">#&gt; 10  pump_2 upstream_1 upstream_1_segment_1           400.0000 [m]</span></span>
+<span><span class="co">#&gt;    apportionment_fraction                       geometry</span></span>
+<span><span class="co">#&gt; 1              0.16085181 LINESTRING (5e+05 4980200, ...</span></span>
+<span><span class="co">#&gt; 2              0.13165556 LINESTRING (500050 4980150,...</span></span>
+<span><span class="co">#&gt; 3              0.10092931 LINESTRING (500100 4980100,...</span></span>
+<span><span class="co">#&gt; 4              0.16085181 LINESTRING (5e+05 4979900, ...</span></span>
+<span><span class="co">#&gt; 5              0.13165556 LINESTRING (500050 4979950,...</span></span>
+<span><span class="co">#&gt; 6              0.10092931 LINESTRING (500100 4980000,...</span></span>
+<span><span class="co">#&gt; 7              0.09694901 LINESTRING (500150 4980050,...</span></span>
+<span><span class="co">#&gt; 8              0.06753111 LINESTRING (500216.7 497998...</span></span>
+<span><span class="co">#&gt; 9              0.04864652 LINESTRING (500283.3 497991...</span></span>
+<span><span class="co">#&gt; 10             0.06392835 LINESTRING (5e+05 4980200, ...</span></span></code></pre></div>
+<div class="section level3">
+<h3 id="what-happens-inside-get_stream_reach_apportionment">What happens inside
+<code>get_stream_reach_apportionment()</code><a class="anchor" aria-label="anchor" href="#what-happens-inside-get_stream_reach_apportionment"></a>
+</h3>
+<div class="section level4">
+<h4 id="prepare-a-common-analysis-crs">1. Prepare a common analysis CRS<a class="anchor" aria-label="anchor" href="#prepare-a-common-analysis-crs"></a>
+</h4>
+<p>The function validates the wells and reaches, selects a projected
+analysis CRS, transforms copies of the inputs, drops Z and M
+coordinates, and supplies a zero-meter diameter if
+<code>well_diam</code> is absent. By default, a local UTM CRS is
+selected from the combined spatial extent.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">analysis_crs</span> <span class="op">&lt;-</span> <span class="fu">isw</span><span class="fu">:::</span><span class="fu"><a href="../reference/dot-select_analysis_crs.html">.select_analysis_crs</a></span><span class="op">(</span></span>
+<span>  <span class="va">pumping_wells</span>,</span>
+<span>  <span class="va">stream_reaches</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">spatial_inputs</span> <span class="op">&lt;-</span> <span class="fu">isw</span><span class="fu">:::</span><span class="fu"><a href="../reference/dot-prepare_spatial_inputs.html">.prepare_spatial_inputs</a></span><span class="op">(</span></span>
 <span>  <span class="va">pumping_wells</span>,</span>
 <span>  <span class="va">stream_reaches</span>,</span>
-<span>  <span class="va">observation_wells</span>,</span>
 <span>  analysis_crs <span class="op">=</span> <span class="va">analysis_crs</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -191,18 +318,62 @@ zero-meter well diameter when none is given.</p>
 <span><span class="co">#&gt; [1] "WGS 84 / UTM zone 15N"</span></span>
 <span><span class="va">spatial_inputs</span><span class="op">$</span><span class="va">pumping_wells</span><span class="op">$</span><span class="va">well_diam</span></span>
 <span><span class="co">#&gt; Units: [m]</span></span>
-<span><span class="co">#&gt; [1] 0 0</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 0.3 0.3</span></span></code></pre></div>
+<p>Use <code>analysis_crs</code> in the top-level call when a particular
+projected CRS is required. This can be important when inputs span UTM
+zones or must align with another analysis. A geographic
+longitude-latitude CRS is not accepted because the model requires linear
+distances.</p>
 </div>
-<div class="section level2">
-<h2 id="discretize-the-stream-network">Discretize the stream network<a class="anchor" aria-label="anchor" href="#discretize-the-stream-network"></a>
-</h2>
-<p><code><a href="../reference/dot-discretize_stream_reaches.html">.discretize_stream_reaches()</a></code> divides each input reach
-into approximately equal segments whose lengths do not exceed
-<code>reach_spacing</code>. The active geometry remains the segment
-line. A second geometry column, <code>model_point</code>, stores the
-along-line midpoint later used as the location of the equivalent
-stream-injection well.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="section level4">
+<h4 id="discretize-each-input-reach">2. Discretize each input reach<a class="anchor" aria-label="anchor" href="#discretize-each-input-reach"></a>
+</h4>
+<p>The function divides every reach into approximately equal segments no
+longer than <code>reach_spacing</code>. Each segment retains its parent
+<code>reach_id</code>, receives a generated
+<code>reach_segment_id</code>, and stores its actual
+<code>represented_length</code>. <code>model_point</code> is the
+along-line midpoint used later as the equivalent stream-injection
+location.</p>
+<p>This creates three distinct spatial units in the ADF workflow:</p>
+<table class="table">
+<colgroup>
+<col width="42%">
+<col width="57%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Spatial object</th>
+<th align="left">Role in the analysis</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left"><strong>Reach</strong></td>
+<td align="left">A user-supplied source geometry identified by
+<code>reach_id</code>. Reaches can be used to group or summarize
+results, but analytical responses are not calculated directly at this
+level.</td>
+</tr>
+<tr class="even">
+<td align="left"><strong>Reach segment</strong></td>
+<td align="left">The primary ADF computational unit, created from each
+reach according to <code>reach_spacing</code>. Each pump–segment pair
+receives an <code>apportionment_fraction</code> and
+<code>pump_to_reach_distance</code>. Depletion is returned by segment;
+for drawdown, <code>model_point</code> becomes an equivalent injection
+well and <code>represented_length</code> becomes its effective
+diameter.</td>
+</tr>
+<tr class="odd">
+<td align="left"><strong>Sample point</strong></td>
+<td align="left">A temporary weighting location created within a segment
+according to <code>sample_spacing</code>. Its distance and
+<code>sampled_length</code> determine a web or web-squared weight. These
+weights are summed to the segment before time-dependent depletion and
+drawdown are calculated.</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">reach_segments</span> <span class="op">&lt;-</span> <span class="fu">isw</span><span class="fu">:::</span><span class="fu"><a href="../reference/dot-discretize_stream_reaches.html">.discretize_stream_reaches</a></span><span class="op">(</span></span>
 <span>  <span class="va">spatial_inputs</span><span class="op">$</span><span class="va">stream_reaches</span>,</span>
 <span>  reach_spacing <span class="op">=</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">100</span>, <span class="st">"m"</span><span class="op">)</span></span>
@@ -238,7 +409,7 @@ stream-injection well.</p>
 <span><span class="co">#&gt; 7 LINESTRING (500150 4980050,...</span></span>
 <span><span class="co">#&gt; 8 LINESTRING (500216.7 497998...</span></span>
 <span><span class="co">#&gt; 9 LINESTRING (500283.3 497991...</span></span></code></pre></div>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">spatial_inputs</span><span class="op">$</span><span class="va">stream_reaches</span>, color <span class="op">=</span> <span class="st">"grey75"</span>, linewidth <span class="op">=</span> <span class="fl">3</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">reach_segments</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>color <span class="op">=</span> <span class="va">reach_segment_id</span><span class="op">)</span>, linewidth <span class="op">=</span> <span class="fl">1.5</span><span class="op">)</span> <span class="op">+</span></span>
@@ -253,19 +424,27 @@ stream-injection well.</p>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">spatial_inputs</span><span class="op">$</span><span class="va">pumping_wells</span>, color <span class="op">=</span> <span class="st">"firebrick"</span>, size <span class="op">=</span> <span class="fl">3</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>color <span class="op">=</span> <span class="st">"Reach segment"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="stream-depletion-apportionment-internals_files/figure-html/plot-reach-segments-1.png" class="r-plt" alt="" width="700"></p>
+<p><img src="stream-depletion-apportionment-internals_files/figure-html/plot-reach-segments-1.png" class="r-plt" alt="" width="100%" style="display: block; margin: auto;"></p>
+<p>Specifying a smaller <code>reach_spacing</code> creates more model
+segments. Doing so would resolve the location and timing of depletion
+more finely, but it increases output size, the number of analytical
+responses, and computational burden. Segment lengths can be shorter than
+the requested maximum because each source line component is divided into
+equal parts.</p>
 </div>
-<div class="section level2">
-<h2 id="sample-each-reach-segment">Sample each reach segment<a class="anchor" aria-label="anchor" href="#sample-each-reach-segment"></a>
-</h2>
-<p><code><a href="../reference/sample_reach_segments.html">sample_reach_segments()</a></code> represents the shape of each
-segment with points at the centers of equal-length intervals.
-<code>sampled_length</code> records how much stream length each point
-represents. This finer sampling geometry is used only to calculate
-spatial weights; it is distinct from the single <code>model_point</code>
-used in the drawdown model.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">sample_points</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sample_reach_segments.html">sample_reach_segments</a></span><span class="op">(</span></span>
+<div class="section level4">
+<h4 id="generate-points-for-spatial-weighting">3. Generate points for spatial weighting<a class="anchor" aria-label="anchor" href="#generate-points-for-spatial-weighting"></a>
+</h4>
+<p>These points approximate the continuous distance-based weighting
+along each reach segment. <code><a href="../reference/generate_segment_sample_points.html">generate_segment_sample_points()</a></code>
+divides each segment into equal-length intervals, places one point at
+each interval center, and records the length represented by that point
+as <code>sampled_length</code>. Point weights are later summed by reach
+segment to calculate static apportionment fractions. These points are
+distinct from the segment’s single <code>model_point</code>, which is
+used in the drawdown calculation.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sample_points</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_segment_sample_points.html">generate_segment_sample_points</a></span><span class="op">(</span></span>
 <span>  <span class="va">reach_segments</span>,</span>
 <span>  sample_spacing <span class="op">=</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">25</span>, <span class="st">"m"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
@@ -304,7 +483,7 @@ used in the drawdown model.</p>
 <span><span class="co">#&gt; 8    POINT (500125 4980075)</span></span>
 <span><span class="co">#&gt; 9  POINT (500141.7 4980058)</span></span>
 <span><span class="co">#&gt; 10 POINT (500008.3 4979908)</span></span></code></pre></div>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">reach_segments</span>, color <span class="op">=</span> <span class="st">"grey65"</span>, linewidth <span class="op">=</span> <span class="fl">1.5</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">sample_points</span>, color <span class="op">=</span> <span class="st">"royalblue"</span>, size <span class="op">=</span> <span class="fl">1.5</span><span class="op">)</span> <span class="op">+</span></span>
@@ -318,53 +497,173 @@ used in the drawdown model.</p>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">spatial_inputs</span><span class="op">$</span><span class="va">pumping_wells</span>, color <span class="op">=</span> <span class="st">"firebrick"</span>, size <span class="op">=</span> <span class="fl">3</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="stream-depletion-apportionment-internals_files/figure-html/plot-sample-points-1.png" class="r-plt" alt="" width="700"></p>
+<p><img src="stream-depletion-apportionment-internals_files/figure-html/plot-sample-points-1.png" class="r-plt" alt="" width="100%" style="display: block; margin: auto;"></p>
+<p>A smaller <code>sample_spacing</code> follows bends in the stream
+more closely when approximating the distance-weighted integral. It
+improves the static spatial approximation without increasing the number
+of reach segments returned by the model. Every segment receives at least
+one sample point.</p>
 </div>
-<div class="section level2">
-<h2 id="calculate-static-reach-apportionment">Calculate static reach apportionment<a class="anchor" aria-label="anchor" href="#calculate-static-reach-apportionment"></a>
-</h2>
-<p>For each pump and sample point, web-squared apportionment is
-proportional to the point’s represented length divided by squared
-pump-to-point distance. Point weights are normalized within each pump
-and then summed by reach segment. Zero-distance points receive special
-handling so division by zero cannot occur.</p>
-<p><code><a href="../reference/get_stream_reach_apportionment.html">get_stream_reach_apportionment()</a></code> performs the
-preparation, discretization, sampling, weighting, and aggregation steps
-together. It also calculates the shortest distance from each pump to
-each segment line. That segment distance, rather than the sample-point
-distance, is supplied to the analytical response kernel.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">stream_apportionment</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_stream_reach_apportionment.html">get_stream_reach_apportionment</a></span><span class="op">(</span></span>
-<span>  <span class="va">pumping_wells</span>,</span>
-<span>  <span class="va">stream_reaches</span>,</span>
-<span>  reach_spacing <span class="op">=</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">100</span>, <span class="st">"m"</span><span class="op">)</span>,</span>
-<span>  sample_spacing <span class="op">=</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">25</span>, <span class="st">"m"</span><span class="op">)</span>,</span>
-<span>  method <span class="op">=</span> <span class="st">"web_squared"</span></span>
+<div class="section level4">
+<h4 id="weight-points-and-aggregate-them-to-segments">4. Weight points and aggregate them to segments<a class="anchor" aria-label="anchor" href="#weight-points-and-aggregate-them-to-segments"></a>
+</h4>
+<p>For sample point
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>j</mi><annotation encoding="application/x-tex">j</annotation></semantics></math>,
+the unnormalized weight is</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>w</mi><mi>j</mi></msub><mo>=</mo><mfrac><msub><mi>L</mi><mi>j</mi></msub><msubsup><mi>d</mi><mi>j</mi><mi>p</mi></msubsup></mfrac><mo>,</mo></mrow><annotation encoding="application/x-tex">
+w_j = \frac{L_j}{d_j^p},
+</annotation></semantics></math></p>
+<p>where
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>L</mi><mi>j</mi></msub><annotation encoding="application/x-tex">L_j</annotation></semantics></math>
+is <code>sampled_length</code>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mi>j</mi></msub><annotation encoding="application/x-tex">d_j</annotation></semantics></math>
+is the pump-to-point distance, and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math>
+is 1 for <code>method = "web"</code> or 2 for
+<code>method = "web_squared"</code>. Weights are normalized separately
+for each pump and summed by <code>reach_segment_id</code>.</p>
+<p><code>web_squared</code> concentrates weight more strongly near a
+pump; <code>web</code> produces a broader allocation. The optional
+<code>maximum_distance</code> excludes sample points beyond a specified
+distance. If it excludes every point for a pump, the function stops
+instead of silently returning an invalid allocation.</p>
+<p><code>pump_to_reach_distance</code> is calculated separately as the
+shortest distance from the pump to the segment line. It does not depend
+on <code>sample_spacing</code> and is used as the distance input to the
+Glover response in <code><a href="../reference/get_apportioned_stream_depletion.html">get_apportioned_stream_depletion()</a></code>. It
+therefore controls the timing and magnitude of the segment’s
+time-dependent depletion response. It is not used to calculate the
+static <code>apportionment_fraction</code>, which instead uses distances
+from the pump to all sample points.</p>
+<p>The following code reproduces these calculations for
+<code>pump_1</code>. It exposes the point-level weights that
+<code><a href="../reference/get_stream_reach_apportionment.html">get_stream_reach_apportionment()</a></code> normally aggregates. The
+example has no zero-distance points and does not apply
+<code>maximum_distance</code>;
+<code><a href="../reference/get_stream_reach_apportionment.html">get_stream_reach_apportionment()</a></code> handles both cases before
+normalizing the weights.</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">pump_1</span> <span class="op">&lt;-</span> <span class="va">spatial_inputs</span><span class="op">$</span><span class="va">pumping_wells</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span></span>
+<span><span class="va">point_distances</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/geos_measures.html" class="external-link">st_distance</a></span><span class="op">(</span><span class="va">pump_1</span>, <span class="va">sample_points</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span></span>
+<span><span class="va">segment_distances</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/geos_measures.html" class="external-link">st_distance</a></span><span class="op">(</span><span class="va">pump_1</span>, <span class="va">reach_segments</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span></span>
+<span><span class="va">segment_distance_table</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
+<span>  reach_segment_id <span class="op">=</span> <span class="va">reach_segments</span><span class="op">$</span><span class="va">reach_segment_id</span>,</span>
+<span>  pump_to_reach_distance <span class="op">=</span> <span class="va">segment_distances</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">stream_apportionment</span> <span class="op">|&gt;</span></span>
+<span><span class="va">point_weight_table</span> <span class="op">&lt;-</span> <span class="va">sample_points</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>    pump_to_point_distance <span class="op">=</span> <span class="va">point_distances</span>,</span>
+<span>    raw_weight <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">sampled_length</span><span class="op">)</span> <span class="op">/</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">pump_to_point_distance</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span>,</span>
+<span>    point_fraction <span class="op">=</span> <span class="va">raw_weight</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">raw_weight</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span><span class="va">segment_weight_table</span> <span class="op">&lt;-</span> <span class="va">point_weight_table</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">reach_id</span>, <span class="va">reach_segment_id</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
+<span>    apportionment_fraction <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">point_fraction</span><span class="op">)</span>,</span>
+<span>    .groups <span class="op">=</span> <span class="st">"drop"</span></span>
+<span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span><span class="va">segment_distance_table</span>, by <span class="op">=</span> <span class="st">"reach_segment_id"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">point_weight_table</span><span class="op">)</span></span>
+<span><span class="co">#&gt;     reach_id     reach_segment_id              sample_point_id sampled_length</span></span>
+<span><span class="co">#&gt; 1 upstream_1 upstream_1_segment_1 upstream_1_segment_1_point_1   23.57023 [m]</span></span>
+<span><span class="co">#&gt; 2 upstream_1 upstream_1_segment_1 upstream_1_segment_1_point_2   23.57023 [m]</span></span>
+<span><span class="co">#&gt; 3 upstream_1 upstream_1_segment_1 upstream_1_segment_1_point_3   23.57023 [m]</span></span>
+<span><span class="co">#&gt; 4 upstream_1 upstream_1_segment_2 upstream_1_segment_2_point_1   23.57023 [m]</span></span>
+<span><span class="co">#&gt; 5 upstream_1 upstream_1_segment_2 upstream_1_segment_2_point_2   23.57023 [m]</span></span>
+<span><span class="co">#&gt; 6 upstream_1 upstream_1_segment_2 upstream_1_segment_2_point_3   23.57023 [m]</span></span>
+<span><span class="co">#&gt;   pump_to_point_distance   raw_weight point_fraction</span></span>
+<span><span class="co">#&gt; 1           251.9369 [m] 0.0003713471     0.05618253</span></span>
+<span><span class="co">#&gt; 2           257.3908 [m] 0.0003557770     0.05382687</span></span>
+<span><span class="co">#&gt; 3           264.8375 [m] 0.0003360507     0.05084241</span></span>
+<span><span class="co">#&gt; 4           274.1147 [m] 0.0003136888     0.04745918</span></span>
+<span><span class="co">#&gt; 5           285.0439 [m] 0.0002900951     0.04388960</span></span>
+<span><span class="co">#&gt; 6           297.4428 [m] 0.0002664139     0.04030678</span></span>
+<span><span class="va">segment_weight_table</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 9 × 4</span></span></span>
+<span><span class="co">#&gt;   reach_id   reach_segment_id     apportionment_fraction pump_to_reach_distance</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                                 <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                    <span style="color: #949494;">[m]</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> downstream downstream_segment_1                 0.096<span style="text-decoration: underline;">9</span>                   350 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> downstream downstream_segment_2                 0.067<span style="text-decoration: underline;">5</span>                   422.</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> downstream downstream_segment_3                 0.048<span style="text-decoration: underline;">6</span>                   501.</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> upstream_1 upstream_1_segment_1                 0.161                    250 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> upstream_1 upstream_1_segment_2                 0.132                    269.</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> upstream_1 upstream_1_segment_3                 0.101                    304.</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">7</span> upstream_2 upstream_2_segment_1                 0.161                    250 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">8</span> upstream_2 upstream_2_segment_2                 0.132                    269.</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">9</span> upstream_2 upstream_2_segment_3                 0.101                    304.</span></span></code></pre></div>
+<p>Because each pump is apportioned independently, its fractions sum to
+one.</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">stream_apportionment</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">pump_id</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
-<span>    number_of_segments <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/context.html" class="external-link">n</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>    total_fraction <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">apportionment_fraction</span><span class="op">)</span>,</span>
+<span>    total_apportionment_fraction <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">apportionment_fraction</span><span class="op">)</span>,</span>
 <span>    .groups <span class="op">=</span> <span class="st">"drop"</span></span>
 <span>  <span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 3</span></span></span>
-<span><span class="co">#&gt;   pump_id number_of_segments total_fraction</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> pump_1                   9              1</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> pump_2                   9              1</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 2</span></span></span>
+<span><span class="co">#&gt;   pump_id total_apportionment_fraction</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> pump_1                             1</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> pump_2                             1</span></span></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">stream_apportionment</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>color <span class="op">=</span> <span class="va">apportionment_fraction</span><span class="op">)</span>, linewidth <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">pumping_wells</span>, color <span class="op">=</span> <span class="st">"firebrick"</span>, size <span class="op">=</span> <span class="fl">2.5</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">pump_id</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>color <span class="op">=</span> <span class="st">"Apportionment\nfraction"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p><img src="stream-depletion-apportionment-internals_files/figure-html/plot-stream-apportionment-1.png" class="r-plt" alt="" width="100%" style="display: block; margin: auto;"></p>
+</div>
+</div>
 </div>
 <div class="section level2">
-<h2 id="convert-schedules-to-pumping-events">Convert schedules to pumping events<a class="anchor" aria-label="anchor" href="#convert-schedules-to-pumping-events"></a>
+<h2 id="calculate-apportioned-stream-depletion">Calculate apportioned stream depletion<a class="anchor" aria-label="anchor" href="#calculate-apportioned-stream-depletion"></a>
 </h2>
-<p>Analytical response functions are linear, so intermittent pumping is
-handled by superposition of changes in pumping rate.
-<code><a href="../reference/dot-get_pumping_rate_changes.html">.get_pumping_rate_changes()</a></code> compares each scheduled rate
-with the preceding rate, assuming zero pumping before the first row.
-Exact zero changes are omitted.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<p>The next ADF modeling step combines the static spatial allocation
+with the time-dependent Glover response to the pumping schedule.</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">stream_depletion</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_apportioned_stream_depletion.html">get_apportioned_stream_depletion</a></span><span class="op">(</span></span>
+<span>  <span class="va">pumping_wells</span>,</span>
+<span>  <span class="va">pumping_schedules</span>,</span>
+<span>  <span class="va">stream_apportionment</span>,</span>
+<span>  <span class="va">evaluation_times</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">stream_depletion</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2,160 × 5</span></span></span>
+<span><span class="co">#&gt;    pump_id evaluation_time reach_id   reach_segment_id     stream_depletion_rate</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                              <span style="color: #949494;">[m^3/d]</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> pump_1  2025-01-02      upstream_1 upstream_1_segment_1           0          </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> pump_1  2025-01-02      upstream_1 upstream_1_segment_2           0          </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> pump_1  2025-01-02      upstream_1 upstream_1_segment_3           0          </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> pump_1  2025-01-02      upstream_2 upstream_2_segment_1           0          </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> pump_1  2025-01-02      upstream_2 upstream_2_segment_2           0          </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> pump_1  2025-01-02      upstream_2 upstream_2_segment_3           0          </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> pump_1  2025-01-02      downstream downstream_segment_1           0          </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> pump_1  2025-01-02      downstream downstream_segment_2           0          </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> pump_1  2025-01-02      downstream downstream_segment_3           0          </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> pump_1  2025-01-03      upstream_1 upstream_1_segment_1           0.000<span style="text-decoration: underline;">000</span>146</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 2,150 more rows</span></span></span></code></pre></div>
+<div class="section level3">
+<h3 id="what-happens-inside-get_apportioned_stream_depletion">What happens inside
+<code>get_apportioned_stream_depletion()</code><a class="anchor" aria-label="anchor" href="#what-happens-inside-get_apportioned_stream_depletion"></a>
+</h3>
+<div class="section level4">
+<h4 id="convert-scheduled-rates-to-change-events">1. Convert scheduled rates to change events<a class="anchor" aria-label="anchor" href="#convert-scheduled-rates-to-change-events"></a>
+</h4>
+<p>Analytical groundwater equations used in the package are linear and
+follow the principle of superposition. This allows an intermittent
+pumping schedule to be represented as a series of changes in pumping
+rate summed together. The first scheduled rate is treated as a change
+from zero pumping, and each later rate is compared with the preceding
+rate. Events with no change in pumping rate are omitted.</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pumping_rate_changes</span> <span class="op">&lt;-</span> <span class="fu">isw</span><span class="fu">:::</span><span class="fu"><a href="../reference/dot-get_pumping_rate_changes.html">.get_pumping_rate_changes</a></span><span class="op">(</span></span>
 <span>  <span class="va">pumping_schedules</span>,</span>
 <span>  <span class="va">pumping_wells</span></span>
@@ -379,12 +678,15 @@ Exact zero changes are omitted.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> pump_1            90                -<span style="color: #BB0000;">300</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> pump_2            31                 250</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> pump_2            90                -<span style="color: #BB0000;">250</span></span></span></code></pre></div>
-<p><code><a href="../reference/dot-get_pumping_response_times.html">.get_pumping_response_times()</a></code> pairs every nonzero change
-with evaluation times strictly later than that event. It also calculates
-the positive elapsed time used by the analytical kernel. An event
-beginning exactly at an evaluation boundary has not yet produced a
-response at that boundary.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+</div>
+<div class="section level4">
+<h4 id="pair-events-with-later-evaluations">2. Pair events with later evaluations<a class="anchor" aria-label="anchor" href="#pair-events-with-later-evaluations"></a>
+</h4>
+<p>Every nonzero rate change is paired with evaluation times strictly
+later than the event, and elapsed time is calculated in days. A change
+beginning exactly at an evaluation time has not yet produced a response
+at that time.</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pumping_response_times</span> <span class="op">&lt;-</span> <span class="fu">isw</span><span class="fu">:::</span><span class="fu"><a href="../reference/dot-get_pumping_response_times.html">.get_pumping_response_times</a></span><span class="op">(</span></span>
 <span>  <span class="va">pumping_schedules</span>,</span>
 <span>  <span class="va">pumping_wells</span>,</span>
@@ -395,23 +697,21 @@ response at that boundary.</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 5</span></span></span>
 <span><span class="co">#&gt;   pump_id evaluation_time pumping_time elapsed_time pumping_rate_change</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>                   <span style="color: #949494;">[d]</span>          <span style="color: #949494;">[d]</span>             <span style="color: #949494;">[m^3/d]</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> pump_1  2025-01-16                 0           15                 500</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> pump_1  2025-01-31                 0           30                 500</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> pump_1  2025-02-15                 0           45                 500</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> pump_1  2025-03-02                 0           60                 500</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> pump_1  2025-03-02                59            1                -<span style="color: #BB0000;">200</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> pump_1  2025-03-17                 0           75                 500</span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> pump_1  2025-01-02                 0            1                 500</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> pump_1  2025-01-03                 0            2                 500</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> pump_1  2025-01-04                 0            3                 500</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> pump_1  2025-01-05                 0            4                 500</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> pump_1  2025-01-06                 0            5                 500</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> pump_1  2025-01-07                 0            6                 500</span></span></code></pre></div>
 </div>
-<div class="section level2">
-<h2 id="evaluate-analytical-depletion-fractions">Evaluate analytical depletion fractions<a class="anchor" aria-label="anchor" href="#evaluate-analytical-depletion-fractions"></a>
-</h2>
-<p>The Glover response depends on pump-to-stream distance, hydraulic
-diffusivity, and elapsed time.
-<code><a href="../reference/dot-get_stream_depletion_fraction_lookup.html">.get_stream_depletion_fraction_lookup()</a></code> evaluates each
-unique pump, segment, and elapsed-time combination once. Repeated event
-rows can then reuse the lookup rather than recalculating the same
-analytical value.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="section level4">
+<h4 id="evaluate-and-reuse-analytical-fractions">3. Evaluate and reuse analytical fractions<a class="anchor" aria-label="anchor" href="#evaluate-and-reuse-analytical-fractions"></a>
+</h4>
+<p>The Glover stream-depletion fraction depends on the pump’s aquifer
+properties, its shortest distance to a reach segment, and elapsed time.
+The function evaluates every unique pump–segment–elapsed-time
+combination once and reuses the result for repeated event rows.</p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">depletion_fraction_lookup</span> <span class="op">&lt;-</span> <span class="fu">isw</span><span class="fu">:::</span><span class="fu"><a href="../reference/dot-get_stream_depletion_fraction_lookup.html">.get_stream_depletion_fraction_lookup</a></span><span class="op">(</span></span>
 <span>  <span class="va">pumping_wells</span>,</span>
 <span>  <span class="va">pumping_response_times</span>,</span>
@@ -428,70 +728,151 @@ analytical value.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> pump_1  upstream_2 upstream_2_segment_1            1                         0</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> pump_1  upstream_2 upstream_2_segment_2            1                         0</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> pump_1  upstream_2 upstream_2_segment_3            1                         0</span></span></code></pre></div>
-<p>For each event and segment, the package multiplies the signed
-pumping-rate change by the analytical depletion fraction and the static
-apportionment fraction. Event contributions are then summed by pump,
-segment, and evaluation time. The exported function performs these joins
-and restores explicit zeroes for combinations without a contributing
-event.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">stream_depletion</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_apportioned_stream_depletion.html">get_apportioned_stream_depletion</a></span><span class="op">(</span></span>
+<p>For event
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>e</mi><annotation encoding="application/x-tex">e</annotation></semantics></math>,
+pump
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math>,
+and segment
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>s</mi><annotation encoding="application/x-tex">s</annotation></semantics></math>,
+the contribution is</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">Δ</mi><msub><mi>q</mi><mrow><mi>p</mi><mo>,</mo><mi>s</mi><mo>,</mo><mi>e</mi></mrow></msub><mo>=</mo><mi mathvariant="normal">Δ</mi><msub><mi>Q</mi><mrow><mi>p</mi><mo>,</mo><mi>e</mi></mrow></msub><msub><mi>F</mi><mrow><mi>p</mi><mo>,</mo><mi>s</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>t</mi><mi>e</mi></msub><mo stretchy="false" form="postfix">)</mo><msub><mi>A</mi><mrow><mi>p</mi><mo>,</mo><mi>s</mi></mrow></msub><mo>,</mo></mrow><annotation encoding="application/x-tex">
+\Delta q_{p,s,e} = \Delta Q_{p,e} F_{p,s}(t_e) A_{p,s},
+</annotation></semantics></math></p>
+<p>where
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">Δ</mi><mi>Q</mi></mrow><annotation encoding="application/x-tex">\Delta Q</annotation></semantics></math>
+is the signed pumping-rate change,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>F</mi><annotation encoding="application/x-tex">F</annotation></semantics></math>
+is the analytical depletion fraction, and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>A</mi><annotation encoding="application/x-tex">A</annotation></semantics></math>
+is the static apportionment fraction. Earlier event contributions are
+summed by superposition. The output retains separate rows for every
+pump, evaluation time, and reach segment, including explicit zeroes
+where no earlier event contributes.</p>
+<p>The principal user choice at this stage is
+<code>evaluation_times</code>: a finer grid returns a smoother time
+series but creates more output rows and response combinations. It does
+not change the pumping schedule or static apportionment.</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">total_stream_depletion</span> <span class="op">&lt;-</span> <span class="va">stream_depletion</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">pump_id</span>, <span class="va">evaluation_time</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
+<span>    stream_depletion_rate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">stream_depletion_rate</span><span class="op">)</span>,</span>
+<span>    .groups <span class="op">=</span> <span class="st">"drop"</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span></span>
+<span>  <span class="va">total_stream_depletion</span>,</span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">evaluation_time</span>, <span class="va">stream_depletion_rate</span>, color <span class="op">=</span> <span class="va">pump_id</span><span class="op">)</span></span>
+<span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
+<span>    x <span class="op">=</span> <span class="st">"Evaluation time"</span>,</span>
+<span>    y <span class="op">=</span> <span class="st">"Stream-depletion rate"</span>,</span>
+<span>    color <span class="op">=</span> <span class="st">"Pumping well"</span></span>
+<span>  <span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p><img src="stream-depletion-apportionment-internals_files/figure-html/summarize-stream-depletion-1.png" class="r-plt" alt="" width="100%" style="display: block; margin: auto;"></p>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="generate-the-stream-injection-schedule-for-adf-drawdown">Generate the stream-injection schedule for ADF drawdown<a class="anchor" aria-label="anchor" href="#generate-the-stream-injection-schedule-for-adf-drawdown"></a>
+</h2>
+<p>In order to estimate aquifer drawdown, we represent stream depletion
+as injection wells. Each reach segment becomes an equivalent injection
+well whose schedule is derived from the depletion apportioned to that
+segment. <code><a href="../reference/get_stream_injection_schedule.html">get_stream_injection_schedule()</a></code> returns one row
+per pump, segment, and time interval. Each row specifies the constant
+injection rate applied at the segment’s <code>model_point</code> during
+that interval.</p>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">stream_injection_schedule</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_stream_injection_schedule.html">get_stream_injection_schedule</a></span><span class="op">(</span></span>
 <span>  <span class="va">pumping_wells</span>,</span>
 <span>  <span class="va">pumping_schedules</span>,</span>
 <span>  <span class="va">stream_apportionment</span>,</span>
 <span>  <span class="va">evaluation_times</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">stream_depletion</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 5</span></span></span>
-<span><span class="co">#&gt;   pump_id evaluation_time reach_id   reach_segment_id     stream_depletion_rate</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                              <span style="color: #949494;">[m^3/d]</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> pump_1  2025-01-16      upstream_1 upstream_1_segment_1                 2.26 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> pump_1  2025-01-16      upstream_1 upstream_1_segment_2                 1.19 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> pump_1  2025-01-16      upstream_1 upstream_1_segment_3                 0.381</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> pump_1  2025-01-16      upstream_2 upstream_2_segment_1                 2.26 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> pump_1  2025-01-16      upstream_2 upstream_2_segment_2                 1.19 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> pump_1  2025-01-16      upstream_2 upstream_2_segment_3                 0.381</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="construct-the-injection-time-grid">Construct the injection time grid<a class="anchor" aria-label="anchor" href="#construct-the-injection-time-grid"></a>
-</h2>
-<p>Stream recovery is approximated with piecewise-constant injection at
-each segment model point. <code>.get_stream_injection_times()</code>
-combines pumping boundaries, evaluation times, and any optional
-refinement times. Pumping boundaries are retained even when output is
-requested less frequently.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">injection_times</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.Date.html" class="external-link">seq.Date</a></span><span class="op">(</span></span>
-<span>  from <span class="op">=</span> <span class="va">pumping_schedules</span><span class="op">$</span><span class="va">t</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
-<span>  to <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">evaluation_times</span><span class="op">)</span>,</span>
-<span>  by <span class="op">=</span> <span class="st">"10 days"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">injection_grid</span> <span class="op">&lt;-</span> <span class="fu">isw</span><span class="fu">:::</span><span class="fu">.get_stream_injection_times</span><span class="op">(</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">stream_injection_schedule</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 6</span></span></span>
+<span><span class="co">#&gt;   pump_id reach_id   reach_segment_id interval_start interval_end injection_rate</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>            <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>              <span style="color: #949494;">[m^3/d]</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> pump_1  upstream_1 upstream_1_segm… 2025-01-01     2025-01-02     0           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> pump_1  upstream_1 upstream_1_segm… 2025-01-02     2025-01-03    -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">000</span><span style="color: #BB0000;">072</span><span style="color: #BB0000; text-decoration: underline;">8</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> pump_1  upstream_1 upstream_1_segm… 2025-01-03     2025-01-04    -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">036</span><span style="color: #BB0000;">6</span>   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> pump_1  upstream_1 upstream_1_segm… 2025-01-04     2025-01-05    -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">886</span>    </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> pump_1  upstream_1 upstream_1_segm… 2025-01-05     2025-01-06    -<span style="color: #BB0000;">0.006</span><span style="color: #BB0000; text-decoration: underline;">58</span>     </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> pump_1  upstream_1 upstream_1_segm… 2025-01-06     2025-01-07    -<span style="color: #BB0000;">0.026</span><span style="color: #BB0000; text-decoration: underline;">5</span></span></span></code></pre></div>
+<div class="section level3">
+<h3 id="what-happens-inside-get_stream_injection_schedule">What happens inside
+<code>get_stream_injection_schedule()</code><a class="anchor" aria-label="anchor" href="#what-happens-inside-get_stream_injection_schedule"></a>
+</h3>
+<div class="section level4">
+<h4 id="construct-the-injection-time-grid">1. Construct the injection time grid<a class="anchor" aria-label="anchor" href="#construct-the-injection-time-grid"></a>
+</h4>
+<p>The internal grid combines every requested evaluation time with all
+pumping-schedule times through the final evaluation. Each time starts a
+new injection interval, except the final time, which closes the last
+interval. Including pumping-schedule times ensures that a change in
+pumping begins a new interval even when results are requested less
+frequently. If the first evaluation occurs after pumping begins, the
+first pumping-schedule time is also included and depletion is assumed to
+be zero at that initial time.</p>
+<p><code>.get_stream_injection_times()</code> returns
+<code>injection_grid</code>, a list containing the requested evaluation
+times, the combined injection times, and those injection times converted
+to elapsed days. The combined injection times define the intervals used
+below.</p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">injection_grid</span> <span class="op">&lt;-</span> <span class="fu">isw</span><span class="fu">:::</span><span class="fu">.get_stream_injection_times</span><span class="op">(</span></span>
 <span>  <span class="va">pumping_schedules</span>,</span>
 <span>  <span class="va">evaluation_times</span>,</span>
-<span>  <span class="va">injection_times</span></span>
+<span>  injection_times <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">injection_grid</span><span class="op">$</span><span class="va">injection_times</span></span>
-<span><span class="co">#&gt;  [1] "2025-01-01" "2025-01-11" "2025-01-16" "2025-01-21" "2025-01-31"</span></span>
-<span><span class="co">#&gt;  [6] "2025-02-01" "2025-02-10" "2025-02-15" "2025-02-20" "2025-03-01"</span></span>
-<span><span class="co">#&gt; [11] "2025-03-02" "2025-03-12" "2025-03-17" "2025-03-22" "2025-04-01"</span></span>
-<span><span class="co">#&gt; [16] "2025-04-11" "2025-04-16" "2025-04-21" "2025-05-01"</span></span></code></pre></div>
-<p>Depletion is evaluated at all injection boundaries. The negative
-arithmetic mean of adjacent endpoint rates becomes the constant
-injection rate for that interval.
-<code>.get_injection_rate_changes()</code> then converts consecutive
-interval rates to change events so the same superposition machinery can
-be used for injection and pumping.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
+<span>  component <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">injection_grid</span><span class="op">)</span>,</span>
+<span>  number_of_times <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lengths.html" class="external-link">lengths</a></span><span class="op">(</span><span class="va">injection_grid</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 3 × 2</span></span></span>
+<span><span class="co">#&gt;   component        number_of_times</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                      <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> evaluation_times             120</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> injection_times              121</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> injection_days               121</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">injection_grid</span><span class="op">$</span><span class="va">injection_times</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "2025-01-01" "2025-01-02" "2025-01-03" "2025-01-04" "2025-01-05"</span></span>
+<span><span class="co">#&gt; [6] "2025-01-06"</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">tail</a></span><span class="op">(</span><span class="va">injection_grid</span><span class="op">$</span><span class="va">injection_times</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "2025-04-26" "2025-04-27" "2025-04-28" "2025-04-29" "2025-04-30"</span></span>
+<span><span class="co">#&gt; [6] "2025-05-01"</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="approximate-continuously-changing-depletion-by-intervals">2. Approximate continuously changing depletion by intervals<a class="anchor" aria-label="anchor" href="#approximate-continuously-changing-depletion-by-intervals"></a>
+</h4>
+<p>Depletion is evaluated at the start and end of each interval. The
+negative arithmetic mean of those two depletion rates becomes the
+constant injection rate for that interval. The negative sign represents
+water entering the aquifer from the stream, opposite to the sign used
+for pumping.</p>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">depletion_at_injection_times</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_apportioned_stream_depletion.html">get_apportioned_stream_depletion</a></span><span class="op">(</span></span>
 <span>  <span class="va">pumping_wells</span>,</span>
 <span>  <span class="va">pumping_schedules</span>,</span>
 <span>  <span class="va">stream_apportionment</span>,</span>
 <span>  <span class="va">injection_grid</span><span class="op">$</span><span class="va">injection_times</span></span>
 <span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">depletion_at_injection_times</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 5</span></span></span>
+<span><span class="co">#&gt;   pump_id evaluation_time reach_id   reach_segment_id     stream_depletion_rate</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                              <span style="color: #949494;">[m^3/d]</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> pump_1  2025-01-01      upstream_1 upstream_1_segment_1                     0</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> pump_1  2025-01-01      upstream_1 upstream_1_segment_2                     0</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> pump_1  2025-01-01      upstream_1 upstream_1_segment_3                     0</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> pump_1  2025-01-01      upstream_2 upstream_2_segment_1                     0</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> pump_1  2025-01-01      upstream_2 upstream_2_segment_2                     0</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> pump_1  2025-01-01      upstream_2 upstream_2_segment_3                     0</span></span>
 <span></span>
 <span><span class="va">internal_injection_schedule</span> <span class="op">&lt;-</span></span>
 <span>  <span class="fu">isw</span><span class="fu">:::</span><span class="fu">.get_interval_average_injection_schedule</span><span class="op">(</span></span>
@@ -507,59 +888,49 @@ be used for injection and pumping.</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 6</span></span></span>
 <span><span class="co">#&gt;   pump_id reach_id   reach_segment_id interval_start interval_end injection_rate</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                       <span style="color: #949494;">[d]</span>          <span style="color: #949494;">[d]</span>        <span style="color: #949494;">[m^3/d]</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> pump_1  upstream_1 upstream_1_segm…              0           10         -<span style="color: #BB0000;">0.288</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> pump_1  upstream_1 upstream_1_segm…             10           15         -<span style="color: #BB0000;">1.42</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> pump_1  upstream_1 upstream_1_segm…             15           20         -<span style="color: #BB0000;">3.43</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> pump_1  upstream_1 upstream_1_segm…             20           30         -<span style="color: #BB0000;">7.14</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> pump_1  upstream_1 upstream_1_segm…             30           31         -<span style="color: #BB0000;">9.94</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> pump_1  upstream_1 upstream_1_segm…             31           40        -<span style="color: #BB0000;">12.3</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> pump_1  upstream_1 upstream_1_segm…              0            1   0           </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> pump_1  upstream_1 upstream_1_segm…              1            2  -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">000</span><span style="color: #BB0000;">072</span><span style="color: #BB0000; text-decoration: underline;">8</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> pump_1  upstream_1 upstream_1_segm…              2            3  -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">036</span><span style="color: #BB0000;">6</span>   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> pump_1  upstream_1 upstream_1_segm…              3            4  -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">886</span>    </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> pump_1  upstream_1 upstream_1_segm…              4            5  -<span style="color: #BB0000;">0.006</span><span style="color: #BB0000; text-decoration: underline;">58</span>     </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> pump_1  upstream_1 upstream_1_segm…              5            6  -<span style="color: #BB0000;">0.026</span><span style="color: #BB0000; text-decoration: underline;">5</span></span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">injection_rate_changes</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 5</span></span></span>
 <span><span class="co">#&gt;   pump_id reach_id   reach_segment_id     injection_time injection_rate_change</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                           <span style="color: #949494;">[d]</span>               <span style="color: #949494;">[m^3/d]</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> pump_1  upstream_1 upstream_1_segment_1              0                -<span style="color: #BB0000;">0.288</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> pump_1  upstream_1 upstream_1_segment_1             10                -<span style="color: #BB0000;">1.13</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> pump_1  upstream_1 upstream_1_segment_1             15                -<span style="color: #BB0000;">2.01</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> pump_1  upstream_1 upstream_1_segment_1             20                -<span style="color: #BB0000;">3.71</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> pump_1  upstream_1 upstream_1_segment_1             30                -<span style="color: #BB0000;">2.79</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> pump_1  upstream_1 upstream_1_segment_1             31                -<span style="color: #BB0000;">2.34</span></span></span></code></pre></div>
-<p>The public function performs these steps and converts the internal
-elapsed-day boundaries back to the user’s original time
-representation.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">stream_injection_schedule</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_stream_injection_schedule.html">get_stream_injection_schedule</a></span><span class="op">(</span></span>
-<span>  <span class="va">pumping_wells</span>,</span>
-<span>  <span class="va">pumping_schedules</span>,</span>
-<span>  <span class="va">stream_apportionment</span>,</span>
-<span>  <span class="va">evaluation_times</span>,</span>
-<span>  injection_times <span class="op">=</span> <span class="va">injection_times</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">stream_injection_schedule</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 6</span></span></span>
-<span><span class="co">#&gt;   pump_id reach_id   reach_segment_id interval_start interval_end injection_rate</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>            <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>              <span style="color: #949494;">[m^3/d]</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> pump_1  upstream_1 upstream_1_segm… 2025-01-01     2025-01-11           -<span style="color: #BB0000;">0.288</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> pump_1  upstream_1 upstream_1_segm… 2025-01-11     2025-01-16           -<span style="color: #BB0000;">1.42</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> pump_1  upstream_1 upstream_1_segm… 2025-01-16     2025-01-21           -<span style="color: #BB0000;">3.43</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> pump_1  upstream_1 upstream_1_segm… 2025-01-21     2025-01-31           -<span style="color: #BB0000;">7.14</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> pump_1  upstream_1 upstream_1_segm… 2025-01-31     2025-02-01           -<span style="color: #BB0000;">9.94</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> pump_1  upstream_1 upstream_1_segm… 2025-02-01     2025-02-10          -<span style="color: #BB0000;">12.3</span></span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> pump_1  upstream_1 upstream_1_segment_1              1         -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">000</span><span style="color: #BB0000;">072</span><span style="color: #BB0000; text-decoration: underline;">8</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> pump_1  upstream_1 upstream_1_segment_1              2         -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">036</span><span style="color: #BB0000;">5</span>   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> pump_1  upstream_1 upstream_1_segment_1              3         -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">850</span>    </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> pump_1  upstream_1 upstream_1_segment_1              4         -<span style="color: #BB0000;">0.005</span><span style="color: #BB0000; text-decoration: underline;">70</span>     </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> pump_1  upstream_1 upstream_1_segment_1              5         -<span style="color: #BB0000;">0.019</span><span style="color: #BB0000; text-decoration: underline;">9</span>      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> pump_1  upstream_1 upstream_1_segment_1              6         -<span style="color: #BB0000;">0.046</span><span style="color: #BB0000; text-decoration: underline;">8</span></span></span></code></pre></div>
+<p><code>depletion_at_injection_times</code> contains the segment-level
+depletion rates at the start and end of each interval.
+<code>.get_interval_average_injection_schedule()</code> converts them to
+the interval rates returned by
+<code><a href="../reference/get_stream_injection_schedule.html">get_stream_injection_schedule()</a></code>.
+<code>.get_injection_rate_changes()</code> then converts successive
+interval rates to change events for the superposition calculation in
+<code><a href="../reference/get_apportioned_aquifer_drawdown.html">get_apportioned_aquifer_drawdown()</a></code>.</p>
+<p>Optional <code>injection_times</code> add times at which new
+intervals start, creating a finer piecewise-constant approximation. They
+do not change <code>evaluation_times</code>. Extra times after the final
+evaluation time are ignored.</p>
+<p>Most users can let <code><a href="../reference/get_apportioned_aquifer_drawdown.html">get_apportioned_aquifer_drawdown()</a></code>
+create the schedule internally. Creating it explicitly is useful when it
+needs to be inspected, reused, or held fixed while other drawdown inputs
+are varied.</p>
+</div>
+</div>
 </div>
 <div class="section level2">
-<h2 id="superimpose-pumping-drawdown-and-stream-recovery">Superimpose pumping drawdown and stream recovery<a class="anchor" aria-label="anchor" href="#superimpose-pumping-drawdown-and-stream-recovery"></a>
+<h2 id="estimate-aquifer-drawdown-and-stream-recovery">Estimate aquifer drawdown and stream recovery<a class="anchor" aria-label="anchor" href="#estimate-aquifer-drawdown-and-stream-recovery"></a>
 </h2>
-<p><code><a href="../reference/get_apportioned_aquifer_drawdown.html">get_apportioned_aquifer_drawdown()</a></code> calculates the direct
-Theis response from each physical pumping well to each observation well.
-It separately calculates the response from every segment model point
-using the injection-rate changes. Both calculations use the aquifer
-properties of the originating pump.</p>
-<p>Pumping drawdown and stream recovery are reported as positive
-magnitudes. Net aquifer drawdown is their difference. Results remain
-separated by pump and observation well so users can inspect
-contributions before aggregating them.</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">aquifer_drawdown</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_apportioned_aquifer_drawdown.html">get_apportioned_aquifer_drawdown</a></span><span class="op">(</span></span>
+<p>The final ADF modeling step calculates direct pumping drawdown,
+recovery caused by the equivalent stream injections, and their net
+effect.</p>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">water_level_changes</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_apportioned_aquifer_drawdown.html">get_apportioned_aquifer_drawdown</a></span><span class="op">(</span></span>
 <span>  <span class="va">pumping_wells</span>,</span>
 <span>  <span class="va">pumping_schedules</span>,</span>
 <span>  <span class="va">observation_wells</span>,</span>
@@ -568,29 +939,185 @@ contributions before aggregating them.</p>
 <span>  stream_injection_schedule <span class="op">=</span> <span class="va">stream_injection_schedule</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">aquifer_drawdown</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 6</span></span></span>
-<span><span class="co">#&gt;   pump_id observation_id evaluation_time pumping_drawdown stream_recovery</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>                       <span style="color: #949494;">[m]</span>             <span style="color: #949494;">[m]</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> pump_1  obs_near       2025-01-16                 0.536        0.000<span style="text-decoration: underline;">313</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> pump_1  obs_near       2025-01-31                 0.988        0.005<span style="text-decoration: underline;">91</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> pump_1  obs_near       2025-02-15                 1.29         0.023<span style="text-decoration: underline;">9</span>  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> pump_1  obs_near       2025-03-02                 1.52         0.054<span style="text-decoration: underline;">6</span>  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> pump_1  obs_near       2025-03-17                 1.48         0.093<span style="text-decoration: underline;">9</span>  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> pump_1  obs_near       2025-04-01                 1.46         0.136   </span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 1 more variable: aquifer_drawdown [m]</span></span></span></code></pre></div>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">aquifer_drawdown</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span>
-<span>    <span class="va">pump_id</span>,</span>
-<span>    <span class="va">observation_id</span>,</span>
-<span>    <span class="va">evaluation_time</span>,</span>
-<span>    <span class="va">pumping_drawdown</span>,</span>
-<span>    <span class="va">stream_recovery</span>,</span>
-<span>    <span class="va">aquifer_drawdown</span></span>
+<span><span class="va">water_level_changes</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 480 × 6</span></span></span>
+<span><span class="co">#&gt;    pump_id observation_id evaluation_time pumping_drawdown stream_recovery</span></span>
+<span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>                       <span style="color: #949494;">[m]</span>             <span style="color: #949494;">[m]</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> pump_1  obs_near       2025-01-02             0.000<span style="text-decoration: underline;">081</span>7        0   <span style="color: #949494;"> </span>   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> pump_1  obs_near       2025-01-03             0.005<span style="text-decoration: underline;">56</span>          4.62<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> pump_1  obs_near       2025-01-04             0.025<span style="text-decoration: underline;">8</span>           6.40<span style="color: #949494;">e</span><span style="color: #BB0000;">-14</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> pump_1  obs_near       2025-01-05             0.058<span style="text-decoration: underline;">9</span>           2.15<span style="color: #949494;">e</span><span style="color: #BB0000;">-11</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> pump_1  obs_near       2025-01-06             0.099<span style="text-decoration: underline;">8</span>           7.13<span style="color: #949494;">e</span><span style="color: #BB0000;">-10</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> pump_1  obs_near       2025-01-07             0.145            9.43<span style="color: #949494;">e</span><span style="color: #BB0000;">- 9</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> pump_1  obs_near       2025-01-08             0.191            6.89<span style="color: #949494;">e</span><span style="color: #BB0000;">- 8</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> pump_1  obs_near       2025-01-09             0.238            3.33<span style="color: #949494;">e</span><span style="color: #BB0000;">- 7</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> pump_1  obs_near       2025-01-10             0.284            1.20<span style="color: #949494;">e</span><span style="color: #BB0000;">- 6</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> pump_1  obs_near       2025-01-11             0.329            3.47<span style="color: #949494;">e</span><span style="color: #BB0000;">- 6</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 470 more rows</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 1 more variable: water_level_change [m]</span></span></span></code></pre></div>
+<div class="section level3">
+<h3 id="what-happens-inside-get_apportioned_aquifer_drawdown">What happens inside
+<code>get_apportioned_aquifer_drawdown()</code><a class="anchor" aria-label="anchor" href="#what-happens-inside-get_apportioned_aquifer_drawdown"></a>
+</h3>
+<div class="section level4">
+<h4 id="create-physical-and-equivalent-well-geometries">1. Create physical and equivalent well geometries<a class="anchor" aria-label="anchor" href="#create-physical-and-equivalent-well-geometries"></a>
+</h4>
+<p>Pumping and observation wells are transformed to the projected CRS
+stored by <code>stream_apportionment</code>. Direct pumping distances
+are measured from each physical pumping well to each observation well.
+Each reach segment’s <code>model_point</code> becomes an equivalent
+injection well, and its distance to every observation well is
+calculated.</p>
+<p>The physical response uses the user-supplied pumping-well diameter.
+An injection point instead uses its segment’s
+<code>represented_length</code> as an effective diameter. This holds the
+point-well response constant inside half a segment length and prevents a
+singular response at the stream.</p>
+<p>These intermediate geometries and distance matrices can be
+constructed and inspected directly:</p>
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">drawdown_crs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_crs.html" class="external-link">st_crs</a></span><span class="op">(</span><span class="va">stream_apportionment</span><span class="op">)</span></span>
+<span><span class="va">prepared_pumping_wells</span> <span class="op">&lt;-</span> <span class="va">pumping_wells</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_zm.html" class="external-link">st_zm</a></span><span class="op">(</span>drop <span class="op">=</span> <span class="cn">TRUE</span>, what <span class="op">=</span> <span class="st">"ZM"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_transform.html" class="external-link">st_transform</a></span><span class="op">(</span><span class="va">drawdown_crs</span><span class="op">)</span></span>
+<span><span class="va">prepared_observation_wells</span> <span class="op">&lt;-</span> <span class="va">observation_wells</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_zm.html" class="external-link">st_zm</a></span><span class="op">(</span>drop <span class="op">=</span> <span class="cn">TRUE</span>, what <span class="op">=</span> <span class="st">"ZM"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_transform.html" class="external-link">st_transform</a></span><span class="op">(</span><span class="va">drawdown_crs</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">injection_points</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/sf.html" class="external-link">st_sf</a></span><span class="op">(</span></span>
+<span>  pump_id <span class="op">=</span> <span class="va">stream_apportionment</span><span class="op">$</span><span class="va">pump_id</span>,</span>
+<span>  reach_segment_id <span class="op">=</span> <span class="va">stream_apportionment</span><span class="op">$</span><span class="va">reach_segment_id</span>,</span>
+<span>  well_diam <span class="op">=</span> <span class="va">stream_apportionment</span><span class="op">$</span><span class="va">represented_length</span>,</span>
+<span>  geometry <span class="op">=</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_transform.html" class="external-link">st_transform</a></span><span class="op">(</span><span class="va">stream_apportionment</span><span class="op">$</span><span class="va">model_point</span>, <span class="va">drawdown_crs</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">pump_to_observation_distances</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/geos_measures.html" class="external-link">st_distance</a></span><span class="op">(</span></span>
+<span>  <span class="va">prepared_pumping_wells</span>,</span>
+<span>  <span class="va">prepared_observation_wells</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">injection_to_observation_distances</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/geos_measures.html" class="external-link">st_distance</a></span><span class="op">(</span></span>
+<span>  <span class="va">injection_points</span>,</span>
+<span>  <span class="va">prepared_observation_wells</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">pump_to_observation_distances</span></span>
+<span><span class="co">#&gt; Units: [m]</span></span>
+<span><span class="co">#&gt;          [,1]     [,2]</span></span>
+<span><span class="co">#&gt; [1,] 111.8034 456.0702</span></span>
+<span><span class="co">#&gt; [2,] 552.2681 304.1381</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">injection_points</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Simple feature collection with 6 features and 3 fields</span></span>
+<span><span class="co">#&gt; Geometry type: POINT</span></span>
+<span><span class="co">#&gt; Dimension:     XY</span></span>
+<span><span class="co">#&gt; Bounding box:  xmin: 500025 ymin: 4979925 xmax: 500125 ymax: 4980175</span></span>
+<span><span class="co">#&gt; Projected CRS: WGS 84 / UTM zone 15N</span></span>
+<span><span class="co">#&gt;   pump_id     reach_segment_id    well_diam               geometry</span></span>
+<span><span class="co">#&gt; 1  pump_1 upstream_1_segment_1 70.71068 [m] POINT (500025 4980175)</span></span>
+<span><span class="co">#&gt; 2  pump_1 upstream_1_segment_2 70.71068 [m] POINT (500075 4980125)</span></span>
+<span><span class="co">#&gt; 3  pump_1 upstream_1_segment_3 70.71068 [m] POINT (500125 4980075)</span></span>
+<span><span class="co">#&gt; 4  pump_1 upstream_2_segment_1 70.71068 [m] POINT (500025 4979925)</span></span>
+<span><span class="co">#&gt; 5  pump_1 upstream_2_segment_2 70.71068 [m] POINT (500075 4979975)</span></span>
+<span><span class="co">#&gt; 6  pump_1 upstream_2_segment_3 70.71068 [m] POINT (500125 4980025)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">injection_to_observation_distances</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Units: [m]</span></span>
+<span><span class="co">#&gt;          [,1]     [,2]</span></span>
+<span><span class="co">#&gt; [1,] 145.7738 325.9601</span></span>
+<span><span class="co">#&gt; [2,] 176.7767 255.4408</span></span>
+<span><span class="co">#&gt; [3,] 226.3846 185.0676</span></span>
+<span><span class="co">#&gt; [4,] 215.0581 215.0581</span></span>
+<span><span class="co">#&gt; [5,] 215.0581 171.0263</span></span>
+<span><span class="co">#&gt; [6,] 237.1708 149.1643</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="convert-pumping-and-injection-schedules-to-events">2. Convert pumping and injection schedules to events<a class="anchor" aria-label="anchor" href="#convert-pumping-and-injection-schedules-to-events"></a>
+</h4>
+<p>Physical pumping uses the rate-change events demonstrated earlier.
+The stream schedule is also converted from interval rates to
+injection-rate changes so both responses can use the same superposition
+principle. Because this example supplies
+<code>stream_injection_schedule</code>, the function validates and
+reuses it rather than calculating depletion again.</p>
+<p>The two helper functions return different forms of event data.
+<code><a href="../reference/dot-get_pumping_response_times.html">.get_pumping_response_times()</a></code> converts the pumping schedule
+to rate changes, pairs each change with every later evaluation time, and
+calculates the elapsed response time for each pair.
+<code>.get_injection_rate_changes()</code> only converts the interval
+injection schedule to changes in injection rate. Injection events are
+kept in this compact form because there is one event series for every
+pump and reach segment. During the drawdown calculation, each evaluation
+time is paired with its earlier injection events and their elapsed times
+are calculated then.</p>
+<p>If <code>stream_injection_schedule = NULL</code>, the function
+constructs one internally. In that case, optional
+<code>injection_times</code> may refine its time grid. The two arguments
+cannot be supplied together because an explicit schedule already defines
+its own intervals.</p>
+<p>The physical and injection event tables are available for inspection
+as follows. Their different columns reflect when the pairing with
+evaluation times occurs.</p>
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">physical_pumping_events</span> <span class="op">&lt;-</span> <span class="fu">isw</span><span class="fu">:::</span><span class="fu"><a href="../reference/dot-get_pumping_response_times.html">.get_pumping_response_times</a></span><span class="op">(</span></span>
+<span>  <span class="va">pumping_schedules</span>,</span>
+<span>  <span class="va">pumping_wells</span>,</span>
+<span>  <span class="va">evaluation_times</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">stream_injection_events</span> <span class="op">&lt;-</span> <span class="fu">isw</span><span class="fu">:::</span><span class="fu">.get_injection_rate_changes</span><span class="op">(</span></span>
+<span>  <span class="va">stream_injection_schedule</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">physical_pumping_events</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 5</span></span></span>
+<span><span class="co">#&gt;   pump_id evaluation_time pumping_time elapsed_time pumping_rate_change</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>                   <span style="color: #949494;">[d]</span>          <span style="color: #949494;">[d]</span>             <span style="color: #949494;">[m^3/d]</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> pump_1  2025-01-02                 0            1                 500</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> pump_1  2025-01-03                 0            2                 500</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> pump_1  2025-01-04                 0            3                 500</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> pump_1  2025-01-05                 0            4                 500</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> pump_1  2025-01-06                 0            5                 500</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> pump_1  2025-01-07                 0            6                 500</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">stream_injection_events</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 5</span></span></span>
+<span><span class="co">#&gt;   pump_id reach_id   reach_segment_id     injection_time injection_rate_change</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>                       <span style="color: #949494;">[m^3/d]</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> pump_1  upstream_1 upstream_1_segment_1 2025-01-02             -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">000</span><span style="color: #BB0000;">072</span><span style="color: #BB0000; text-decoration: underline;">8</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> pump_1  upstream_1 upstream_1_segment_1 2025-01-03             -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">036</span><span style="color: #BB0000;">5</span>   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> pump_1  upstream_1 upstream_1_segment_1 2025-01-04             -<span style="color: #BB0000;">0.000</span><span style="color: #BB0000; text-decoration: underline;">850</span>    </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> pump_1  upstream_1 upstream_1_segment_1 2025-01-05             -<span style="color: #BB0000;">0.005</span><span style="color: #BB0000; text-decoration: underline;">70</span>     </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> pump_1  upstream_1 upstream_1_segment_1 2025-01-06             -<span style="color: #BB0000;">0.019</span><span style="color: #BB0000; text-decoration: underline;">9</span>      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> pump_1  upstream_1 upstream_1_segment_1 2025-01-07             -<span style="color: #BB0000;">0.046</span><span style="color: #BB0000; text-decoration: underline;">8</span></span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="evaluate-theis-responses-and-combine-them">3. Evaluate Theis responses and combine them<a class="anchor" aria-label="anchor" href="#evaluate-theis-responses-and-combine-them"></a>
+</h4>
+<p>For every pump, observation well, and evaluation time, the function
+sums the Theis responses from all earlier physical pumping events. It
+separately sums responses from all earlier injection events assigned to
+that pump. Both use the aquifer properties <code>K</code>,
+<code>D</code>, and <code>V</code> of the originating pumping well.</p>
+<p><code>pumping_drawdown</code> and <code>stream_recovery</code> are
+reported as positive magnitudes. <code>water_level_change</code> uses a
+signed convention in which falling water levels are negative and rising
+water levels are positive:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mtext mathvariant="normal">water_level_change</mtext><mo>=</mo><mi>−</mi><mtext mathvariant="normal">pumping_drawdown</mtext><mo>+</mo><mtext mathvariant="normal">stream_recovery</mtext><mi>.</mi></mrow><annotation encoding="application/x-tex">
+\text{water_level_change} =
+-\text{pumping_drawdown} + \text{stream_recovery}.
+</annotation></semantics></math></p>
+<p>Results remain separated by <code>pump_id</code> and
+<code>observation_id</code>, allowing users to inspect individual
+contributions or sum across pumps. Observation locations, evaluation
+times, injection-grid resolution, pumping-well diameter, and aquifer
+properties are therefore the main choices controlling this step.</p>
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">water_level_changes</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>    pumping_water_level_change <span class="op">=</span> <span class="op">-</span><span class="va">pumping_drawdown</span></span>
 <span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">tidyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyr.tidyverse.org/reference/pivot_longer.html" class="external-link">pivot_longer</a></span><span class="op">(</span></span>
-<span>    cols <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">pumping_drawdown</span>, <span class="va">stream_recovery</span>, <span class="va">aquifer_drawdown</span><span class="op">)</span>,</span>
+<span>    cols <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>      <span class="va">pumping_water_level_change</span>,</span>
+<span>      <span class="va">stream_recovery</span>,</span>
+<span>      <span class="va">water_level_change</span></span>
+<span>    <span class="op">)</span>,</span>
 <span>    names_to <span class="op">=</span> <span class="st">"component"</span>,</span>
 <span>    values_to <span class="op">=</span> <span class="st">"water_level"</span></span>
 <span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -599,11 +1126,13 @@ contributions before aggregating them.</p>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_grid.html" class="external-link">facet_grid</a></span><span class="op">(</span><span class="va">observation_id</span> <span class="op">~</span> <span class="va">pump_id</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
 <span>    x <span class="op">=</span> <span class="st">"Evaluation time"</span>,</span>
-<span>    y <span class="op">=</span> <span class="st">"Water-level response"</span>,</span>
+<span>    y <span class="op">=</span> <span class="st">"Water-level change"</span>,</span>
 <span>    color <span class="op">=</span> <span class="st">"Component"</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="stream-depletion-apportionment-internals_files/figure-html/plot-aquifer-drawdown-1.png" class="r-plt" alt="" width="700"></p>
+<p><img src="stream-depletion-apportionment-internals_files/figure-html/plot-apportioned-aquifer-drawdown-1.png" class="r-plt" alt="" width="100%" style="display: block; margin: auto;"></p>
+</div>
+</div>
 </div>
   </div>
 

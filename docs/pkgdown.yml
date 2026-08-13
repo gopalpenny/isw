@@ -1,4 +1,4 @@
-pandoc: 3.6.2
+pandoc: 3.9.0.2
 pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
@@ -7,5 +7,6 @@ articles:
   Identify-blind-spots: Identify-blind-spots.html
   ISW-reporting-scenarios: ISW-reporting-scenarios.html
   Stream-depletion-and-aquifer-drawdown: Stream-depletion-and-aquifer-drawdown.html
+  stream-depletion-apportionment-internals: stream-depletion-apportionment-internals.html
   stream-depletion-apportionment: stream-depletion-apportionment.html
-last_built: 2026-07-20T15:29Z
+last_built: 2026-08-13T22:55Z

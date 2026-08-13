@@ -64,6 +64,9 @@
       <a href="../articles/Stream-depletion-and-aquifer-drawdown.html">Stream depletion and aquifer drawdown</a>
     </li>
     <li>
+      <a href="../articles/stream-depletion-apportionment-internals.html">Stream Depletion Apportionment: Detailed Walkthrough</a>
+    </li>
+    <li>
       <a href="../articles/stream-depletion-apportionment.html">Stream Depletion Apportionment</a>
     </li>
   </ul>
@@ -246,7 +249,7 @@ is the distance between the observation well and the stream. If
 <code>r</code> is the distance between the pumping and observation
 wells, <code>y_diff</code> is the component of this distance that is
 parallel to the stream. In other words,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>r</mi><mn>2</mn></msup><mo>=</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>x</mi><mn>2</mn></msub><mo>−</mo><msub><mi>x</mi><mn>1</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup><mo>+</mo><msubsup><mi>y</mi><mrow><mi>d</mi><mi>i</mi><mi>f</mi><mi>f</mi></mrow><mn>2</mn></msubsup></mrow><annotation encoding="application/x-tex">r^2 = (x_2-x_1)^2 + y_{diff}^2</annotation></semantics></math>.
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>r</mi><mn>2</mn></msup><mo>=</mo><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mn>2</mn></msub><mo>−</mo><msub><mi>x</mi><mn>1</mn></msub><msup><mo stretchy="false" form="postfix">)</mo><mn>2</mn></msup><mo>+</mo><msubsup><mi>y</mi><mrow><mi>d</mi><mi>i</mi><mi>f</mi><mi>f</mi></mrow><mn>2</mn></msubsup></mrow><annotation encoding="application/x-tex">r^2 = (x_2-x_1)^2 + y_{diff}^2</annotation></semantics></math>.
 Keeping the remaining parameters the same as before, we can call this
 function as:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">

@@ -134,8 +134,8 @@ instead of being recalculated internally.</p></dd>
   `evaluation_time`. `pumping_drawdown` is the positive decline caused by
   the physical pumping well, `stream_recovery` is the positive water-level
   recovery caused by its apportioned stream injection wells, and
-  `aquifer_drawdown` is `pumping_drawdown - stream_recovery`. All three
-  retain length units.</p>
+  `water_level_change` is `-pumping_drawdown + stream_recovery`, so declines
+  are negative and rises are positive. All three retain length units.</p>
     </div>
     <div id="details">
     <h2>Details</h2>
@@ -143,12 +143,19 @@ instead of being recalculated internally.</p></dd>
 depletion assigned to each reach segment is represented as injection at the
 segment's along-line `model_point`. The injection schedule is constructed by
 [get_stream_injection_schedule()] and uses the aquifer properties associated
-with the originating `pump_id`.</p>
+with the originating `pump_id`. Each injection point uses the segment's
+`represented_length` as its effective well diameter. Thus, the analytical
+response is held constant inside a radius of half the represented stream
+length instead of increasing without bound at a point source.</p>
 <p>Both pumping and injection responses use the infinite-aquifer
 [get_aquifer_drawdown_ratio()] kernel. No image well is included because the
 apportioned stream injection explicitly represents the stream contribution.
-Results remain pump-specific so users can inspect individual contributions
-or sum `aquifer_drawdown` across pumps by observation and evaluation time.</p>
+`pumping_drawdown` and `stream_recovery` are positive component magnitudes.
+The signed net response is `water_level_change = -pumping_drawdown +
+stream_recovery`; negative values indicate falling water levels and positive
+values indicate rising water levels.</p>
+<p>Results remain pump-specific so users can inspect individual contributions
+or sum `water_level_change` across pumps by observation and evaluation time.</p>
 <p>The internal injection grid always includes pumping-schedule times through
 the final evaluation time, even when results are requested less frequently.
 Optional `injection_times` can refine that grid. This interval-average
@@ -201,15 +208,15 @@ segment from the first pumping time through the final evaluation time.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> pump_1  obs_near                    10         6.59<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>        2.22<span style="color: #949494;">e</span><span style="color: #BB0000;">- 5</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> pump_1  obs_near                    20         7.62<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>        2.48<span style="color: #949494;">e</span><span style="color: #BB0000;">- 4</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> pump_1  obs_downstream               0         0   <span style="color: #949494;"> </span>           0   <span style="color: #949494;"> </span>   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> pump_1  obs_downstream              10         8.41<span style="color: #949494;">e</span><span style="color: #BB0000;">- 8</span>        8.43<span style="color: #949494;">e</span><span style="color: #BB0000;">- 6</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> pump_1  obs_downstream              20         6.49<span style="color: #949494;">e</span><span style="color: #BB0000;">- 5</span>        1.78<span style="color: #949494;">e</span><span style="color: #BB0000;">- 4</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> pump_1  obs_downstream              10         8.41<span style="color: #949494;">e</span><span style="color: #BB0000;">- 8</span>        8.38<span style="color: #949494;">e</span><span style="color: #BB0000;">- 6</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> pump_1  obs_downstream              20         6.49<span style="color: #949494;">e</span><span style="color: #BB0000;">- 5</span>        1.66<span style="color: #949494;">e</span><span style="color: #BB0000;">- 4</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> pump_2  obs_near                     0         0   <span style="color: #949494;"> </span>           0   <span style="color: #949494;"> </span>   </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> pump_2  obs_near                    10         1.97<span style="color: #949494;">e</span><span style="color: #BB0000;">-18</span>        1.05<span style="color: #949494;">e</span><span style="color: #BB0000;">-11</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> pump_2  obs_near                    20         1.78<span style="color: #949494;">e</span><span style="color: #BB0000;">-10</span>        1.14<span style="color: #949494;">e</span><span style="color: #BB0000;">- 8</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> pump_2  obs_downstream               0         0   <span style="color: #949494;"> </span>           0   <span style="color: #949494;"> </span>   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">11</span> pump_2  obs_downstream              10         2.96<span style="color: #949494;">e</span><span style="color: #BB0000;">- 7</span>        6.42<span style="color: #949494;">e</span><span style="color: #BB0000;">- 7</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">12</span> pump_2  obs_downstream              20         1.16<span style="color: #949494;">e</span><span style="color: #BB0000;">- 4</span>        9.11<span style="color: #949494;">e</span><span style="color: #BB0000;">- 5</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 1 more variable: aquifer_drawdown [m]</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">11</span> pump_2  obs_downstream              10         2.96<span style="color: #949494;">e</span><span style="color: #BB0000;">- 7</span>        3.20<span style="color: #949494;">e</span><span style="color: #BB0000;">- 7</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">12</span> pump_2  obs_downstream              20         1.16<span style="color: #949494;">e</span><span style="color: #BB0000;">- 4</span>        4.61<span style="color: #949494;">e</span><span style="color: #BB0000;">- 5</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 1 more variable: water_level_change [m]</span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

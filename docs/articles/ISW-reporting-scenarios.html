@@ -64,6 +64,9 @@
       <a href="../articles/Stream-depletion-and-aquifer-drawdown.html">Stream depletion and aquifer drawdown</a>
     </li>
     <li>
+      <a href="../articles/stream-depletion-apportionment-internals.html">Stream Depletion Apportionment: Detailed Walkthrough</a>
+    </li>
+    <li>
       <a href="../articles/stream-depletion-apportionment.html">Stream Depletion Apportionment</a>
     </li>
   </ul>
@@ -100,7 +103,7 @@
 </h3>
 <ul>
 <li>pumping is a function of cartesian space and time,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">p = f(x,t)</annotation></semantics></math>.
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mi>f</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">p = f(x,t)</annotation></semantics></math>.
 In this case
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math>
 is a 2-dimensional cartesian space.</li>
@@ -112,7 +115,7 @@ Generally, pumping should be modeled at least once every 5 years as part
 of GSP updates</li>
 <li>water level is also a function of time and space, simplified here as
 hydraulic head,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi><mo>=</mo><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">h = f(x, t)</annotation></semantics></math>.
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi><mo>=</mo><mi>f</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">h = f(x, t)</annotation></semantics></math>.
 Note that water level and hydraulic head are equivalent in 2D analytical
 models</li>
 <li>observation wells are located at fixed points in space,
@@ -125,10 +128,10 @@ leading to observed water levels
 space can be transformed from cartesian space to another space,
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>=</mo><mo stretchy="false" form="prefix">{</mo><msub><mi>d</mi><mn>1</mn></msub><mo>,</mo><msub><mi>d</mi><mn>2</mn></msub><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">d =  \{d_1, d_2\}</annotation></semantics></math>,
 where
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mn>1</mn></msub><mo>=</mo><msub><mi>δ</mi><mn>1</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">d_1=\delta_1(x)</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mn>1</mn></msub><mo>=</mo><msub><mi>δ</mi><mn>1</mn></msub><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">d_1=\delta_1(x)</annotation></semantics></math>
 represents the distance to the nearest river (or surface water body),
 and
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mn>2</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">d_2(x)</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mn>2</mn></msub><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">d_2(x)</annotation></semantics></math>
 represents the distance along the river network from the lowest point on
 the river network within the subbasin. In other words,
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mn>1</mn></msub><annotation encoding="application/x-tex">d_1</annotation></semantics></math>
@@ -136,11 +139,11 @@ is distance away from the river, while
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mn>2</mn></msub><annotation encoding="application/x-tex">d_2</annotation></semantics></math>
 is distance along the river. We can likewise refer to pumping and water
 levels using these coordinates as
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">p(d, t)</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo stretchy="false" form="prefix">(</mo><mi>d</mi><mo>,</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">p(d, t)</annotation></semantics></math>
 and
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">h(d, t)</annotation></semantics></math>.</li>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi><mo stretchy="false" form="prefix">(</mo><mi>d</mi><mo>,</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">h(d, t)</annotation></semantics></math>.</li>
 <li>we denote stream depletion as
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>d</mi></msub><mo>=</mo><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mn>2</mn></msub><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">q_d = f(d_2, t)</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>d</mi></msub><mo>=</mo><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mn>2</mn></msub><mo>,</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">q_d = f(d_2, t)</annotation></semantics></math>,
 where
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mn>2</mn></msub><annotation encoding="application/x-tex">d_2</annotation></semantics></math>
 essentially denotes the location of stream depletion on the river
@@ -163,11 +166,11 @@ reported results.</p>
 </h4>
 <p>Imagine a situation where pumping is a function of cartesian space
 and time,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">p = f(x,t)</annotation></semantics></math>.
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><mi>f</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">p = f(x,t)</annotation></semantics></math>.
 Let’s say you modeled ISW for the next five years
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>∈</mo><mrow><mo stretchy="true" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>5</mn><mo stretchy="true" form="postfix">]</mo></mrow></mrow><annotation encoding="application/x-tex">t \in [0,5]</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>t</mi><mo>∈</mo><mo stretchy="false" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>5</mn><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">t \in [0,5]</annotation></semantics></math>
 under the conditions that
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><msub><mi>p</mi><mi>m</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">p = p_m(x, t)</annotation></semantics></math>.
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>=</mo><msub><mi>p</mi><mi>m</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">p = p_m(x, t)</annotation></semantics></math>.
 But you did this in a conservative way, such that your actual pumping is
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mi>a</mi></msub><mo>&lt;</mo><msub><mi>p</mi><mi>m</mi></msub><mspace width="0.167em"></mspace><mo>∀</mo><mspace width="0.167em"></mspace><mi>x</mi><mo>,</mo><mi>t</mi></mrow><annotation encoding="application/x-tex">p_a &lt; p_m \, \forall \, x, t</annotation></semantics></math>.
 In this case, you wouldn’t have to re-model the scenario, you can just
@@ -185,9 +188,9 @@ the river. This has to be true for any distance (or buffer width)
 within the subbasin as well as all
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mn>2</mn></msub><annotation encoding="application/x-tex">d_2</annotation></semantics></math>
 along the river network:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><munder><mo>∑</mo><mrow><msub><mi>d</mi><mn>1</mn></msub><mo>&lt;</mo><mover><mi>d</mi><mo accent="true">̂</mo></mover></mrow></munder><msub><mi>p</mi><mi>a</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mn>1</mn></msub><mo>,</mo><msub><mi>d</mi><mn>2</mn></msub><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>&lt;</mo><munder><mo>∑</mo><mrow><msub><mi>d</mi><mn>1</mn></msub><mo>&lt;</mo><mover><mi>d</mi><mo accent="true">̂</mo></mover></mrow></munder><msub><mi>p</mi><mi>m</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mn>1</mn></msub><mo>,</mo><msub><mi>d</mi><mn>2</mn></msub><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mo>,</mo><mo>∀</mo><mspace width="0.167em"></mspace><msub><mi>d</mi><mn>2</mn></msub><mo>,</mo><mover><mi>d</mi><mo accent="true">̂</mo></mover><mo>,</mo><mi>t</mi></mrow><annotation encoding="application/x-tex">\sum_{d_1 &lt; \hat d} p_a(d_1, d_2, t) &lt; \sum_{d_1 &lt; \hat d} p_m(d_1, d_2, t) \, , \forall \, d_2, \hat d, t</annotation></semantics></math></p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><munder><mo>∑</mo><mrow><msub><mi>d</mi><mn>1</mn></msub><mo>&lt;</mo><mover><mi>d</mi><mo accent="true">̂</mo></mover></mrow></munder><msub><mi>p</mi><mi>a</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mn>1</mn></msub><mo>,</mo><msub><mi>d</mi><mn>2</mn></msub><mo>,</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo><mo>&lt;</mo><munder><mo>∑</mo><mrow><msub><mi>d</mi><mn>1</mn></msub><mo>&lt;</mo><mover><mi>d</mi><mo accent="true">̂</mo></mover></mrow></munder><msub><mi>p</mi><mi>m</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mn>1</mn></msub><mo>,</mo><msub><mi>d</mi><mn>2</mn></msub><mo>,</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo><mspace width="0.167em"></mspace><mo>,</mo><mo>∀</mo><mspace width="0.167em"></mspace><msub><mi>d</mi><mn>2</mn></msub><mo>,</mo><mover><mi>d</mi><mo accent="true">̂</mo></mover><mo>,</mo><mi>t</mi></mrow><annotation encoding="application/x-tex">\sum_{d_1 &lt; \hat d} p_a(d_1, d_2, t) &lt; \sum_{d_1 &lt; \hat d} p_m(d_1, d_2, t) \, , \forall \, d_2, \hat d, t</annotation></semantics></math></p>
 <p>Note that in the above equation, we write out
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>d</mi><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mi>p</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mn>1</mn></msub><mo>,</mo><msub><mi>d</mi><mn>2</mn></msub><mo>,</mo><mi>t</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">p(d, t) = p(d_1, d_2, t)</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo stretchy="false" form="prefix">(</mo><mi>d</mi><mo>,</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mi>p</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mn>1</mn></msub><mo>,</mo><msub><mi>d</mi><mn>2</mn></msub><mo>,</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">p(d, t) = p(d_1, d_2, t)</annotation></semantics></math>
 to make it clearer we are not summing over
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mn>2</mn></msub><annotation encoding="application/x-tex">d_2</annotation></semantics></math>.
 The variable
@@ -207,35 +210,35 @@ further away from the river using water level measurements, while
 limiting stream depletion from pumping near the river. This example has
 to be thoroughly explored to be viable. Conceptually, we break up stream
 depletion into depletion associated with pumping near the river,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mrow><mi>d</mi><mo>&lt;</mo><mi>d</mi><mi>′</mi></mrow></msub><annotation encoding="application/x-tex">q_{d&lt;d'}</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mrow><mi>d</mi><mo>&lt;</mo><msup><mi>d</mi><mo>′</mo></msup></mrow></msub><annotation encoding="application/x-tex">q_{d&lt;d'}</annotation></semantics></math>,
 and depletion associated with pumping away from the river
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mrow><mi>d</mi><mo>&gt;</mo><mi>d</mi><mi>′</mi></mrow></msub><annotation encoding="application/x-tex">q_{d&gt;d'}</annotation></semantics></math>.
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mrow><mi>d</mi><mo>&gt;</mo><msup><mi>d</mi><mo>′</mo></msup></mrow></msub><annotation encoding="application/x-tex">q_{d&gt;d'}</annotation></semantics></math>.
 In this case,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mi>′</mi><mo>=</mo><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mn>2</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">d'=f(d_2)</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>d</mi><mo>′</mo></msup><mo>=</mo><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mn>2</mn></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">d'=f(d_2)</annotation></semantics></math>
 is some arbitrary boundary representing distance from the river, defined
 as a function of
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>d</mi><mn>2</mn></msub><annotation encoding="application/x-tex">d_2</annotation></semantics></math>,
 meaning that it varies along the river network (unlike
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>d</mi><mo accent="true">̂</mo></mover><annotation encoding="application/x-tex">\hat d</annotation></semantics></math>,
 which is fixed for the entire river network). We are looking to find a
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mi>′</mi></mrow><annotation encoding="application/x-tex">d'</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>d</mi><mo>′</mo></msup><annotation encoding="application/x-tex">d'</annotation></semantics></math>
 such that, for
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mn>1</mn></msub><mo>&gt;</mo><mi>d</mi><mi>′</mi></mrow><annotation encoding="application/x-tex">d_1 &gt; d'</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mn>1</mn></msub><mo>&gt;</mo><msup><mi>d</mi><mo>′</mo></msup></mrow><annotation encoding="application/x-tex">d_1 &gt; d'</annotation></semantics></math>,
 water levels measurements
 (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>h</mi><mrow><mi>o</mi><mi>b</mi><mi>s</mi></mrow></msub><annotation encoding="application/x-tex">h_{obs}</annotation></semantics></math>)
 are an appropriate proxy for stream depletion, represented by
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>h</mi><mrow><mi>o</mi><mi>b</mi><mi>s</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">f(h_{obs})</annotation></semantics></math>.
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>h</mi><mrow><mi>o</mi><mi>b</mi><mi>s</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">f(h_{obs})</annotation></semantics></math>.
 In particular, we want to demonstrate a situation in which
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mrow><mi>d</mi><mo>&gt;</mo><mi>d</mi><mi>′</mi></mrow></msub><mo>≤</mo><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>h</mi><mrow><mi>o</mi><mi>b</mi><mi>s</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">q_{d&gt;d'} \leq f(h_{obs})</annotation></semantics></math>.
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mrow><mi>d</mi><mo>&gt;</mo><msup><mi>d</mi><mo>′</mo></msup></mrow></msub><mo>≤</mo><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>h</mi><mrow><mi>o</mi><mi>b</mi><mi>s</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">q_{d&gt;d'} \leq f(h_{obs})</annotation></semantics></math>.
 For
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mn>1</mn></msub><mo>&lt;</mo><mi>d</mi><mi>′</mi></mrow><annotation encoding="application/x-tex">d_1&lt;d'</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mn>1</mn></msub><mo>&lt;</mo><msup><mi>d</mi><mo>′</mo></msup></mrow><annotation encoding="application/x-tex">d_1&lt;d'</annotation></semantics></math>,
 pumping is constrained in such a way to limit stream depletion as a
 function of pumping within this boundary or, in other words,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mrow><mi>d</mi><mo>&lt;</mo><mi>d</mi><mi>′</mi></mrow></msub><mo>&lt;</mo><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>p</mi><mi>a</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mn>1</mn></msub><mo>&lt;</mo><mi>d</mi><mi>′</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">q_{d&lt;d'}&lt;f(p_a(d_1&lt;d'))</annotation></semantics></math>,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mrow><mi>d</mi><mo>&lt;</mo><msup><mi>d</mi><mo>′</mo></msup></mrow></msub><mo>&lt;</mo><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>p</mi><mi>a</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mn>1</mn></msub><mo>&lt;</mo><msup><mi>d</mi><mo>′</mo></msup><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">q_{d&lt;d'}&lt;f(p_a(d_1&lt;d'))</annotation></semantics></math>,
 where
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mi>a</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mn>1</mn></msub><mo>&lt;</mo><mi>d</mi><mi>′</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">p_a(d_1&lt;d')</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mi>a</mi></msub><mo stretchy="false" form="prefix">(</mo><msub><mi>d</mi><mn>1</mn></msub><mo>&lt;</mo><msup><mi>d</mi><mo>′</mo></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">p_a(d_1&lt;d')</annotation></semantics></math>
 represents actual pumping inside the
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mi>′</mi></mrow><annotation encoding="application/x-tex">d'</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>d</mi><mo>′</mo></msup><annotation encoding="application/x-tex">d'</annotation></semantics></math>
 boundary.</p>
 <p>The basic idea is that a network of water level observation,
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>h</mi><mrow><mi>o</mi><mi>b</mi><mi>s</mi></mrow></msub><annotation encoding="application/x-tex">h_{obs}</annotation></semantics></math>,

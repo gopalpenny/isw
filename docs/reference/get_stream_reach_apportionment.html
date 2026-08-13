@@ -138,7 +138,8 @@ automatically.</p></dd>
     <div id="details">
     <h2>Details</h2>
     <p>Stream reaches are divided using [`.discretize_stream_reaches()`], and each
-reach segment is sampled using [sample_reach_segments()]. For sample point
+reach segment is represented using [generate_segment_sample_points()]. For
+sample point
 \(j\), the unnormalized web weight is:</p>
 <p>$$w_j = \frac{L_j}{d_j^p}$$</p>
 <p>where \(L_j\) is `sampled_length`, \(d_j\) is the Euclidean distance
