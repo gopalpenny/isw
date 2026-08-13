@@ -29,11 +29,10 @@ library(sf)
 
 ## Introduction
 
-This vignette presents the public workflow for distributing pumping-induced
+This vignette presents the workflow for distributing pumping-induced
 stream depletion across a stream network and estimating the associated
-aquifer drawdown. It uses the synthetic spatial inputs included with `isw` so
-the example can focus on the model workflow rather than constructing `sf`
-geometries.
+aquifer drawdown. It uses synthetic spatial inputs included with `isw` so
+the example can focus on the package workflow.
 
 For a step-by-step treatment of spatial preparation, stream discretization,
 sampling, pumping events, and the analytical response calculation, see
@@ -41,12 +40,9 @@ sampling, pumping events, and the analytical response calculation, see
 
 ## Load the example spatial inputs
 
-The package includes two pumping wells, three connected stream reaches, and
-two observation wells. Pumping wells carry the hydraulic conductivity,
-aquifer thickness, and drainable porosity used by the analytical response
-functions. All three objects use the same projected coordinate reference
-system, although the public functions also accept inputs in different defined
-coordinate reference systems.
+The package includes example spatial objects with two pumping wells (`example_pumping_wells`), three connected stream reaches (`example_stream_reaches`), and two observation wells (`example_observation_wells`). Pumping wells carry aquifer parameters (hydraulic conductivity,
+aquifer thickness, and drainable porosity) used by the analytical response
+functions.
 
 ```{r spatial-inputs}
 pumping_wells <- example_pumping_wells
@@ -66,12 +62,23 @@ ggplot() +
   theme_minimal()
 ```
 
+The `pumping_wells` object contains a `pump_id` column and aquifer parameters. Note that the `tibble` includes units for `K` and `D`. An optional column `well_diam` can be specified, such that aquifer drawdown inside the pumping well radius (`well_diam/2`) is equivalent to the estimated aquifer drawdown at edge of the well.
+
+```{r}
+pumping_wells
+```
+
+Note that the `stream_reaches` object contains a `reach_id` column.
+
+```{r}
+stream_reaches
+```
+
 ## Define pumping schedules and evaluation times
 
-Pumping schedules use wide format. The first column records when a pumping
-rate begins, and every other column is named for a `pump_id`. A schedule row
+Pumping timeseries are supplied to the model using pumping schedules. This should be a `tibble`  provided in wide format. The first column, `t`, represents the start of a new pumping period for the row. All other columns should have names that match the `pump_id` values in the `pumping_wells` object. A schedule row
 therefore describes the rate applied by every modeled pump from that time
-until the next schedule change.
+until the next schedule change (i.e., the next row).
 
 Evaluation times are separate from schedule times. They determine when model
 results are returned, without requiring pumping rates to change at every
@@ -93,8 +100,9 @@ evaluation_times <- seq.Date(
 pumping_schedules
 ```
 
-## Apportion depletion among stream reaches
+## Apportioning depletion among stream reaches
 
+The ADF approach involve apportioning stream depletion to each reach of the river.
 `get_stream_reach_apportionment()` first transforms the spatial inputs to a
 common projected analysis CRS. It divides each reach into modeled segments no
 longer than `reach_spacing` and represents the detailed geometry of each
