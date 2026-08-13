@@ -31,13 +31,13 @@ library(sf)
 
 This vignette repeats the workflow in
 `vignette("stream-depletion-apportionment")` in the same order. After each
-public function call, it opens that function to show the intermediate objects,
-calculations, and modeling choices involved.
+top-level ADF function call, it opens that function to show the intermediate
+objects, calculations, and modeling choices involved.
 
 Functions called with `isw:::` are implementation details. They are useful for
 understanding and diagnosing a calculation, but they may change without the
 compatibility guarantees associated with exported functions. Application code
-should normally use the public functions shown at the start of each section.
+should normally use the top-level functions shown at the start of each section.
 
 ## Load the example spatial inputs
 
@@ -84,7 +84,7 @@ stream_reaches
 
 `observation_wells` is needed only for aquifer drawdown. Each point has a
 unique `observation_id`. All spatial inputs must have a defined CRS, but they
-do not need to begin in the same CRS because the public functions transform
+do not need to begin in the same CRS because the modeling functions transform
 copies to a common projected analysis CRS.
 
 ## Define pumping schedules and evaluation times
@@ -117,14 +117,14 @@ and pumping rates must have flow units. A row's rates remain in effect until
 the next row.
 
 Internally, `Date` values and unit-bearing relative times are normalized to
-elapsed days. The original representation is restored in public output.
+elapsed days. The original representation is restored in the returned output.
 Evaluation times are independent of the schedule and may be more or less
 frequent. Passing `evaluation_times = NULL` to the modeling functions requests
 output at `pumping_schedules$t`.
 
 ## Apportioning depletion among stream reaches
 
-The first public modeling step assigns a static fraction of each pump's
+The first ADF modeling step assigns a static fraction of each pump's
 eventual stream depletion to every modeled reach segment.
 
 ```{r calculate-stream-apportionment}
@@ -170,7 +170,7 @@ spatial_inputs$analysis_crs$Name
 spatial_inputs$pumping_wells$well_diam
 ```
 
-Use `analysis_crs` in the public call when a particular projected CRS is
+Use `analysis_crs` in the top-level call when a particular projected CRS is
 required. This can be important when inputs span UTM zones or must align with
 another analysis. A geographic longitude-latitude CRS is not accepted because
 the model requires linear distances.
@@ -284,9 +284,10 @@ from the pump to the segment line. It does not depend on `sample_spacing` and
 is the distance passed to the time-dependent analytical response.
 
 The following code reproduces these calculations for `pump_1`. It exposes the
-point-level weights that the public function normally aggregates internally.
+point-level weights that `get_stream_reach_apportionment()` normally aggregates.
 The example has no zero-distance points and does not apply `maximum_distance`;
-the public function handles both cases before normalizing the weights.
+`get_stream_reach_apportionment()` handles both cases before normalizing the
+weights.
 
 ```{r inspect-point-weights}
 pump_1 <- spatial_inputs$pumping_wells[1, ]
@@ -341,7 +342,7 @@ ggplot(stream_apportionment) +
 
 ## Calculate apportioned stream depletion
 
-The next public call combines the static spatial allocation with the
+The next ADF modeling step combines the static spatial allocation with the
 time-dependent Glover response to the pumping schedule.
 
 ```{r calculate-apportioned-stream-depletion}
@@ -445,7 +446,7 @@ ggplot(
 
 ## Inspect the stream-injection schedule
 
-The public workflow next converts apportioned depletion into an equivalent
+The ADF workflow next converts apportioned depletion into an equivalent
 stream-injection schedule for calculating aquifer recovery.
 
 ```{r construct-stream-injection-schedule}
@@ -518,8 +519,8 @@ reused, or held fixed while other drawdown inputs are varied.
 
 ## Estimate aquifer drawdown and stream recovery
 
-The final public call calculates direct pumping drawdown, recovery caused by
-the equivalent stream injections, and their net effect.
+The final ADF modeling step calculates direct pumping drawdown, recovery caused
+by the equivalent stream injections, and their net effect.
 
 ```{r calculate-apportioned-aquifer-drawdown}
 aquifer_drawdown <- get_apportioned_aquifer_drawdown(
