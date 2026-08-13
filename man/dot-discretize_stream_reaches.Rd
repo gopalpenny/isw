@@ -53,21 +53,7 @@ reserved for values created by this function. The input object is not
 modified.
 }
 \examples{
-stream_reaches <- sf::st_sf(
-  reach_id = c("upstream_1", "upstream_2", "downstream"),
-  geometry = sf::st_sfc(
-    sf::st_linestring(
-      matrix(c(500000, 4980200, 500150, 4980050), ncol = 2, byrow = TRUE)
-    ),
-    sf::st_linestring(
-      matrix(c(500000, 4979900, 500150, 4980050), ncol = 2, byrow = TRUE)
-    ),
-    sf::st_linestring(
-      matrix(c(500150, 4980050, 500350, 4979850), ncol = 2, byrow = TRUE)
-    ),
-    crs = 32615
-  )
-)
+stream_reaches <- example_stream_reaches
 
 reach_segments <- isw:::.discretize_stream_reaches(
   stream_reaches,

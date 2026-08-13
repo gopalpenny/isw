@@ -593,24 +593,12 @@
 #' requested result.
 #'
 #' @examples
-#' pumping_wells <- sf::st_as_sf(
-#'   tibble::tibble(
-#'     pump_id = "pump_1", x = 0, y = 0,
-#'     K = units::set_units(10, "m/day"),
-#'     D = units::set_units(20, "m"), V = 0.15
-#'   ),
-#'   coords = c("x", "y"), crs = 32615
-#' )
-#' stream_reaches <- sf::st_sf(
-#'   reach_id = "stream_1",
-#'   geometry = sf::st_sfc(
-#'     sf::st_linestring(matrix(c(100, -50, 100, 50), ncol = 2, byrow = TRUE)),
-#'     crs = 32615
-#'   )
-#' )
+#' pumping_wells <- example_pumping_wells
+#' stream_reaches <- example_stream_reaches
 #' pumping_schedules <- tibble::tibble(
 #'   t = units::set_units(c(0, 10, 20), "days"),
-#'   pump_1 = units::set_units(c(100, 100, 0), "m^3/day")
+#'   pump_1 = units::set_units(c(100, 100, 0), "m^3/day"),
+#'   pump_2 = units::set_units(c(0, 75, 0), "m^3/day")
 #' )
 #' stream_apportionment <- get_stream_reach_apportionment(
 #'   pumping_wells, stream_reaches,
@@ -722,36 +710,14 @@ get_stream_injection_schedule <- function(
 #' segment from the first pumping time through the final evaluation time.
 #'
 #' @examples
-#' pumping_wells <- sf::st_as_sf(
-#'   tibble::tibble(
-#'     pump_id = "pump_1",
-#'     x = 0,
-#'     y = 0,
-#'     K = units::set_units(10, "m/day"),
-#'     D = units::set_units(20, "m"),
-#'     V = 0.15
-#'   ),
-#'   coords = c("x", "y"),
-#'   crs = 32615
-#' )
-#'
-#' stream_reaches <- sf::st_sf(
-#'   reach_id = "stream_1",
-#'   geometry = sf::st_sfc(
-#'     sf::st_linestring(matrix(c(100, -50, 100, 50), ncol = 2, byrow = TRUE)),
-#'     crs = 32615
-#'   )
-#' )
-#'
-#' observation_wells <- sf::st_as_sf(
-#'   tibble::tibble(observation_id = "obs_1", x = 50, y = 0),
-#'   coords = c("x", "y"),
-#'   crs = 32615
-#' )
+#' pumping_wells <- example_pumping_wells
+#' stream_reaches <- example_stream_reaches
+#' observation_wells <- example_observation_wells
 #'
 #' pumping_schedules <- tibble::tibble(
 #'   t = units::set_units(c(0, 10), "days"),
-#'   pump_1 = units::set_units(c(100, 0), "m^3/day")
+#'   pump_1 = units::set_units(c(100, 0), "m^3/day"),
+#'   pump_2 = units::set_units(c(50, 0), "m^3/day")
 #' )
 #' evaluation_times <- units::set_units(c(0, 10, 20), "days")
 #'

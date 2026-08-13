@@ -48,6 +48,9 @@ well's analytical stream depletion assigned to each reach segment."><!-- mathjax
       <a href="../articles/Stream-depletion-and-aquifer-drawdown.html">Stream depletion and aquifer drawdown</a>
     </li>
     <li>
+      <a href="../articles/stream-depletion-apportionment-internals.html">Stream Depletion Apportionment: Detailed Walkthrough</a>
+    </li>
+    <li>
       <a href="../articles/stream-depletion-apportionment.html">Stream Depletion Apportionment</a>
     </li>
   </ul></li>
@@ -160,34 +163,8 @@ Performance of Simple Management Tools. *Water Resources Research*, 54,
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">pumping_wells</span> <span class="op">&lt;-</span> <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_as_sf.html" class="external-link">st_as_sf</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  <span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>    pump_id <span class="op">=</span> <span class="st">"pump_1"</span>,</span></span>
-<span class="r-in"><span>    x <span class="op">=</span> <span class="fl">499800</span>,</span></span>
-<span class="r-in"><span>    y <span class="op">=</span> <span class="fl">4980050</span>,</span></span>
-<span class="r-in"><span>    K <span class="op">=</span> <span class="fu">units</span><span class="fu">::</span><span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">1e-5</span>, <span class="st">"m/s"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>    D <span class="op">=</span> <span class="fu">units</span><span class="fu">::</span><span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">50</span>, <span class="st">"m"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>    V <span class="op">=</span> <span class="fl">0.1</span></span></span>
-<span class="r-in"><span>  <span class="op">)</span>,</span></span>
-<span class="r-in"><span>  coords <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"x"</span>, <span class="st">"y"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  crs <span class="op">=</span> <span class="fl">32615</span></span></span>
-<span class="r-in"><span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">stream_reaches</span> <span class="op">&lt;-</span> <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/sf.html" class="external-link">st_sf</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  reach_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"upstream_1"</span>, <span class="st">"upstream_2"</span>, <span class="st">"downstream"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  geometry <span class="op">=</span> <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/sfc.html" class="external-link">st_sfc</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>    <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st.html" class="external-link">st_linestring</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>      <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">500000</span>, <span class="fl">4980200</span>, <span class="fl">500150</span>, <span class="fl">4980050</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-in"><span>    <span class="op">)</span>,</span></span>
-<span class="r-in"><span>    <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st.html" class="external-link">st_linestring</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>      <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">500000</span>, <span class="fl">4979900</span>, <span class="fl">500150</span>, <span class="fl">4980050</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-in"><span>    <span class="op">)</span>,</span></span>
-<span class="r-in"><span>    <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st.html" class="external-link">st_linestring</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>      <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">500150</span>, <span class="fl">4980050</span>, <span class="fl">500350</span>, <span class="fl">4979850</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-in"><span>    <span class="op">)</span>,</span></span>
-<span class="r-in"><span>    crs <span class="op">=</span> <span class="fl">32615</span></span></span>
-<span class="r-in"><span>  <span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">pumping_wells</span> <span class="op">&lt;-</span> <span class="va">example_pumping_wells</span></span></span>
+<span class="r-in"><span><span class="va">stream_reaches</span> <span class="op">&lt;-</span> <span class="va">example_stream_reaches</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">stream_apportionment</span> <span class="op">&lt;-</span> <span class="fu">get_stream_reach_apportionment</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="va">pumping_wells</span>,</span></span>
@@ -201,33 +178,41 @@ Performance of Simple Management Tools. *Water Resources Research*, 54,
 <span class="r-in"><span>  <span class="st">"pump_id"</span>, <span class="st">"reach_id"</span>, <span class="st">"reach_segment_id"</span>,</span></span>
 <span class="r-in"><span>  <span class="st">"pump_to_reach_distance"</span>, <span class="st">"apportionment_fraction"</span></span></span>
 <span class="r-in"><span><span class="op">)</span><span class="op">]</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Simple feature collection with 9 features and 5 fields</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Simple feature collection with 18 features and 5 fields</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Geometry type: LINESTRING</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Dimension:     XY</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Bounding box:  xmin: 5e+05 ymin: 4979850 xmax: 500350 ymax: 4980200</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Projected CRS: WGS 84 / UTM zone 15N</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   pump_id   reach_id     reach_segment_id pump_to_reach_distance</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1  pump_1 upstream_1 upstream_1_segment_1           250.0000 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2  pump_1 upstream_1 upstream_1_segment_2           269.2582 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3  pump_1 upstream_1 upstream_1_segment_3           304.1381 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4  pump_1 upstream_2 upstream_2_segment_1           250.0000 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5  pump_1 upstream_2 upstream_2_segment_2           269.2582 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6  pump_1 upstream_2 upstream_2_segment_3           304.1381 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7  pump_1 downstream downstream_segment_1           350.0000 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8  pump_1 downstream downstream_segment_2           421.9663 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9  pump_1 downstream downstream_segment_3           501.3870 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   apportionment_fraction                       geometry</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1             0.16085181 LINESTRING (5e+05 4980200, ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2             0.13165556 LINESTRING (500050 4980150,...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3             0.10092931 LINESTRING (500100 4980100,...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4             0.16085181 LINESTRING (5e+05 4979900, ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5             0.13165556 LINESTRING (500050 4979950,...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6             0.10092931 LINESTRING (500100 4980000,...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7             0.09694901 LINESTRING (500150 4980050,...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8             0.06753111 LINESTRING (500216.7 497998...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9             0.04864652 LINESTRING (500283.3 497991...</span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">stream_apportionment</span><span class="op">$</span><span class="va">apportionment_fraction</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> First 10 features:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    pump_id   reach_id     reach_segment_id pump_to_reach_distance</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1   pump_1 upstream_1 upstream_1_segment_1           250.0000 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2   pump_1 upstream_1 upstream_1_segment_2           269.2582 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3   pump_1 upstream_1 upstream_1_segment_3           304.1381 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4   pump_1 upstream_2 upstream_2_segment_1           250.0000 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5   pump_1 upstream_2 upstream_2_segment_2           269.2582 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6   pump_1 upstream_2 upstream_2_segment_3           304.1381 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7   pump_1 downstream downstream_segment_1           350.0000 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8   pump_1 downstream downstream_segment_2           421.9663 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9   pump_1 downstream downstream_segment_3           501.3870 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10  pump_2 upstream_1 upstream_1_segment_1           400.0000 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    apportionment_fraction                       geometry</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1              0.16085181 LINESTRING (5e+05 4980200, ...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2              0.13165556 LINESTRING (500050 4980150,...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3              0.10092931 LINESTRING (500100 4980100,...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4              0.16085181 LINESTRING (5e+05 4979900, ...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5              0.13165556 LINESTRING (500050 4979950,...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6              0.10092931 LINESTRING (500100 4980000,...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7              0.09694901 LINESTRING (500150 4980050,...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8              0.06753111 LINESTRING (500216.7 497998...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9              0.04864652 LINESTRING (500283.3 497991...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10             0.06392835 LINESTRING (5e+05 4980200, ...</span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/tapply.html" class="external-link">tapply</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  <span class="va">stream_apportionment</span><span class="op">$</span><span class="va">apportionment_fraction</span>,</span></span>
+<span class="r-in"><span>  <span class="va">stream_apportionment</span><span class="op">$</span><span class="va">pump_id</span>,</span></span>
+<span class="r-in"><span>  <span class="va">sum</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> pump_1 pump_2 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      1      1 </span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

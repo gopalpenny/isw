@@ -8,3 +8,4 @@
 ^ignore$
 ^\.claude$
 ^data-raw$
+^private$

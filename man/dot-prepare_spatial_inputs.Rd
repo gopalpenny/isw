@@ -53,28 +53,8 @@ The function returns transformed copies and does not modify any object
 supplied by the user.
 }
 \examples{
-pumping_wells <- sf::st_as_sf(
-  tibble::tibble(
-    pump_id = "pump_1",
-    x = -93.25,
-    y = 44.95,
-    K = units::set_units(10, "m/day"),
-    D = units::set_units(20, "m"),
-    V = 0.15
-  ),
-  coords = c("x", "y"),
-  crs = 4326
-)
-
-stream_reaches <- sf::st_sf(
-  reach_id = "reach_1",
-  geometry = sf::st_sfc(
-    sf::st_linestring(
-      matrix(c(-93.30, 44.90, -93.20, 45.00), ncol = 2, byrow = TRUE)
-    ),
-    crs = 4326
-  )
-)
+pumping_wells <- example_pumping_wells
+stream_reaches <- example_stream_reaches
 
 prepared_inputs <- isw:::.prepare_spatial_inputs(
   pumping_wells,

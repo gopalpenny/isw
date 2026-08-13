@@ -72,34 +72,8 @@ If a pump coincides with one or more sample points, only those zero-distance
 points receive weight, divided in proportion to their `sampled_length`.
 }
 \examples{
-pumping_wells <- sf::st_as_sf(
-  tibble::tibble(
-    pump_id = "pump_1",
-    x = 499800,
-    y = 4980050,
-    K = units::set_units(1e-5, "m/s"),
-    D = units::set_units(50, "m"),
-    V = 0.1
-  ),
-  coords = c("x", "y"),
-  crs = 32615
-)
-
-stream_reaches <- sf::st_sf(
-  reach_id = c("upstream_1", "upstream_2", "downstream"),
-  geometry = sf::st_sfc(
-    sf::st_linestring(
-      matrix(c(500000, 4980200, 500150, 4980050), ncol = 2, byrow = TRUE)
-    ),
-    sf::st_linestring(
-      matrix(c(500000, 4979900, 500150, 4980050), ncol = 2, byrow = TRUE)
-    ),
-    sf::st_linestring(
-      matrix(c(500150, 4980050, 500350, 4979850), ncol = 2, byrow = TRUE)
-    ),
-    crs = 32615
-  )
-)
+pumping_wells <- example_pumping_wells
+stream_reaches <- example_stream_reaches
 
 stream_apportionment <- get_stream_reach_apportionment(
   pumping_wells,
@@ -113,7 +87,11 @@ stream_apportionment[c(
   "pump_id", "reach_id", "reach_segment_id",
   "pump_to_reach_distance", "apportionment_fraction"
 )]
-sum(stream_apportionment$apportionment_fraction)
+tapply(
+  stream_apportionment$apportionment_fraction,
+  stream_apportionment$pump_id,
+  sum
+)
 
 }
 \references{

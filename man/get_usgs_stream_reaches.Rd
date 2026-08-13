@@ -60,13 +60,7 @@ remaining feature.
 }
 \examples{
 \dontrun{
-pumping_wells <- sf::st_sf(
-  pump_id = "pump_1",
-  geometry = sf::st_sfc(
-    sf::st_point(c(295500, 4783200)),
-    crs = 26916
-  )
-)
+pumping_wells <- example_pumping_wells[1, ]
 
 stream_reaches <- get_usgs_stream_reaches(
   aoi = pumping_wells,

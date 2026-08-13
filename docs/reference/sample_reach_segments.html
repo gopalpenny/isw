@@ -48,6 +48,9 @@ for web-based stream-depletion apportionment."><!-- mathjax --><script src="http
       <a href="../articles/Stream-depletion-and-aquifer-drawdown.html">Stream depletion and aquifer drawdown</a>
     </li>
     <li>
+      <a href="../articles/stream-depletion-apportionment-internals.html">Stream Depletion Apportionment: Detailed Walkthrough</a>
+    </li>
+    <li>
       <a href="../articles/stream-depletion-apportionment.html">Stream Depletion Apportionment</a>
     </li>
   </ul></li>
@@ -110,15 +113,7 @@ finer sample points describe its geometry during web apportionment.</p>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">stream_reaches</span> <span class="op">&lt;-</span> <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/sf.html" class="external-link">st_sf</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  reach_id <span class="op">=</span> <span class="st">"reach_1"</span>,</span></span>
-<span class="r-in"><span>  geometry <span class="op">=</span> <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/sfc.html" class="external-link">st_sfc</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>    <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st.html" class="external-link">st_linestring</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>      <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">500000</span>, <span class="fl">4980000</span>, <span class="fl">500200</span>, <span class="fl">4980200</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-in"><span>    <span class="op">)</span>,</span></span>
-<span class="r-in"><span>    crs <span class="op">=</span> <span class="fl">32615</span></span></span>
-<span class="r-in"><span>  <span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">stream_reaches</span> <span class="op">&lt;-</span> <span class="va">example_stream_reaches</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">reach_segments</span> <span class="op">&lt;-</span> <span class="fu">isw</span><span class="fu">:::</span><span class="fu"><a href="dot-discretize_stream_reaches.html">.discretize_stream_reaches</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="va">stream_reaches</span>,</span></span>
@@ -133,29 +128,34 @@ finer sample points describe its geometry during web apportionment.</p>
 <span class="r-in"><span><span class="va">sample_points</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="st">"reach_id"</span>, <span class="st">"reach_segment_id"</span>, <span class="st">"sample_point_id"</span>, <span class="st">"sampled_length"</span></span></span>
 <span class="r-in"><span><span class="op">)</span><span class="op">]</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Simple feature collection with 8 features and 4 fields</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Simple feature collection with 20 features and 4 fields</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Geometry type: POINT</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Dimension:     XY</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Bounding box:  xmin: 500012.5 ymin: 4980012 xmax: 500187.5 ymax: 4980188</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Bounding box:  xmin: 500012.5 ymin: 4979862 xmax: 500337.5 ymax: 4980188</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Projected CRS: WGS 84 / UTM zone 15N</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   reach_id  reach_segment_id           sample_point_id sampled_length</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1  reach_1 reach_1_segment_1 reach_1_segment_1_point_1   35.35534 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2  reach_1 reach_1_segment_1 reach_1_segment_1_point_2   35.35534 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3  reach_1 reach_1_segment_1 reach_1_segment_1_point_3   35.35534 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4  reach_1 reach_1_segment_1 reach_1_segment_1_point_4   35.35534 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5  reach_1 reach_1_segment_2 reach_1_segment_2_point_1   35.35534 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6  reach_1 reach_1_segment_2 reach_1_segment_2_point_2   35.35534 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7  reach_1 reach_1_segment_2 reach_1_segment_2_point_3   35.35534 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8  reach_1 reach_1_segment_2 reach_1_segment_2_point_4   35.35534 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                   geometry</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 POINT (500012.5 4980012)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 POINT (500037.5 4980038)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 POINT (500062.5 4980062)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4 POINT (500087.5 4980088)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5 POINT (500112.5 4980112)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6 POINT (500137.5 4980138)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7 POINT (500162.5 4980162)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8 POINT (500187.5 4980188)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> First 10 features:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      reach_id     reach_segment_id              sample_point_id sampled_length</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1  upstream_1 upstream_1_segment_1 upstream_1_segment_1_point_1   35.35534 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2  upstream_1 upstream_1_segment_1 upstream_1_segment_1_point_2   35.35534 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3  upstream_1 upstream_1_segment_1 upstream_1_segment_1_point_3   35.35534 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4  upstream_1 upstream_1_segment_2 upstream_1_segment_2_point_1   35.35534 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5  upstream_1 upstream_1_segment_2 upstream_1_segment_2_point_2   35.35534 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6  upstream_1 upstream_1_segment_2 upstream_1_segment_2_point_3   35.35534 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7  upstream_2 upstream_2_segment_1 upstream_2_segment_1_point_1   35.35534 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8  upstream_2 upstream_2_segment_1 upstream_2_segment_1_point_2   35.35534 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9  upstream_2 upstream_2_segment_1 upstream_2_segment_1_point_3   35.35534 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10 upstream_2 upstream_2_segment_2 upstream_2_segment_2_point_1   35.35534 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                    geometry</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1  POINT (500012.5 4980188)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2  POINT (500037.5 4980162)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3  POINT (500062.5 4980138)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4  POINT (500087.5 4980112)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5  POINT (500112.5 4980088)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6  POINT (500137.5 4980062)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7  POINT (500012.5 4979912)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8  POINT (500037.5 4979938)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9  POINT (500062.5 4979962)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10 POINT (500087.5 4979988)</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

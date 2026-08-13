@@ -10,6 +10,7 @@
 <url><loc>/articles/depletion-observation-example.html</loc></url>
 <url><loc>/articles/index.html</loc></url>
 <url><loc>/articles/stream-depletion-ADF.html</loc></url>
+<url><loc>/articles/stream-depletion-apportionment-internals.html</loc></url>
 <url><loc>/articles/stream-depletion-apportionment.html</loc></url>
 <url><loc>/authors.html</loc></url>
 <url><loc>/index.html</loc></url>
@@ -36,6 +37,9 @@
 <url><loc>/reference/dot-validate_stream_reaches.html</loc></url>
 <url><loc>/reference/dot-validate_time_vector.html</loc></url>
 <url><loc>/reference/dot-validate_usgs_stream_aoi.html</loc></url>
+<url><loc>/reference/example_observation_wells.html</loc></url>
+<url><loc>/reference/example_pumping_wells.html</loc></url>
+<url><loc>/reference/example_stream_reaches.html</loc></url>
 <url><loc>/reference/get_apportioned_aquifer_drawdown.html</loc></url>
 <url><loc>/reference/get_apportioned_stream_depletion.html</loc></url>
 <url><loc>/reference/get_aquifer_drawdown_ratio.html</loc></url>

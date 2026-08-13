@@ -36,15 +36,7 @@ reach segment. `model_point` represents the segment in the model, while the
 finer sample points describe its geometry during web apportionment.
 }
 \examples{
-stream_reaches <- sf::st_sf(
-  reach_id = "reach_1",
-  geometry = sf::st_sfc(
-    sf::st_linestring(
-      matrix(c(500000, 4980000, 500200, 4980200), ncol = 2, byrow = TRUE)
-    ),
-    crs = 32615
-  )
-)
+stream_reaches <- example_stream_reaches
 
 reach_segments <- isw:::.discretize_stream_reaches(
   stream_reaches,

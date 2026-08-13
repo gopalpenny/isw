@@ -55,34 +55,8 @@
 #' 5471--5486. \doi{10.1029/2018WR022707}
 #'
 #' @examples
-#' pumping_wells <- sf::st_as_sf(
-#'   tibble::tibble(
-#'     pump_id = "pump_1",
-#'     x = 499800,
-#'     y = 4980050,
-#'     K = units::set_units(1e-5, "m/s"),
-#'     D = units::set_units(50, "m"),
-#'     V = 0.1
-#'   ),
-#'   coords = c("x", "y"),
-#'   crs = 32615
-#' )
-#'
-#' stream_reaches <- sf::st_sf(
-#'   reach_id = c("upstream_1", "upstream_2", "downstream"),
-#'   geometry = sf::st_sfc(
-#'     sf::st_linestring(
-#'       matrix(c(500000, 4980200, 500150, 4980050), ncol = 2, byrow = TRUE)
-#'     ),
-#'     sf::st_linestring(
-#'       matrix(c(500000, 4979900, 500150, 4980050), ncol = 2, byrow = TRUE)
-#'     ),
-#'     sf::st_linestring(
-#'       matrix(c(500150, 4980050, 500350, 4979850), ncol = 2, byrow = TRUE)
-#'     ),
-#'     crs = 32615
-#'   )
-#' )
+#' pumping_wells <- example_pumping_wells
+#' stream_reaches <- example_stream_reaches
 #'
 #' stream_apportionment <- get_stream_reach_apportionment(
 #'   pumping_wells,
@@ -96,7 +70,11 @@
 #'   "pump_id", "reach_id", "reach_segment_id",
 #'   "pump_to_reach_distance", "apportionment_fraction"
 #' )]
-#' sum(stream_apportionment$apportionment_fraction)
+#' tapply(
+#'   stream_apportionment$apportionment_fraction,
+#'   stream_apportionment$pump_id,
+#'   sum
+#' )
 #'
 #' @export
 get_stream_reach_apportionment <- function(
@@ -468,31 +446,8 @@ get_stream_reach_apportionment <- function(
 #' returned, with zero depletion when no earlier pumping event contributes.
 #'
 #' @examples
-#' pumping_wells <- sf::st_as_sf(
-#'   tibble::tibble(
-#'     pump_id = "pump_1",
-#'     x = 499800,
-#'     y = 4980050,
-#'     K = units::set_units(1e-5, "m/s"),
-#'     D = units::set_units(50, "m"),
-#'     V = 0.1
-#'   ),
-#'   coords = c("x", "y"),
-#'   crs = 32615
-#' )
-#'
-#' stream_reaches <- sf::st_sf(
-#'   reach_id = c("upstream", "downstream"),
-#'   geometry = sf::st_sfc(
-#'     sf::st_linestring(
-#'       matrix(c(500000, 4980200, 500150, 4980050), ncol = 2, byrow = TRUE)
-#'     ),
-#'     sf::st_linestring(
-#'       matrix(c(500150, 4980050, 500350, 4979850), ncol = 2, byrow = TRUE)
-#'     ),
-#'     crs = 32615
-#'   )
-#' )
+#' pumping_wells <- example_pumping_wells
+#' stream_reaches <- example_stream_reaches
 #'
 #' stream_apportionment <- get_stream_reach_apportionment(
 #'   pumping_wells,
@@ -503,7 +458,8 @@ get_stream_reach_apportionment <- function(
 #'
 #' pumping_schedules <- tibble::tibble(
 #'   t = as.Date(c("2025-01-01", "2025-02-01", "2025-03-01")),
-#'   pump_1 = units::set_units(c(500, 300, 0), "m^3/day")
+#'   pump_1 = units::set_units(c(500, 300, 0), "m^3/day"),
+#'   pump_2 = units::set_units(c(0, 250, 0), "m^3/day")
 #' )
 #' evaluation_times <- seq.Date(
 #'   from = pumping_schedules$t[2],

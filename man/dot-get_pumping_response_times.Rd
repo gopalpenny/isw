@@ -77,18 +77,7 @@ analytical calculations for zero changes, future pumping changes, and
 changes occurring exactly at an evaluation time.
 }
 \examples{
-pumping_wells <- sf::st_as_sf(
-  tibble::tibble(
-    pump_id = c("pump_1", "pump_2"),
-    x = c(-93.25, -93.20),
-    y = c(44.95, 45.00),
-    K = units::set_units(c(10, 15), "m/day"),
-    D = units::set_units(c(20, 25), "m"),
-    V = c(0.15, 0.20)
-  ),
-  coords = c("x", "y"),
-  crs = 4326
-)
+pumping_wells <- example_pumping_wells
 
 pumping_schedules <- tibble::tibble(
   t = as.Date(c("2025-01-01", "2025-02-01", "2025-03-01")),
