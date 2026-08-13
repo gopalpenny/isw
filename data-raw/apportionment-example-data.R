@@ -11,7 +11,8 @@ example_pumping_wells <- sf::st_as_sf(
     y = c(4980050, 4980150),
     K = units::set_units(c(1e-5, 7.5e-6), "m/s"),
     D = units::set_units(c(50, 40), "m"),
-    V = c(0.10, 0.12)
+    V = c(0.10, 0.12),
+    well_diam = units::set_units(c(0.3, 0.3), "m")
   ),
   coords = c("x", "y"),
   crs = 32615

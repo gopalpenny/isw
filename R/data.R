@@ -42,6 +42,7 @@
 #'   \item{K}{Hydraulic conductivity with units of meters per second.}
 #'   \item{D}{Aquifer thickness with units of meters.}
 #'   \item{V}{Dimensionless drainable porosity.}
+#'   \item{well_diam}{Well diameter with units of meters.}
 #'   \item{geometry}{Point geometry in WGS 84 / UTM zone 15N (EPSG:32615).}
 #' }
 #'
