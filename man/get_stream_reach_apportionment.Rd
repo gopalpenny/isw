@@ -52,7 +52,7 @@ well's analytical stream depletion assigned to each reach segment.
 }
 \details{
 Stream reaches are divided using [`.discretize_stream_reaches()`], and each
-reach segment is represented using [generate_reach_sample_points()]. For
+reach segment is represented using [generate_segment_sample_points()]. For
 sample point
 \eqn{j}, the unnormalized web weight is:
 

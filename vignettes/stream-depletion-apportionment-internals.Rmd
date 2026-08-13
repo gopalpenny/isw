@@ -213,22 +213,24 @@ ggplot() +
   theme_minimal()
 ```
 
-A smaller `reach_spacing` creates more model segments. This resolves the
-location and timing of depletion more finely, but it increases output size and
-the number of analytical responses. Segment lengths can be shorter than the
-requested maximum because each source line component is divided into equal
-parts.
+Specifying a smaller `reach_spacing` creates more model segments. Doing so
+would resolve the location and timing of depletion more finely, but it
+increases output size, the number of analytical responses, and computational
+burden. Segment lengths can be shorter than the requested maximum because each
+source line component is divided into equal parts.
 
-#### 3. Generate integration points along the segments
+#### 3. Generate points for spatial weighting
 
-Each segment is divided again for the static spatial weighting calculation.
-`generate_reach_sample_points()` places one point at the center of each
-equal-length interval and records the interval as `sampled_length`. These
-points represent the shape of a segment; they are distinct from its single
-`model_point`.
+These points approximate the continuous distance-based weighting along each
+reach segment. `generate_segment_sample_points()` divides each segment into
+equal-length intervals, places one point at each interval center, and records
+the length represented by that point as `sampled_length`. Point weights are
+later summed by reach segment to calculate static apportionment fractions.
+These points are distinct from the segment's single `model_point`, which is
+used in the drawdown calculation.
 
-```{r generate-reach-sample-points}
-sample_points <- generate_reach_sample_points(
+```{r generate-segment-sample-points}
+sample_points <- generate_segment_sample_points(
   reach_segments,
   sample_spacing = set_units(25, "m")
 )

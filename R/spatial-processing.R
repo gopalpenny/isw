@@ -539,7 +539,7 @@
 #'   reach_spacing = units::set_units(150, "m")
 #' )
 #'
-#' sample_points <- generate_reach_sample_points(
+#' sample_points <- generate_segment_sample_points(
 #'   reach_segments,
 #'   sample_spacing = units::set_units(40, "m")
 #' )
@@ -549,7 +549,7 @@
 #' )]
 #'
 #' @export
-generate_reach_sample_points <- function(reach_segments, sample_spacing) {
+generate_segment_sample_points <- function(reach_segments, sample_spacing) {
 
   if (!inherits(reach_segments, "sf")) {
     stop("reach_segments must be an sf object.")
