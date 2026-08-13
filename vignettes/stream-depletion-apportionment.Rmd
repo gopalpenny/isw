@@ -62,13 +62,20 @@ ggplot() +
   theme_minimal()
 ```
 
-The `pumping_wells` object contains a `pump_id` column and aquifer parameters. Note that the `tibble` includes units for `K` and `D`. An optional column `well_diam` can be specified, such that aquifer drawdown inside the pumping well radius (`well_diam/2`) is equivalent to the estimated aquifer drawdown at edge of the well.
+Users supply a unique `pump_id` for each pumping well and a unique
+`observation_id` for each observation well. The `pumping_wells` object also
+contains aquifer parameters. Note that the `tibble` includes units for `K` and
+`D`. An optional column `well_diam` can be specified, such that aquifer
+drawdown inside the pumping well radius (`well_diam/2`) is equivalent to the
+estimated aquifer drawdown at the edge of the well.
 
 ```{r}
 pumping_wells
 ```
 
-Note that the `stream_reaches` object contains a `reach_id` column.
+Users also supply a unique `reach_id` for each feature in `stream_reaches`.
+The package generates `reach_segment_id` values when it discretizes those
+features; users should not add that reserved column themselves.
 
 ```{r}
 stream_reaches
@@ -83,6 +90,10 @@ until the next schedule change (i.e., the next row).
 Evaluation times are separate from schedule times. They determine when model
 results are returned, without requiring pumping rates to change at every
 evaluation.
+
+The rates in the final schedule row continue indefinitely. To represent a
+shutdown, include a final row that sets the applicable pumping rates to zero,
+as this example does on 2025-04-01.
 
 ```{r pumping-schedule}
 pumping_schedules <- tibble(
@@ -102,17 +113,26 @@ pumping_schedules
 
 ## Apportioning depletion among stream reaches
 
-The ADF approach involve apportioning stream depletion to each reach of the river.
+The ADF approach involves apportioning stream depletion to each reach of the river.
 `get_stream_reach_apportionment()` first transforms the spatial inputs to a
 common projected analysis CRS. It divides each reach into modeled segments no
 longer than `reach_spacing` and represents the detailed geometry of each
 segment with points separated by at most `sample_spacing`.
+
+A smaller `reach_spacing` creates more computational segments, increasing
+spatial resolution, output size, and computational burden. A smaller
+`sample_spacing` improves the approximation of distance-based weighting along
+curved segments without increasing the number of segments returned.
 
 The web-squared method weights the sampled stream lengths by inverse squared
 distance from each pump. These weights are summed by reach segment and
 normalized independently for every pumping well. The result also stores the
 shortest pump-to-segment distance used by the time-dependent analytical
 stream-depletion calculation.
+
+Compared with `method = "web"`, `method = "web_squared"` concentrates more of
+the allocation near each pump. The optional `maximum_distance` excludes sample
+points beyond a specified distance from the pump.
 
 ```{r calculate-stream-apportionment}
 stream_apportionment <- get_stream_reach_apportionment(
@@ -201,7 +221,7 @@ ggplot(
   theme_minimal()
 ```
 
-## Inspect the stream-injection schedule
+## Generate the stream-injection schedule for ADF drawdown
 
 Aquifer recovery from stream depletion is represented by injection at each
 reach segment's model point. `get_stream_injection_schedule()` evaluates
