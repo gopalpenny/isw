@@ -397,7 +397,7 @@ pumping_rate_changes
 
 Every nonzero rate change is paired with evaluation times strictly later than
 the event, and elapsed time is calculated in days. A change beginning exactly
-at an evaluation time has not yet produced a response at that boundary.
+at an evaluation time has not yet produced a response at that time.
 
 ```{r pumping-response-times}
 pumping_response_times <- isw:::.get_pumping_response_times(
@@ -463,10 +463,11 @@ ggplot(
   theme_minimal()
 ```
 
-## Inspect the stream-injection schedule
+## Generate the stream-injection schedule for ADF drawdown
 
-The ADF workflow next converts apportioned depletion into an equivalent
-stream-injection schedule for calculating aquifer recovery.
+In order to estimate aquifer drawdown, we represent stream depletion as
+injection wells. Each reach segment becomes an equivalent injection well whose
+schedule is derived from the stream depletion apportioned to that segment.
 
 ```{r construct-stream-injection-schedule}
 stream_injection_schedule <- get_stream_injection_schedule(
@@ -484,8 +485,8 @@ head(stream_injection_schedule)
 #### 1. Construct the injection time grid
 
 The internal grid combines every requested evaluation time with all
-pumping-schedule boundaries through the final evaluation. With no
-`injection_times` supplied, that union defines the interval boundaries.
+pumping-schedule times through the final evaluation. Each time starts a new
+injection interval, except the final time, which closes the last interval.
 
 ```{r injection-time-grid}
 injection_grid <- isw:::.get_stream_injection_times(
@@ -499,10 +500,10 @@ injection_grid$injection_times
 
 #### 2. Approximate continuously changing depletion by intervals
 
-Depletion is evaluated at the grid boundaries. For each interval, the negative
-arithmetic mean of its two endpoint depletion rates becomes a constant
-injection rate. The negative sign represents water entering the aquifer from
-the stream.
+Depletion is evaluated at the start and end of each interval. The negative
+arithmetic mean of those two depletion rates becomes the constant injection
+rate for that interval. The negative sign represents water entering the
+aquifer from the stream.
 
 ```{r internal-injection-schedule}
 depletion_at_injection_times <- get_apportioned_stream_depletion(
@@ -526,11 +527,12 @@ head(internal_injection_schedule)
 head(injection_rate_changes)
 ```
 
-Optional `injection_times` add boundaries and create a finer piecewise-constant
-approximation. They do not change the requested `evaluation_times`. This is the
-main convergence option for stream recovery: compare results obtained with
-progressively finer injection grids. Extra times outside the modeled period do
-not extend the calculation beyond its required bounds.
+Optional `injection_times` add times at which new intervals start, creating a
+finer piecewise-constant approximation. They do not change the requested
+`evaluation_times`. This is the main convergence option for stream recovery:
+compare results obtained with progressively finer injection grids. Extra times
+outside the modeled period do not extend the calculation beyond its required
+bounds.
 
 Most users can let `get_apportioned_aquifer_drawdown()` create the schedule
 internally. Creating it explicitly is useful when it needs to be inspected,
