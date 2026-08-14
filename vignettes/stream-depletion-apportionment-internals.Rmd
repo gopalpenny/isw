@@ -18,8 +18,12 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r packages}
+```{r packages-isw}
 library(isw)
+```
+
+
+```{r packages, message=FALSE}
 library(units)
 library(tibble)
 library(dplyr)
