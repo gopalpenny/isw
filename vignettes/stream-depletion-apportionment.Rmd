@@ -18,8 +18,12 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r packages}
+```{r package-isw}
 library(isw)
+```
+
+
+```{r packages, message=FALSE}
 library(units)
 library(tibble)
 library(dplyr)
@@ -62,7 +66,7 @@ ggplot() +
   theme_minimal()
 ```
 
-Users supply a unique `pump_id` for each pumping well and a unique
+We should supply a unique `pump_id` for each pumping well and a unique
 `observation_id` for each observation well. The `pumping_wells` object also
 contains aquifer parameters. Note that the `tibble` includes units for `K` and
 `D`. An optional column `well_diam` can be specified, such that aquifer
@@ -73,9 +77,9 @@ estimated aquifer drawdown at the edge of the well.
 pumping_wells
 ```
 
-Users also supply a unique `reach_id` for each feature in `stream_reaches`.
-The package generates `reach_segment_id` values when it discretizes those
-features; users should not add that reserved column themselves.
+We also supply a unique `reach_id` for each feature in `stream_reaches`. The
+package generates `reach_segment_id` values when it discretizes those
+features; we should not add that reserved column ourselves.
 
 ```{r}
 stream_reaches
@@ -230,8 +234,8 @@ arithmetic mean of the two endpoint rates as a piecewise-constant injection
 rate. Optional injection times can add temporal resolution without changing
 the requested output times.
 
-Most users can let the aquifer-drawdown function construct this schedule
-internally. It is exposed so it can be inspected, refined, or reused.
+We can let the aquifer-drawdown function construct this schedule internally.
+It is exposed so it can be inspected, refined, or reused.
 
 For the drawdown calculation, each point's effective injection-well diameter
 is its segment's actual `represented_length`. This prevents a point-source

@@ -99,21 +99,13 @@
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">isw</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Loading required package: expint</span></span>
 <span><span class="co">#&gt; Loading required package: units</span></span>
-<span><span class="co">#&gt; udunits database from /Library/Frameworks/R.framework/Versions/4.6/Resources/library/units/share/udunits/udunits2.xml</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-quantities.github.io/units/" class="external-link">units</a></span><span class="op">)</span></span>
+<span><span class="co">#&gt; udunits database from /Library/Frameworks/R.framework/Versions/4.6/Resources/library/units/share/udunits/udunits2.xml</span></span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-quantities.github.io/units/" class="external-link">units</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tibble.tidyverse.org/" class="external-link">tibble</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Attaching package: 'dplyr'</span></span>
-<span><span class="co">#&gt; The following objects are masked from 'package:stats':</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;     filter, lag</span></span>
-<span><span class="co">#&gt; The following objects are masked from 'package:base':</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;     intersect, setdiff, setequal, union</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE</span></span></code></pre></div>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span></code></pre></div>
 <div class="section level2">
 <h2 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
 </h2>
@@ -135,7 +127,7 @@ calculation, see
 (<code>example_observation_wells</code>). Pumping wells carry aquifer
 parameters (hydraulic conductivity, aquifer thickness, and drainable
 porosity) used by the analytical response functions.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pumping_wells</span> <span class="op">&lt;-</span> <span class="va">example_pumping_wells</span></span>
 <span><span class="va">stream_reaches</span> <span class="op">&lt;-</span> <span class="va">example_stream_reaches</span></span>
 <span><span class="va">observation_wells</span> <span class="op">&lt;-</span> <span class="va">example_observation_wells</span></span>
@@ -152,15 +144,15 @@ porosity) used by the analytical response functions.</p>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><img src="stream-depletion-apportionment_files/figure-html/spatial-inputs-1.png" class="r-plt" alt="" width="100%" style="display: block; margin: auto;"></p>
-<p>Users supply a unique <code>pump_id</code> for each pumping well and
-a unique <code>observation_id</code> for each observation well. The
+<p>We should supply a unique <code>pump_id</code> for each pumping well
+and a unique <code>observation_id</code> for each observation well. The
 <code>pumping_wells</code> object also contains aquifer parameters. Note
 that the <code>tibble</code> includes units for <code>K</code> and
 <code>D</code>. An optional column <code>well_diam</code> can be
 specified, such that aquifer drawdown inside the pumping well radius
 (<code>well_diam/2</code>) is equivalent to the estimated aquifer
 drawdown at the edge of the well.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pumping_wells</span></span>
 <span><span class="co">#&gt; Simple feature collection with 2 features and 5 fields</span></span>
 <span><span class="co">#&gt; Geometry type: POINT</span></span>
@@ -172,11 +164,11 @@ drawdown at the edge of the well.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">*</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494;">[m/s]</span> <span style="color: #949494;">[m]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494;">[m]</span>      <span style="color: #949494; font-style: italic;">&lt;POINT [m]&gt;</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> pump_1  0.000<span style="text-decoration: underline;">01</span>    50  0.1        0.3 (499800 4980050)</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> pump_2  0.000<span style="text-decoration: underline;">007</span>5  40  0.12       0.3 (500450 4980150)</span></span></code></pre></div>
-<p>Users also supply a unique <code>reach_id</code> for each feature in
+<p>We also supply a unique <code>reach_id</code> for each feature in
 <code>stream_reaches</code>. The package generates
 <code>reach_segment_id</code> values when it discretizes those features;
-users should not add that reserved column themselves.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+we should not add that reserved column ourselves.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stream_reaches</span></span>
 <span><span class="co">#&gt; Simple feature collection with 3 features and 1 field</span></span>
 <span><span class="co">#&gt; Geometry type: LINESTRING</span></span>
@@ -204,7 +196,7 @@ change at every evaluation.</p>
 <p>The rates in the final schedule row continue indefinitely. To
 represent a shutdown, include a final row that sets the applicable
 pumping rates to zero, as this example does on 2025-04-01.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pumping_schedules</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/tibble/man/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
 <span>  t <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2025-01-01"</span>, <span class="st">"2025-02-01"</span>, <span class="st">"2025-03-01"</span>, <span class="st">"2025-04-01"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  pump_1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/units/man/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">500</span>, <span class="fl">500</span>, <span class="fl">300</span>, <span class="fl">0</span><span class="op">)</span>, <span class="st">"m^3/day"</span><span class="op">)</span>,</span>
@@ -250,7 +242,7 @@ time-dependent analytical stream-depletion calculation.</p>
 <code>method = "web_squared"</code> concentrates more of the allocation
 near each pump. The optional <code>maximum_distance</code> excludes
 sample points beyond a specified distance from the pump.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stream_apportionment</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_stream_reach_apportionment.html">get_stream_reach_apportionment</a></span><span class="op">(</span></span>
 <span>  <span class="va">pumping_wells</span>,</span>
 <span>  <span class="va">stream_reaches</span>,</span>
@@ -296,7 +288,7 @@ sample points beyond a specified distance from the pump.</p>
 <span><span class="co">#&gt; 10             0.06392835 LINESTRING (5e+05 4980200, ...</span></span></code></pre></div>
 <p>Because each pump is apportioned separately, its fractions sum to one
 across the complete network.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stream_apportionment</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/sf/man/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">pump_id</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -309,7 +301,7 @@ across the complete network.</p>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> pump_1                             1</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> pump_2                             1</span></span></code></pre></div>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">stream_apportionment</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/aes.html" class="external-link">aes</a></span><span class="op">(</span>color <span class="op">=</span> <span class="va">apportionment_fraction</span><span class="op">)</span>, linewidth <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">pumping_wells</span>, color <span class="op">=</span> <span class="st">"firebrick"</span>, size <span class="op">=</span> <span class="fl">2.5</span><span class="op">)</span> <span class="op">+</span></span>
@@ -331,7 +323,7 @@ superposition.</p>
 <p>The returned values remain separated by pump and reach segment. This
 preserves the provenance of each contribution before totals are
 calculated.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stream_depletion</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_apportioned_stream_depletion.html">get_apportioned_stream_depletion</a></span><span class="op">(</span></span>
 <span>  <span class="va">pumping_wells</span>,</span>
 <span>  <span class="va">pumping_schedules</span>,</span>
@@ -357,7 +349,7 @@ calculated.</p>
 <p>Total depletion can be summarized either by pump or across the
 complete stream network. Here it is summed across reach segments while
 retaining each pump.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">total_stream_depletion</span> <span class="op">&lt;-</span> <span class="va">stream_depletion</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">pump_id</span>, <span class="va">evaluation_time</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
@@ -388,13 +380,13 @@ boundaries of each pumping interval and uses the negative arithmetic
 mean of the two endpoint rates as a piecewise-constant injection rate.
 Optional injection times can add temporal resolution without changing
 the requested output times.</p>
-<p>Most users can let the aquifer-drawdown function construct this
-schedule internally. It is exposed so it can be inspected, refined, or
+<p>We can let the aquifer-drawdown function construct this schedule
+internally. It is exposed so it can be inspected, refined, or
 reused.</p>
 <p>For the drawdown calculation, each point’s effective injection-well
 diameter is its segment’s actual <code>represented_length</code>. This
 prevents a point-source singularity at the stream.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stream_injection_schedule</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_stream_injection_schedule.html">get_stream_injection_schedule</a></span><span class="op">(</span></span>
 <span>  <span class="va">pumping_wells</span>,</span>
 <span>  <span class="va">pumping_schedules</span>,</span>
@@ -426,7 +418,7 @@ raises it.</p>
 well, and evaluation time. Supplying the schedule calculated above
 avoids repeating the stream-depletion calculation and uses exactly the
 inspected injection grid.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">water_level_changes</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_apportioned_aquifer_drawdown.html">get_apportioned_aquifer_drawdown</a></span><span class="op">(</span></span>
 <span>  <span class="va">pumping_wells</span>,</span>
 <span>  <span class="va">pumping_schedules</span>,</span>
@@ -452,7 +444,7 @@ inspected injection grid.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> pump_1  obs_near       2025-01-11             0.329            3.47<span style="color: #949494;">e</span><span style="color: #BB0000;">- 6</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 470 more rows</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 1 more variable: water_level_change [m]</span></span></span></code></pre></div>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">water_level_changes</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
 <span>    pumping_water_level_change <span class="op">=</span> <span class="op">-</span><span class="va">pumping_drawdown</span></span>
