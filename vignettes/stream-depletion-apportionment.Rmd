@@ -66,7 +66,7 @@ ggplot() +
   theme_minimal()
 ```
 
-We should supply a unique `pump_id` for each pumping well and a unique
+The package requires a unique `pump_id` for each pumping well and a unique
 `observation_id` for each observation well. The `pumping_wells` object also
 contains aquifer parameters. Note that the `tibble` includes units for `K` and
 `D`. An optional column `well_diam` can be specified, such that aquifer
@@ -77,9 +77,9 @@ estimated aquifer drawdown at the edge of the well.
 pumping_wells
 ```
 
-We also supply a unique `reach_id` for each feature in `stream_reaches`. The
+The package also requires a unique `reach_id` for each feature in `stream_reaches`. The
 package generates `reach_segment_id` values when it discretizes those
-features; we should not add that reserved column ourselves.
+features.
 
 ```{r}
 stream_reaches
