@@ -7,8 +7,8 @@ devtools::load_all()
 example_pumping_wells <- sf::st_as_sf(
   tibble::tibble(
     pump_id = c("pump_1", "pump_2"),
-    x = c(499800, 500450),
-    y = c(4980050, 4980150),
+    x = c(499006, 500350),
+    y = c(4980000, 4980120),
     K = units::set_units(c(1e-5, 7.5e-6), "m/s"),
     D = units::set_units(c(50, 40), "m"),
     V = c(0.10, 0.12),
@@ -22,13 +22,13 @@ example_stream_reaches <- sf::st_sf(
   reach_id = c("upstream_1", "upstream_2", "downstream"),
   geometry = sf::st_sfc(
     sf::st_linestring(
-      matrix(c(500000, 4980200, 500150, 4980050), ncol = 2, byrow = TRUE)
+      matrix(c(499500, 4980500, 500000, 4980000), ncol = 2, byrow = TRUE)
     ),
     sf::st_linestring(
-      matrix(c(500000, 4979900, 500150, 4980050), ncol = 2, byrow = TRUE)
+      matrix(c(499500, 4979500, 500000, 4980000), ncol = 2, byrow = TRUE)
     ),
     sf::st_linestring(
-      matrix(c(500150, 4980050, 500350, 4979850), ncol = 2, byrow = TRUE)
+      matrix(c(500000, 4980000, 501080, 4979640), ncol = 2, byrow = TRUE)
     ),
     crs = 32615
   )
@@ -37,8 +37,8 @@ example_stream_reaches <- sf::st_sf(
 example_observation_wells <- sf::st_as_sf(
   tibble::tibble(
     observation_id = c("obs_near", "obs_downstream"),
-    x = c(499900, 500240),
-    y = c(4980100, 4979930)
+    x = c(499150, 500208),
+    y = c(4980400, 4979694)
   ),
   coords = c("x", "y"),
   crs = 32615

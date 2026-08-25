@@ -11,6 +11,7 @@ vignette: >
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
+  warning = FALSE,
   fig.width = 10,
   fig.height = 5.5,
   out.width = "100%",
@@ -57,11 +58,11 @@ ggplot() +
   geom_sf(data = stream_reaches, color = "steelblue", linewidth = 1) +
   geom_sf(data = pumping_wells, color = "firebrick", size = 3) +
   geom_sf(data = observation_wells, color = "black", size = 3) +
-  geom_sf_text(data = pumping_wells, aes(label = pump_id), nudge_y = 25) +
+  geom_sf_text(data = pumping_wells, aes(label = pump_id), nudge_y = 100) +
   geom_sf_text(
     data = observation_wells,
     aes(label = observation_id),
-    nudge_y = -25
+    nudge_y = -100
   ) +
   theme_minimal()
 ```
@@ -93,7 +94,9 @@ until the next schedule change (i.e., the next row).
 
 Evaluation times are separate from schedule times. They determine when model
 results are returned, without requiring pumping rates to change at every
-evaluation.
+evaluation. This example requests results on the 1st and 15th of each month,
+plus January 1, 2026 as the year-end boundary. This shows the post-shutdown
+response across the full year without adding unnecessary intermediate points.
 
 The rates in the final schedule row continue indefinitely. To represent a
 shutdown, include a final row that sets the applicable pumping rates to zero,
@@ -106,11 +109,16 @@ pumping_schedules <- tibble(
   pump_2 = set_units(c(0, 250, 250, 0), "m^3/day")
 )
 
-evaluation_times <- seq.Date(
-  from = pumping_schedules$t[1] + 1,
-  by = "day",
-  length.out = 120
+month_starts <- seq.Date(
+  from = as.Date("2025-01-01"),
+  to = as.Date("2025-12-01"),
+  by = "month"
 )
+evaluation_times <- sort(c(
+  month_starts,
+  month_starts + 14,
+  as.Date("2026-01-01")
+))
 
 pumping_schedules
 ```
@@ -142,8 +150,8 @@ points beyond a specified distance from the pump.
 stream_apportionment <- get_stream_reach_apportionment(
   pumping_wells,
   stream_reaches,
-  reach_spacing = set_units(100, "m"),
-  sample_spacing = set_units(25, "m"),
+  reach_spacing = set_units(400, "m"),
+  sample_spacing = set_units(100, "m"),
   method = "web_squared"
 )
 
@@ -203,8 +211,11 @@ stream_depletion
 
 Total depletion can be summarized either by pump or across the complete stream
 network. Here it is summed across reach segments while retaining each pump.
+The pumping schedule is plotted above the depletion response over the same
+annual horizon. The final zero-rate schedule row is extended through the last
+evaluation time to make the shutdown period explicit.
 
-```{r summarize-stream-depletion}
+```{r summarize-stream-depletion, fig.height=9}
 total_stream_depletion <- stream_depletion |>
   group_by(pump_id, evaluation_time) |>
   summarize(
@@ -212,17 +223,48 @@ total_stream_depletion <- stream_depletion |>
     .groups = "drop"
   )
 
-ggplot(
+annual_pumping_schedule <- bind_rows(
+  pumping_schedules,
+  pumping_schedules[nrow(pumping_schedules), ] |>
+    mutate(t = max(evaluation_times))
+) |>
+  distinct(t, .keep_all = TRUE) |>
+  tidyr::pivot_longer(
+    cols = -t,
+    names_to = "pump_id",
+    values_to = "pumping_rate"
+  )
+
+pumping_schedule_plot <- ggplot(
+  annual_pumping_schedule,
+  aes(t, pumping_rate, color = pump_id)
+) +
+  geom_step(linewidth = 1) +
+  labs(
+    x = "Date",
+    y = "Pumping rate",
+    color = "Pumping well"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+stream_depletion_plot <- ggplot(
   total_stream_depletion,
   aes(evaluation_time, stream_depletion_rate, color = pump_id)
 ) +
-  geom_line() +
+  geom_line(linewidth = 1) +
   labs(
     x = "Evaluation time",
     y = "Stream-depletion rate",
     color = "Pumping well"
   ) +
   theme_minimal()
+
+patchwork::wrap_plots(
+  pumping_schedule_plot,
+  stream_depletion_plot,
+  ncol = 1
+)
 ```
 
 ## Generate the stream-injection schedule for ADF drawdown
@@ -291,13 +333,24 @@ water_level_changes |>
     names_to = "component",
     values_to = "water_level"
   ) |>
-  ggplot(aes(evaluation_time, water_level, color = component)) +
-  geom_line() +
+  ggplot(aes(
+    evaluation_time,
+    water_level,
+    color = component,
+    linetype = component
+  )) +
+  geom_line(linewidth = 0.9) +
+  scale_linetype_manual(values = c(
+    pumping_water_level_change = "dashed",
+    stream_recovery = "dashed",
+    water_level_change = "solid"
+  )) +
   facet_grid(observation_id ~ pump_id) +
   labs(
     x = "Evaluation time",
     y = "Water-level change",
-    color = "Component"
+    color = "Component",
+    linetype = "Component"
   ) +
   theme_minimal()
 ```
