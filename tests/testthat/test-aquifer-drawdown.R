@@ -61,6 +61,10 @@ make_drawdown_test_inputs <- function() {
   )
 }
 
+make_injection_schedule <- function(...) {
+  get_stream_injection_schedule(...)
+}
+
 test_that("straight-stream drawdown is the real well minus its image", {
   x1 <- units::set_units(100, "m")
   x2 <- units::set_units(40, "m")
@@ -161,7 +165,7 @@ test_that("apportioned drawdown superimposes pumping and stream injection", {
     inputs$stream_apportionment,
     inputs$evaluation_times
   )
-  injection_schedule <- get_stream_injection_schedule(
+  injection_schedule <- make_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_apportionment,
@@ -220,7 +224,7 @@ test_that("stream injection diameter equals represented segment length", {
     crs = 32615
   )
   evaluation_time <- units::set_units(10, "days")
-  injection_schedule <- get_stream_injection_schedule(
+  injection_schedule <- make_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_apportionment,
@@ -256,7 +260,7 @@ test_that("stream injection diameter equals represented segment length", {
 
 test_that("apportioned drawdown reuses a supplied injection schedule", {
   inputs <- make_drawdown_test_inputs()
-  injection_schedule <- get_stream_injection_schedule(
+  injection_schedule <- make_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_apportionment,
@@ -283,7 +287,7 @@ test_that("apportioned drawdown reuses a supplied injection schedule", {
 
 test_that("a supplied injection schedule controls the injection grid", {
   inputs <- make_drawdown_test_inputs()
-  injection_schedule <- get_stream_injection_schedule(
+  injection_schedule <- make_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_apportionment,
@@ -306,7 +310,7 @@ test_that("a supplied injection schedule controls the injection grid", {
 
 test_that("a supplied injection schedule must cover the evaluation period", {
   inputs <- make_drawdown_test_inputs()
-  injection_schedule <- get_stream_injection_schedule(
+  injection_schedule <- make_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_apportionment,
@@ -337,7 +341,7 @@ test_that("injection grid includes pumping times with sparse evaluations", {
     t = units::set_units(c(0, 10, 20), "days"),
     pump_1 = units::set_units(c(100, 100, 0), "m^3/day")
   )
-  injection_schedule <- get_stream_injection_schedule(
+  injection_schedule <- make_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_apportionment,
@@ -356,7 +360,7 @@ test_that("injection grid includes pumping times with sparse evaluations", {
 
 test_that("optional injection times refine the schedule", {
   inputs <- make_drawdown_test_inputs()
-  injection_schedule <- get_stream_injection_schedule(
+  injection_schedule <- make_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_apportionment,

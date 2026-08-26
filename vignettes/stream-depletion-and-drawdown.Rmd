@@ -1,0 +1,500 @@
+---
+title: "Stream Depletion and Drawdown in the ISW package"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Stream Depletion and Drawdown in the ISW package}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  warning = FALSE,
+  fig.width = 10,
+  fig.height = 5.5,
+  out.width = "100%",
+  fig.align = "center"
+)
+```
+
+```{r packages, message = FALSE}
+library(isw)
+library(units)
+library(tibble)
+library(dplyr)
+library(ggplot2)
+library(sf)
+```
+
+## Overview
+
+This vignette presents the main `isw` workflow for estimating stream
+depletion and the resulting water-level changes in an aquifer. It compares
+the package's two methods for estimating depletion and stream-injection 
+using spatial inputs included with the package:
+
+* `method = "adf"`, the default, calculates analytical depletion and
+  apportions it among stream segments; and
+* `method = "constant_head"` solves the injection rates needed to keep
+  water-level change equal to zero at the stream-segment model points.
+
+The focus here is how to prepare the inputs and connect the main functions.
+For more detail, see the website articles on the
+[comparison of the two methods](https://gopalpenny.github.io/isw/articles/stream-injection-methods.html)
+and the
+[internals of ADF apportionment](https://gopalpenny.github.io/isw/articles/stream-depletion-apportionment-internals.html).
+
+## Load the spatial inputs
+
+The package includes a synthetic example domain with two pumping wells, three
+connected stream reaches, and two observation wells, all as `sf` objects.
+
+```{r spatial-inputs}
+pumping_wells <- example_pumping_wells
+stream_reaches <- example_stream_reaches
+observation_wells <- example_observation_wells
+
+ggplot() +
+  geom_sf(data = stream_reaches, color = "grey65", linewidth = 1.2) +
+  geom_sf(data = pumping_wells, color = "firebrick", shape = 8, size = 3) +
+  geom_sf(data = observation_wells, color = "#0072B2", shape = 17, size = 3) +
+  geom_sf_text(data = pumping_wells, aes(label = pump_id), nudge_y = 100) +
+  geom_sf_text(
+    data = observation_wells,
+    aes(label = observation_id),
+    nudge_y = -100
+  ) +
+  labs(x = NULL, y = NULL) +
+  theme_minimal()
+```
+
+See the
+[`get_stream_segments()` reference](https://gopalpenny.github.io/isw/reference/get_stream_segments.html)
+for CRS requirements, coordinate transformations, and automatic selection of
+a projected analysis CRS.
+
+Required identifiers for spatial inputs are `reach_id`, `pump_id`, and `observation_id`, respectively.
+Pumping wells must also provide aquifer properties as `units` vectors including: 
+hydraulic conductivity `K`, aquifer thickness `D`, and
+drainable porosity `V`. The optional `well_diam` prevents a point-well
+singularity when a response is evaluated inside the well radius.
+
+The individual objects and their columns can be inspected directly.
+
+```{r inspect-spatial-inputs}
+pumping_wells
+stream_reaches
+observation_wells
+```
+
+## Divide the stream into model segments
+
+Both the `adf` and `constant-head` methods can use the same stream segments object. 
+`reach_spacing` is the
+maximum modeled segment length; smaller values represent the stream boundary
+at greater spatial resolution but increase the number of injection rates that
+must be calculated.
+
+Each returned segment contains a `model_point`. This is the discrete injection
+location and, for constant head, the location where the zero-change condition
+is imposed. The effective injection-well diameter is based on the segment's
+`represented_length`.
+
+```{r stream-segments}
+stream_segments <- get_stream_segments(
+  stream_reaches,
+  reach_spacing = set_units(400, "m")
+)
+
+stream_segments[c(
+  "reach_id",
+  "reach_segment_id",
+  "represented_length",
+  "well_diam"
+)]
+```
+
+The same reference describes the returned columns in more detail.
+
+## Define pumping and model times
+
+`pumping_schedules` is a wide tibble, with pumping provided in units. 
+Its first column, `t`, gives the start of
+each pumping period; every other column is named for a `pump_id` and contains
+that well's rate. Rates continue until the next schedule row, so a shutdown
+must be represented by a row that sets the rate to zero.
+
+```{r pumping-schedule}
+pumping_schedules <- tibble(
+  t = as.Date(c("2025-01-01", "2025-02-01", "2025-03-01", "2025-04-01")),
+  pump_1 = set_units(c(500, 500, 300, 0), "m^3/day"),
+  pump_2 = set_units(c(0, 250, 250, 0), "m^3/day")
+)
+
+pumping_schedules
+```
+
+`evaluation_times` specifies when stream depletion and water-level results are
+returned. Pumping-schedule times and evaluation times are always included as
+boundaries of the piecewise-constant stream-injection schedule.
+
+The optional `injection_times` argument can add schedule boundaries without
+requesting additional water-level output. This can improve the interval-average
+approximation to continuously changing ADF depletion, but it increases
+computation for both methods. Constant-head rates are solved to satisfy the
+boundary at each interval end. Very short intervals can therefore require large
+corrective rates, especially when a regular refinement grid is combined with
+nearby evaluation or pumping times. This example leaves `injection_times` as
+`NULL` and uses monthly evaluation boundaries for a stable, readily interpreted
+comparison. Applications that add refinement times should inspect sensitivity
+to the resulting interval lengths.
+
+```{r model-times}
+evaluation_times <- seq.Date(
+  from = as.Date("2025-01-01"),
+  to = as.Date("2026-01-01"),
+  by = "month"
+)
+
+injection_times <- NULL
+```
+
+See the
+[`get_stream_injection_schedule()` reference](https://gopalpenny.github.io/isw/reference/get_stream_injection_schedule.html)
+for the complete input requirements and interval construction rules.
+
+## Construct both stream-injection schedules
+
+ADF requires one additional step because its total analytical depletion must
+be apportioned spatially. `get_adf_stream_apportionment()` calculates a set of
+segment weights independently for each pumping well. `sample_spacing`
+controls how finely curved stream geometry is sampled when those weights are
+calculated; it does not change the number of modeled stream segments.
+
+```{r adf-apportionment}
+stream_apportionment <- get_adf_stream_apportionment(
+  pumping_wells,
+  stream_segments,
+  sample_spacing = set_units(100, "m"),
+  method = "web_squared"
+)
+
+stream_apportionment |>
+  st_drop_geometry() |>
+  group_by(pump_id) |>
+  summarize(
+    total_apportionment_fraction = sum(apportionment_fraction),
+    .groups = "drop"
+  )
+```
+
+We can first calculate ADF stream depletion directly at the requested times.
+This is the simplest route when only ADF depletion, rather than its effect on
+aquifer water levels, is needed.
+
+```{r direct-adf-depletion}
+adf_depletion <- get_adf_stream_depletion(
+  pumping_wells = pumping_wells,
+  pumping_schedules = pumping_schedules,
+  stream_apportionment = stream_apportionment,
+  evaluation_times = c(evaluation_times, injection_times)
+)
+
+adf_depletion_totals <- adf_depletion |>
+  st_drop_geometry() |>
+  group_by(pump_id, evaluation_time) |>
+  summarize(
+    adf_depletion_at_time = sum(stream_depletion_rate),
+    .groups = "drop"
+  )
+
+adf_depletion_totals
+```
+
+The two interval schedules can now be constructed with the same function and
+time grid. `"adf"` is the default method, but it is written explicitly here to
+make the comparison clear.
+
+With `method = "adf"`, `get_stream_injection_schedule()` calls
+`get_adf_stream_depletion()` at every schedule boundary and averages depletion
+at adjacent boundaries. It reports the resulting aquifer injection as a signed
+`injection_rate`, which is negative when water enters the aquifer. Its magnitude
+is the average stream-depletion rate applied over the interval. By contrast,
+`get_adf_stream_depletion()` returns positive depletion at each requested time.
+If ADF depletion has already been calculated at every schedule boundary, it can
+be supplied through `adf_stream_depletion` to avoid recalculation. The supplied
+result must include all pumping, evaluation, and optional refinement boundaries
+used by the schedule.
+
+With `method = "constant_head"`, each returned interval rate is the rate
+solved to satisfy the constant-head boundary condition at the interval end.
+
+```{r injection-schedules}
+adf_schedule <- get_stream_injection_schedule(
+  pumping_wells = pumping_wells,
+  pumping_schedules = pumping_schedules,
+  stream_segments = stream_segments,
+  evaluation_times = evaluation_times,
+  injection_times = injection_times,
+  method = "adf",
+  stream_apportionment = stream_apportionment,
+  adf_stream_depletion = adf_depletion
+)
+
+constant_head_schedule <- get_stream_injection_schedule(
+  pumping_wells = pumping_wells,
+  pumping_schedules = pumping_schedules,
+  stream_segments = stream_segments,
+  evaluation_times = evaluation_times,
+  injection_times = injection_times,
+  method = "constant_head"
+)
+```
+
+The constant-head result includes two diagnostics. `boundary_residual` is the
+signed water-level change remaining at a segment model point after the solve.
+`matrix_condition_number` indicates the numerical sensitivity of the system;
+`isw` warns when it exceeds \(10^6\).
+
+An aquifer factorization is the decomposition of the stream-response matrix
+used to solve for the constant-head depletion rates. Wells with the same
+aquifer properties share this matrix, so `isw` factorizes it once for that
+aquifer-property combination and reuses the result for each associated pumping
+well. This reduces computation while preserving the depletion response
+attributed to each pump.
+
+```{r constant-head-diagnostics}
+constant_head_schedule |>
+  st_drop_geometry() |>
+  summarize(
+    maximum_absolute_boundary_residual_m = max(abs(as.numeric(
+      set_units(boundary_residual, "m")
+    ))),
+    maximum_matrix_condition_number = max(matrix_condition_number),
+    number_of_aquifer_factorizations = n_distinct(aquifer_id)
+  )
+```
+
+## Compare stream depletion
+
+`injection_rate` is negative when water leaves the stream and enters the
+aquifer. For each pumping well, total stream depletion is therefore the
+negative of the injection rate summed across all stream segments.
+
+For ADF, the schedule contains interval-average analytical depletion. For
+constant head, it contains the depletion required to impose the stream
+boundary condition at the interval end.
+
+```{r summarize-stream-depletion}
+stream_depletion <- bind_rows(
+  mutate(adf_schedule, method = "ADF"),
+  mutate(constant_head_schedule, method = "Constant head")
+) |>
+  st_drop_geometry() |>
+  group_by(method, pump_id, interval_start, interval_end) |>
+  summarize(
+    stream_depletion_rate = -sum(injection_rate),
+    .groups = "drop"
+  )
+
+stream_depletion |>
+  filter(interval_end %in% evaluation_times)
+```
+
+The direct ADF result at an interval end generally differs from the average
+rate applied during that interval. The following comparison makes that
+distinction explicit.
+
+```{r compare-adf-endpoint-and-average}
+adf_interval_comparison <- adf_schedule |>
+  st_drop_geometry() |>
+  group_by(pump_id, interval_start, interval_end) |>
+  summarize(
+    adf_interval_average = -sum(injection_rate),
+    .groups = "drop"
+  ) |>
+  left_join(
+    rename(
+      adf_depletion_totals,
+      adf_depletion_at_interval_end = adf_depletion_at_time
+    ),
+    by = c(
+      "pump_id",
+      "interval_end" = "evaluation_time"
+    )
+  )
+
+adf_interval_comparison
+```
+
+```{r plot-stream-depletion}
+adf_depletion_plot <- adf_depletion_totals |>
+  transmute(
+    pump_id,
+    interval_end = evaluation_time,
+    stream_depletion_rate = adf_depletion_at_time,
+    method = "ADF at requested time"
+  )
+
+ggplot() +
+  geom_step(
+    data = stream_depletion,
+    aes(interval_start, stream_depletion_rate, color = method),
+    linewidth = 1
+  ) +
+  geom_line(
+    data = adf_depletion_plot,
+    aes(interval_end, stream_depletion_rate, color = method),
+    linewidth = 0.8,
+    linetype = "dashed"
+  ) +
+  geom_point(
+    data = adf_depletion_plot,
+    aes(interval_end, stream_depletion_rate, color = method),
+    size = 2
+  ) +
+  facet_wrap(~pump_id, nrow = 1) +
+  labs(
+    x = "Interval end",
+    y = "Total stream-depletion rate",
+    color = "Method"
+  ) +
+  theme_minimal()
+```
+
+The following map compares the spatial distribution of the two injection
+schedules during May 2025. Because package injection rates are negative when
+water enters the aquifer, the mapped values are their positive magnitudes.
+Each panel shows the rates attributed to one pumping well and one method.
+
+```{r map-may-injection-rates, fig.height = 9}
+may_date <- as.Date("2025-05-15")
+
+may_injection_rates <- bind_rows(
+  mutate(adf_schedule, method = "ADF"),
+  mutate(constant_head_schedule, method = "Constant head")
+) |>
+  filter(interval_start <= may_date, interval_end > may_date) |>
+  group_by(method, pump_id, reach_segment_id) |>
+  summarize(
+    injection_rate = sum(injection_rate),
+    .groups = "drop"
+  ) |>
+  mutate(
+    injection_rate_m3_day = -as.numeric(set_units(
+      injection_rate,
+      "m^3/day"
+    ))
+  )
+
+injection_points <- st_sf(
+  reach_segment_id = stream_segments$reach_segment_id,
+  geometry = stream_segments$model_point
+) |>
+  left_join(may_injection_rates, by = "reach_segment_id")
+
+ggplot() +
+  geom_sf(data = stream_segments, color = "grey75", linewidth = 1) +
+  geom_sf(
+    data = injection_points,
+    aes(
+      size = injection_rate_m3_day,
+      color = injection_rate_m3_day
+    ),
+    alpha = 0.85
+  ) +
+  facet_grid(method ~ pump_id) +
+  scale_size_continuous(range = c(2, 10)) +
+  scale_color_viridis_c(option = "C") +
+  labs(
+    x = NULL,
+    y = NULL,
+    size = "Injection rate\n(m³/day)",
+    color = "Injection rate\n(m³/day)"
+  ) +
+  theme_minimal()
+```
+
+## Calculate aquifer drawdown and stream recovery
+
+`get_aquifer_water_level_change()` combines the effects of the physical
+pumping wells and stream injection at each observation well and evaluation
+time. Supplying a previously calculated schedule ensures that the water-level
+calculation uses exactly the injection rates inspected above.
+
+```{r calculate-water-levels}
+adf_water_levels <- get_aquifer_water_level_change(
+  pumping_wells = pumping_wells,
+  pumping_schedules = pumping_schedules,
+  observation_wells = observation_wells,
+  stream_segments = stream_segments,
+  evaluation_times = evaluation_times,
+  stream_injection_schedule = adf_schedule
+) |>
+  mutate(method = "ADF")
+
+constant_head_water_levels <- get_aquifer_water_level_change(
+  pumping_wells = pumping_wells,
+  pumping_schedules = pumping_schedules,
+  observation_wells = observation_wells,
+  stream_segments = stream_segments,
+  evaluation_times = evaluation_times,
+  stream_injection_schedule = constant_head_schedule
+) |>
+  mutate(method = "Constant head")
+
+water_levels <- bind_rows(adf_water_levels, constant_head_water_levels)
+
+water_levels |>
+  st_drop_geometry() |>
+  select(
+    method,
+    pump_id,
+    observation_id,
+    evaluation_time,
+    pumping_drawdown,
+    stream_recovery,
+    water_level_change
+  )
+```
+
+`pumping_drawdown` and `stream_recovery` are reported as positive magnitudes.
+`water_level_change` is their signed net effect: negative values indicate a
+decline and positive values indicate a rise.
+
+```{r plot-water-levels, fig.height = 8}
+water_level_totals <- water_levels |>
+  st_drop_geometry() |>
+  group_by(method, pump_id, observation_id, evaluation_time) |>
+  summarize(
+    water_level_change_m = as.numeric(set_units(
+      sum(water_level_change),
+      "m"
+    )),
+    .groups = "drop"
+  )
+
+ggplot(
+  water_level_totals,
+  aes(evaluation_time, water_level_change_m, color = method)
+) +
+  geom_hline(yintercept = 0, color = "grey70") +
+  geom_line(linewidth = 1, alpha = 0.8) +
+  facet_grid(observation_id ~ pump_id, scales = "fixed") +
+  labs(
+    x = "Evaluation time",
+    y = "Net water-level change (m)",
+    color = "Method"
+  ) +
+  theme_minimal()
+```
+
+The
+[`get_aquifer_water_level_change()` reference](https://gopalpenny.github.io/isw/reference/get_aquifer_water_level_change.html)
+documents the returned pumping, recovery, and net water-level components. The
+[method-comparison article](https://gopalpenny.github.io/isw/articles/stream-injection-methods.html)
+extends this workflow with observations along the stream and on transects,
+and compares the discrete constant-head result with the analytical image-well
+solution.

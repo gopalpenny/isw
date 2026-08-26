@@ -589,6 +589,10 @@
 #' @param allow_many_aquifer_parameter_sets Logical. Constant-head calculations
 #'   stop when more than ten unique aquifer parameter sets are found unless
 #'   this is `TRUE`.
+#' @param adf_stream_depletion Optional output from
+#'   [get_adf_stream_depletion()] that includes every schedule boundary. When
+#'   supplied with `method = "adf"`, these rates are reused instead of being
+#'   recalculated; results at additional times are ignored.
 #'
 #' @return A tibble with one row per `pump_id`, `reach_segment_id`, and
 #'   injection interval. `interval_start` and `interval_end` retain the time
@@ -603,9 +607,9 @@
 #' requested result is an interval boundary. Optional `injection_times` add
 #' refinement boundaries; they never remove pumping-schedule boundaries.
 #'
-#' With `method = "adf"`, stream depletion is evaluated at every injection
-#' boundary and the negative arithmetic mean of adjacent endpoint rates is
-#' applied over each interval.
+#' With `method = "adf"`, [get_adf_stream_depletion()] evaluates stream
+#' depletion at every schedule boundary. The arithmetic mean of adjacent
+#' endpoint rates is applied over each interval.
 #'
 #' With `method = "constant_head"`, segment model points are discrete
 #' injection wells and constant-head collocation points. One coupled response
@@ -647,7 +651,8 @@ get_stream_injection_schedule <- function(
     injection_times = NULL,
     method = c("adf", "constant_head"),
     stream_apportionment = NULL,
-    allow_many_aquifer_parameter_sets = FALSE) {
+    allow_many_aquifer_parameter_sets = FALSE,
+    adf_stream_depletion = NULL) {
 
   method <- match.arg(method)
   .validate_pumping_schedules(pumping_schedules, pumping_wells)
@@ -672,17 +677,71 @@ get_stream_injection_schedule <- function(
       stream_apportionment,
       pumping_wells
     )
-    internal_depletion <- get_adf_stream_depletion(
-      pumping_wells,
-      pumping_schedules,
-      stream_apportionment,
-      time_grid$injection_times
-    )
+    if (is.null(adf_stream_depletion)) {
+      internal_depletion <- get_adf_stream_depletion(
+        pumping_wells,
+        pumping_schedules,
+        stream_apportionment,
+        time_grid$injection_times
+      )
+    } else {
+      internal_depletion <- .validate_apportioned_stream_depletion(
+        adf_stream_depletion,
+        pumping_wells,
+        pumping_schedules,
+        stream_apportionment
+      )
+      supplied_times <- sort(unique(internal_depletion$evaluation_time))
+      required_times <- time_grid$injection_times
+      supplied_day_values <- if (inherits(supplied_times, "Date")) {
+        as.numeric(supplied_times)
+      } else {
+        as.numeric(units::set_units(
+          supplied_times,
+          "days",
+          mode = "standard"
+        ))
+      }
+      required_day_values <- if (inherits(required_times, "Date")) {
+        as.numeric(required_times)
+      } else {
+        as.numeric(units::set_units(
+          required_times,
+          "days",
+          mode = "standard"
+        ))
+      }
+      if (!all(required_day_values %in% supplied_day_values)) {
+        stop(
+          "adf_stream_depletion must contain results at every stream-",
+          "depletion schedule boundary."
+        )
+      }
+      row_day_values <- if (inherits(
+          internal_depletion$evaluation_time,
+          "Date")) {
+        as.numeric(internal_depletion$evaluation_time)
+      } else {
+        as.numeric(units::set_units(
+          internal_depletion$evaluation_time,
+          "days",
+          mode = "standard"
+        ))
+      }
+      internal_depletion <- internal_depletion[
+        row_day_values %in% required_day_values,
+      ]
+    }
     injection_schedule <- .get_interval_average_injection_schedule(
       internal_depletion,
       pumping_schedules
     )
   } else {
+    if (!is.null(adf_stream_depletion)) {
+      stop(
+        "adf_stream_depletion can only be supplied when method = \"adf\"."
+      )
+    }
     if (is.null(stream_segments)) {
       stop("stream_segments is required when method = \"constant_head\".")
     }
@@ -1119,7 +1178,7 @@ get_aquifer_water_level_change <- function(
 
   if (!is.null(stream_injection_schedule) && !is.null(injection_times)) {
     stop(
-      "injection_times must be NULL when stream_injection_schedule is ",
+      "injection_times must be NULL when a stream-injection schedule is ",
       "supplied."
     )
   }

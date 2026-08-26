@@ -1,10 +1,6 @@
 ---
 title: "Stream Depletion Apportionment: Detailed Walkthrough"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Stream Depletion Apportionment: Detailed Walkthrough}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
+output: rmarkdown::html_document
 ---
 
 ```{r setup, include = FALSE}
@@ -35,7 +31,7 @@ library(sf)
 ## Purpose and scope
 
 This vignette repeats the workflow in
-`vignette("stream-depletion-apportionment")` in the same order. After each
+`vignette("stream-depletion-and-drawdown")` in the same order. After each
 top-level ADF function call, it opens that function to show the intermediate
 objects, calculations, and modeling choices involved.
 
@@ -49,9 +45,9 @@ This detailed walkthrough still names the combined compatibility functions
 `get_apportioned_aquifer_drawdown()` while explaining their internals. They are
 planned for deprecation. New application code should use
 `get_stream_segments()`, `get_adf_stream_apportionment()`,
-`get_adf_stream_depletion()`, and `get_aquifer_water_level_change()`. See
-`vignette("stream-injection-methods")` for the preferred shared workflow and
-the constant-head alternative.
+`get_adf_stream_depletion()`, and `get_aquifer_water_level_change()`. The
+[method-comparison article](stream-injection-methods.html) presents the shared
+workflow and the constant-head alternative.
 
 ## Load the example spatial inputs
 
@@ -518,16 +514,16 @@ patchwork::wrap_plots(
 )
 ```
 
-## Generate the stream-injection schedule for ADF drawdown
+## Generate the stream-depletion schedule for ADF drawdown
 
 In order to estimate aquifer drawdown, we represent stream depletion as
 injection wells. Each reach segment becomes an equivalent injection well whose
 schedule is derived from the depletion apportioned to that segment.
 `get_stream_injection_schedule()` returns one row per pump, segment, and time
-interval. Each row specifies the constant injection rate applied at the
-segment's `model_point` during that interval.
+interval. Each row specifies the signed aquifer-injection rate represented
+during that interval; negative values indicate water entering the aquifer.
 
-```{r construct-stream-injection-schedule}
+```{r construct-stream-depletion-schedule}
 stream_injection_schedule <- get_stream_injection_schedule(
   pumping_wells,
   pumping_schedules,
@@ -572,10 +568,10 @@ tail(injection_grid$injection_times)
 
 #### 2. Approximate continuously changing depletion by intervals
 
-Depletion is evaluated at the start and end of each interval. The negative
-arithmetic mean of those two depletion rates becomes the constant injection
-rate for that interval. The negative sign represents water entering the
-aquifer from the stream, opposite to the sign used for pumping.
+Depletion is evaluated at the start and end of each interval. The arithmetic
+mean of those two rates defines the depletion magnitude for that interval.
+`get_stream_injection_schedule()` reports its negative as the aquifer-injection
+rate because stream water enters the aquifer.
 
 ```{r internal-injection-schedule}
 depletion_at_injection_times <- get_apportioned_stream_depletion(
@@ -603,8 +599,8 @@ head(injection_rate_changes)
 
 `depletion_at_injection_times` contains the segment-level depletion rates at
 the start and end of each interval.
-`.get_interval_average_injection_schedule()` converts them to the interval
-rates returned by `get_stream_injection_schedule()`.
+`.get_interval_average_injection_schedule()` first converts them to the signed
+injection rates returned by `get_stream_injection_schedule()`.
 `.get_injection_rate_changes()` then converts successive interval rates to
 change events for the superposition calculation in
 `get_apportioned_aquifer_drawdown()`.

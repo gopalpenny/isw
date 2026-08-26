@@ -1,0 +1,16 @@
+url: https://gopalpenny.github.io/isw/
+
+articles:
+- title: Package workflow
+  navbar: Package workflow
+  contents:
+  - stream-depletion-and-drawdown
+
+- title: Detailed methods
+  navbar: Detailed methods
+  contents:
+  - articles/stream-injection-methods
+  - articles/stream-depletion-apportionment-internals
+
+redirects:
+- ["articles/stream-depletion-apportionment.html", "articles/stream-depletion-and-drawdown.html"]

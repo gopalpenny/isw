@@ -215,6 +215,52 @@ test_that("ADF remains the default injection method", {
 
   expect_equal(default_schedule, explicit_schedule)
 
+  direct_depletion <- get_adf_stream_depletion(
+    inputs$pumping_wells,
+    inputs$pumping_schedules,
+    stream_apportionment,
+    units::set_units(c(0, 10, 20, 25), "days")
+  )
+  reused_schedule <- get_stream_injection_schedule(
+    inputs$pumping_wells,
+    inputs$pumping_schedules,
+    inputs$stream_segments,
+    inputs$evaluation_times,
+    method = "adf",
+    stream_apportionment = stream_apportionment,
+    adf_stream_depletion = direct_depletion
+  )
+
+  expect_equal(reused_schedule, explicit_schedule)
+
+  expect_error(
+    get_stream_injection_schedule(
+      inputs$pumping_wells,
+      inputs$pumping_schedules,
+      inputs$stream_segments,
+      inputs$evaluation_times,
+      method = "adf",
+      stream_apportionment = stream_apportionment,
+      adf_stream_depletion = dplyr::filter(
+        direct_depletion,
+        evaluation_time != units::set_units(20, "days")
+      )
+    ),
+    "every stream-depletion schedule boundary"
+  )
+
+  expect_error(
+    get_stream_injection_schedule(
+      inputs$pumping_wells,
+      inputs$pumping_schedules,
+      inputs$stream_segments,
+      inputs$evaluation_times,
+      method = "constant_head",
+      adf_stream_depletion = direct_depletion
+    ),
+    "only be supplied"
+  )
+
   observation_wells <- sf::st_sf(
     observation_id = "obs_1",
     geometry = sf::st_sfc(sf::st_point(c(50, 0)), crs = 32615)
@@ -237,6 +283,21 @@ test_that("ADF remains the default injection method", {
       stream_injection_schedule = explicit_schedule
     )$water_level_change
   )
+})
+
+test_that("injection schedules retain their signed output", {
+  inputs <- make_constant_head_inputs()
+
+  schedule <- get_stream_injection_schedule(
+    inputs$pumping_wells,
+    inputs$pumping_schedules,
+    inputs$stream_segments,
+    inputs$evaluation_times,
+    method = "constant_head"
+  )
+
+  expect_true("injection_rate" %in% names(schedule))
+  expect_true(all(as.numeric(schedule$injection_rate[1:2]) < 0))
 })
 
 test_that("constant-head schedules retain Date interval boundaries", {

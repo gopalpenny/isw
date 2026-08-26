@@ -5,9 +5,12 @@
 * Added `get_stream_segments()` to separate projected stream discretization
   from ADF apportionment. Discrete stream wells default to an effective
   diameter equal to half their represented segment length.
-* Added `method = "constant_head"` to `get_stream_injection_schedule()`. The
-  new method solves pump-specific discrete-well rates that enforce zero signed
-  water-level change at stream model points at interval endpoints.
+* Added `get_stream_injection_schedule()` with ADF and constant-head methods.
+  It reports signed, piecewise-constant aquifer-injection rates. The
+  constant-head method solves pump-specific discrete-well rates that enforce
+  zero signed water-level change at stream model points at interval endpoints.
+  Precomputed output from `get_adf_stream_depletion()` can be reused when it
+  includes every schedule boundary.
 * Added boundary-residual and response-matrix condition-number diagnostics for
   constant-head schedules. Condition numbers above `1e6` produce a warning.
 * Added `get_adf_stream_apportionment()`, `get_adf_stream_depletion()`, and

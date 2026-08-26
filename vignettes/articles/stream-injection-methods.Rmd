@@ -1,10 +1,6 @@
 ---
 title: "Comparing ADF and Constant-Head Stream Injection"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Comparing ADF and Constant-Head Stream Injection}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
+output: rmarkdown::html_document
 ---
 
 ```{r setup, include = FALSE}
@@ -65,7 +61,7 @@ Each input has a distinct role in the shared workflow:
   this geometry into segments that can be used with either injection method.
 * `pumping_wells` identifies the pumping wells and provides their locations and
   aquifer properties. These data are needed for ADF apportionment, the stream
-  injection schedules, and the water-level calculation.
+  depletion schedules, and the water-level calculation.
 * `pumping_schedules` gives the pumping rate through time for each well.
   `get_stream_injection_schedule()` uses it to calculate the stream response,
   and `get_aquifer_water_level_change()` uses it to calculate drawdown from the
@@ -269,7 +265,7 @@ injection_times <- set_units(seq(0, 180, by = 15), "days")
 ```
 
 `evaluation_times` specifies when the model returns water-level results. The
-stream-injection schedule must extend through all of these times.
+stream-depletion schedule must extend through all of these times.
 
 `injection_times` controls the internal time resolution of that schedule. It
 adds boundaries between piecewise-constant injection intervals but does not
@@ -300,7 +296,7 @@ matrix factorization when the interval duration and aquifer properties are the
 same. The
 [temporal-input discussion](stream-depletion-apportionment-internals.html#what-happens-to-the-temporal-inputs)
 provides more detail about evaluation times, and the
-[injection-grid walkthrough](stream-depletion-apportionment-internals.html#what-happens-inside-get_stream_injection_schedule)
+[schedule-grid walkthrough](stream-depletion-apportionment-internals.html#what-happens-inside-get_stream_injection_schedule)
 shows how optional injection times are merged with required boundaries.
 
 The ADF workflow first calculates pump-specific weights for the stream
@@ -358,11 +354,9 @@ constant_head_diagnostics
 
 ### Compare total stream depletion
 
-Water lost from the stream enters the aquifer. The model represents this water
-as injection wells along the stream and stores injection as a negative well
-rate. Stream depletion therefore has the same magnitude as the summed
-injection rate but the opposite sign:
-`stream_depletion_rate = -sum(injection_rate)`.
+Water lost from the stream enters the aquifer. The schedule reports this as a
+negative `injection_rate` at each stream model point. Its negative is the
+corresponding positive stream-depletion rate.
 
 For ADF, this quantity is the interval-average analytical depletion distributed
 among the segments. For constant head, it is the total injection needed to
@@ -388,7 +382,7 @@ ggplot(
     x = "Interval end",
     y = "Total stream-depletion rate",
     subtitle = paste(
-      "Positive stream depletion equals the magnitude of negative",
+      "Positive stream depletion is represented internally as negative",
       "aquifer injection"
     ),
     color = "Method"

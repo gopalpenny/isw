@@ -44,8 +44,9 @@ The model reports water-level change, not absolute hydraulic head. Therefore,
 stream. The effective-diameter approach limits a numerical artifact but does
 not enforce that boundary condition. A nonzero result at the stream is an ADF
 boundary residual. The separate constant-head method solves the injection
-rates as a coupled system; see the package vignette
-`stream-injection-methods.Rmd` for that comparison.
+rates as a coupled system; see the website article on
+[ADF and constant-head stream injection](https://gopalpenny.github.io/isw/articles/stream-injection-methods.html)
+for that comparison.
 
 ## Construct a controlled straight-stream example
 
