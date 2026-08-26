@@ -137,6 +137,25 @@ test_that("web apportionment is length weighted by reach segment", {
   expect_equal(sum(stream_apportionment$apportionment_fraction), 1)
 })
 
+test_that("preferred ADF apportionment accepts prepared stream segments", {
+  inputs <- make_adf_test_inputs()
+  stream_segments <- get_stream_segments(
+    inputs$stream_reaches,
+    units::set_units(500, "m")
+  )
+
+  result <- get_adf_stream_apportionment(
+    inputs$pumping_wells,
+    stream_segments,
+    sample_spacing = units::set_units(500, "m"),
+    method = "web"
+  )
+
+  expect_equal(result$apportionment_fraction, c(1 / 3, 2 / 3))
+  expect_equal(result$well_diam, result$represented_length / 2)
+  expect_identical(sf::st_crs(result), sf::st_crs(stream_segments))
+})
+
 test_that("apportionment fractions sum to one for every pump", {
   inputs <- make_adf_test_inputs(two_pumps = TRUE)
 
@@ -301,6 +320,37 @@ test_that("intermittent depletion uses elapsed-time fractions and superposition"
       100 * (fractions_at_20 - fractions_at_10) *
         apportionment_fractions,
       "m^3/day"
+    )
+  )
+})
+
+test_that("preferred ADF depletion name preserves existing results", {
+  inputs <- make_adf_test_inputs()
+  stream_apportionment <- get_stream_reach_apportionment(
+    inputs$pumping_wells,
+    inputs$stream_reaches,
+    reach_spacing = units::set_units(500, "m"),
+    sample_spacing = units::set_units(500, "m"),
+    analysis_crs = 32615
+  )
+  pumping_schedules <- tibble::tibble(
+    t = units::set_units(c(0, 10), "days"),
+    pump_1 = units::set_units(c(100, 0), "m^3/day")
+  )
+  evaluation_times <- units::set_units(c(0, 10, 20), "days")
+
+  expect_equal(
+    get_adf_stream_depletion(
+      inputs$pumping_wells,
+      pumping_schedules,
+      stream_apportionment,
+      evaluation_times
+    ),
+    get_apportioned_stream_depletion(
+      inputs$pumping_wells,
+      pumping_schedules,
+      stream_apportionment,
+      evaluation_times
     )
   )
 })

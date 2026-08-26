@@ -234,6 +234,250 @@
   )
 }
 
+# Select the projected analysis CRS used to segment a stream network.
+.select_stream_analysis_crs <- function(stream_reaches, analysis_crs = NULL) {
+  .validate_stream_reaches(stream_reaches)
+
+  if (!is.null(analysis_crs)) {
+    selected_crs <- tryCatch(
+      suppressWarnings(sf::st_crs(analysis_crs)),
+      error = function(e) NULL
+    )
+
+    if (is.null(selected_crs) || is.na(selected_crs)) {
+      stop("analysis_crs must define a valid projected CRS.")
+    }
+
+    if (!grepl("^PROJCRS\\[", selected_crs$wkt)) {
+      stop("analysis_crs must define a projected CRS.")
+    }
+
+    return(selected_crs)
+  }
+
+  stream_crs <- sf::st_crs(stream_reaches)
+
+  if (grepl("^PROJCRS\\[", stream_crs$wkt)) {
+    if (identical(stream_crs$epsg, 3857L)) {
+      warning(
+        "Web Mercator is not recommended for hydraulic distance analysis; ",
+        "consider supplying a suitable projected analysis_crs.",
+        call. = FALSE
+      )
+    }
+    return(stream_crs)
+  }
+
+  wgs84_extent <- sf::st_bbox(sf::st_transform(stream_reaches, 4326))
+  longitude_range <- unname(wgs84_extent[c("xmin", "xmax")])
+  latitude_range <- unname(wgs84_extent[c("ymin", "ymax")])
+
+  if (diff(longitude_range) > 180) {
+    stop(
+      "Automatic UTM selection is not supported for streams that cross ",
+      "the antimeridian; supply analysis_crs."
+    )
+  }
+
+  if (latitude_range[[1]] < -80 || latitude_range[[2]] > 84) {
+    stop(
+      "Automatic UTM selection requires stream_reaches between 80 degrees ",
+      "south and 84 degrees north; supply analysis_crs."
+    )
+  }
+
+  get_utm_zone <- function(longitude) {
+    pmin(60, pmax(1, floor((longitude + 180) / 6) + 1))
+  }
+  center_longitude <- mean(longitude_range)
+  center_latitude <- mean(latitude_range)
+  utm_zone <- get_utm_zone(center_longitude)
+  extent_zones <- unique(get_utm_zone(longitude_range))
+
+  if (length(extent_zones) > 1) {
+    warning(
+      "stream_reaches spans multiple UTM zones; zone ", utm_zone,
+      " was selected from the center of its extent. Consider supplying ",
+      "a suitable regional analysis_crs.",
+      call. = FALSE
+    )
+  }
+
+  sf::st_crs(if (center_latitude >= 0) 32600 + utm_zone else 32700 + utm_zone)
+}
+
+#' Create stream segments for analytical modeling
+#'
+#' Transform a stream network to a projected analysis CRS and divide it into
+#' approximately equal-length model segments.
+#'
+#' @param stream_reaches An `sf` stream-reach object accepted by
+#'   [`.validate_stream_reaches()`].
+#' @param reach_spacing A scalar `units` length giving the maximum length of a
+#'   model segment.
+#' @param analysis_crs Either `NULL` or a projected coordinate reference
+#'   system accepted by [sf::st_crs()]. When `NULL`, an existing projected
+#'   stream CRS is retained; geographic streams are transformed to a local UTM
+#'   CRS selected from their extent.
+#'
+#' @return A projected `sf` object with one line feature per stream segment.
+#'   It contains `reach_id`, `reach_segment_id`, `represented_length`,
+#'   `well_diam`, `model_point`, and the segment line geometry. `well_diam`
+#'   defaults to half the actual represented segment length, so the discrete-
+#'   well self-response is evaluated at one quarter of that length.
+#'
+#' @details
+#' `model_point` is the along-line midpoint used as the discrete injection-well
+#' and constant-head collocation location. Input objects are not modified.
+#' Users may replace the positive `well_diam` values in the returned object
+#' before constructing an injection schedule.
+#'
+#' @examples
+#' stream_segments <- get_stream_segments(
+#'   example_stream_reaches,
+#'   reach_spacing = units::set_units(100, "m")
+#' )
+#' stream_segments[c(
+#'   "reach_id", "reach_segment_id", "represented_length", "well_diam"
+#' )]
+#'
+#' @export
+get_stream_segments <- function(
+    stream_reaches,
+    reach_spacing,
+    analysis_crs = NULL) {
+
+  selected_crs <- .select_stream_analysis_crs(
+    stream_reaches,
+    analysis_crs
+  )
+  prepared_reaches <- sf::st_transform(
+    sf::st_zm(stream_reaches, drop = TRUE, what = "ZM"),
+    selected_crs
+  )
+  stream_segments <- .discretize_stream_reaches(
+    prepared_reaches,
+    reach_spacing
+  )
+  stream_segments$well_diam <- stream_segments$represented_length / 2
+  geometry_column <- attr(stream_segments, "sf_column")
+  key_columns <- c(
+    "reach_id",
+    "reach_segment_id",
+    "represented_length",
+    "well_diam"
+  )
+  additional_columns <- setdiff(
+    names(stream_segments),
+    c(key_columns, "model_point", geometry_column)
+  )
+  stream_segments[c(
+    key_columns,
+    additional_columns,
+    "model_point",
+    geometry_column
+  )]
+}
+
+# Validate the neutral stream-segment representation.
+.validate_stream_segments <- function(stream_segments) {
+  if (!inherits(stream_segments, "sf") || nrow(stream_segments) == 0) {
+    stop("stream_segments must be a nonempty sf object.")
+  }
+
+  required_columns <- c(
+    "reach_id",
+    "reach_segment_id",
+    "represented_length",
+    "well_diam",
+    "model_point"
+  )
+  missing_columns <- setdiff(required_columns, names(stream_segments))
+
+  if (length(missing_columns) > 0) {
+    stop(
+      "stream_segments is missing required columns: ",
+      paste(missing_columns, collapse = ", "),
+      "."
+    )
+  }
+
+  if (is.na(sf::st_crs(stream_segments)) ||
+      !grepl("^PROJCRS\\[", sf::st_crs(stream_segments)$wkt)) {
+    stop("stream_segments must use a projected CRS.")
+  }
+
+  if (!all(as.character(sf::st_geometry_type(
+    stream_segments,
+    by_geometry = TRUE
+  )) == "LINESTRING")) {
+    stop("Every stream_segments geometry must be a LINESTRING.")
+  }
+
+  if (!is.character(stream_segments$reach_id) ||
+      !is.character(stream_segments$reach_segment_id) ||
+      anyNA(stream_segments$reach_id) ||
+      anyNA(stream_segments$reach_segment_id) ||
+      any(trimws(stream_segments$reach_id) == "") ||
+      any(trimws(stream_segments$reach_segment_id) == "") ||
+      anyDuplicated(stream_segments$reach_segment_id) > 0) {
+    stop(
+      "stream_segments reach identifiers must be nonmissing, nonempty, ",
+      "character values with unique reach_segment_id values."
+    )
+  }
+
+  check_dimensionality(
+    stream_segments$represented_length,
+    "m",
+    "stream_segments$represented_length"
+  )
+  check_dimensionality(
+    stream_segments$well_diam,
+    "m",
+    "stream_segments$well_diam"
+  )
+
+  if (any(!is.finite(as.numeric(stream_segments$represented_length))) ||
+      any(as.numeric(stream_segments$represented_length) <= 0) ||
+      any(!is.finite(as.numeric(stream_segments$well_diam))) ||
+      any(as.numeric(stream_segments$well_diam) <= 0)) {
+    stop(
+      "stream_segments represented_length and well_diam must contain ",
+      "finite, positive values."
+    )
+  }
+
+  if (!inherits(stream_segments$model_point, "sfc") ||
+      length(stream_segments$model_point) != nrow(stream_segments) ||
+      !all(as.character(sf::st_geometry_type(
+        stream_segments$model_point
+      )) == "POINT") ||
+      any(sf::st_is_empty(stream_segments$model_point))) {
+    stop(
+      "stream_segments$model_point must contain one nonempty POINT per row."
+    )
+  }
+
+  segment_lengths <- sf::st_length(stream_segments)
+
+  if (!isTRUE(all.equal(
+    segment_lengths,
+    units::set_units(
+      stream_segments$represented_length,
+      units::deparse_unit(segment_lengths),
+      mode = "standard"
+    )
+  ))) {
+    stop(
+      "stream_segments$represented_length must equal the active geometry ",
+      "length."
+    )
+  }
+
+  stream_segments
+}
+
 #' Discretize stream reaches for modeling
 #'
 #' Divide prepared stream geometries into approximately equal-length reach

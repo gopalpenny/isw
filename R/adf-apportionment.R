@@ -49,6 +49,10 @@
 #' If a pump coincides with one or more sample points, only those zero-distance
 #' points receive weight, divided in proportion to their `sampled_length`.
 #'
+#' This combined segmentation-and-apportionment interface remains available
+#' for compatibility and is planned for deprecation. New workflows should use
+#' [get_stream_segments()] followed by [get_adf_stream_apportionment()].
+#'
 #' @references
 #' Zipper, S. C., Dallemagne, T., Gleeson, T., Boerman, T. C., and Hartmann, A.
 #' (2018). Groundwater Pumping Impacts on Real Stream Networks: Testing the
@@ -208,6 +212,172 @@ get_stream_reach_apportionment <- function(
     "reach_id",
     "reach_segment_id",
     "represented_length",
+    "pump_to_reach_distance",
+    "apportionment_fraction"
+  )
+  additional_columns <- setdiff(
+    names(stream_apportionment),
+    c(key_columns, "model_point", geometry_column)
+  )
+  stream_apportionment <- stream_apportionment[c(
+    key_columns,
+    additional_columns,
+    "model_point",
+    geometry_column
+  )]
+  row.names(stream_apportionment) <- NULL
+  stream_apportionment
+}
+
+#' Calculate ADF stream apportionment for existing stream segments
+#'
+#' Calculate static web or web-squared fractions assigning a pumping well's
+#' analytical stream depletion to a prepared stream-segment network.
+#'
+#' @param pumping_wells An `sf` pumping-well object accepted by
+#'   [`.validate_pumping_wells()`]. It is transformed internally to the CRS of
+#'   `stream_segments`.
+#' @param stream_segments A projected `sf` object returned by
+#'   [get_stream_segments()].
+#' @param sample_spacing A scalar `units` length giving the maximum stream
+#'   length represented by an apportionment sample point.
+#' @param method Character string selecting `"web_squared"` or `"web"`.
+#' @param maximum_distance Either `NULL` or a positive scalar `units` length.
+#'   Sample points farther than this distance from a pump receive zero weight.
+#'
+#' @return An `sf` object with one row per pump--stream-segment pair, including
+#'   `pump_to_reach_distance` and `apportionment_fraction`.
+#'
+#' @details
+#' This is the preferred ADF-specific apportionment interface. The older
+#' [get_stream_reach_apportionment()] function remains available for
+#' compatibility but combines stream segmentation and ADF apportionment in one
+#' call and is planned for deprecation.
+#'
+#' @examples
+#' stream_segments <- get_stream_segments(
+#'   example_stream_reaches,
+#'   units::set_units(100, "m")
+#' )
+#' get_adf_stream_apportionment(
+#'   example_pumping_wells,
+#'   stream_segments,
+#'   sample_spacing = units::set_units(25, "m")
+#' )
+#'
+#' @export
+get_adf_stream_apportionment <- function(
+    pumping_wells,
+    stream_segments,
+    sample_spacing,
+    method = c("web_squared", "web"),
+    maximum_distance = NULL) {
+
+  method <- match.arg(method)
+  .validate_pumping_wells(pumping_wells)
+  .validate_stream_segments(stream_segments)
+
+  if (!is.null(maximum_distance)) {
+    check_dimensionality(maximum_distance, "m", "maximum_distance")
+
+    if (length(maximum_distance) != 1 ||
+        !is.finite(as.numeric(maximum_distance)) ||
+        as.numeric(maximum_distance) <= 0) {
+      stop("maximum_distance must be NULL or a finite, positive scalar length.")
+    }
+  }
+
+  prepared_pumping_wells <- sf::st_transform(
+    sf::st_zm(pumping_wells, drop = TRUE, what = "ZM"),
+    sf::st_crs(stream_segments)
+  )
+  sample_points <- generate_segment_sample_points(
+    stream_segments,
+    sample_spacing
+  )
+  distance_exponent <- if (method == "web_squared") 2 else 1
+  number_of_pumps <- nrow(prepared_pumping_wells)
+  number_of_segments <- nrow(stream_segments)
+  segment_fractions <- matrix(
+    0,
+    nrow = number_of_pumps,
+    ncol = number_of_segments
+  )
+  exact_distances <- vector("list", number_of_pumps)
+
+  for (pump_index in seq_len(number_of_pumps)) {
+    point_distances <- sf::st_distance(
+      prepared_pumping_wells[pump_index, ],
+      sample_points
+    )[1, ]
+    exact_distances[[pump_index]] <- sf::st_distance(
+      prepared_pumping_wells[pump_index, ],
+      stream_segments
+    )[1, ]
+    distance_units <- units::deparse_unit(point_distances)
+    point_distance_values <- as.numeric(point_distances)
+    sampled_length_values <- as.numeric(units::set_units(
+      sample_points$sampled_length,
+      distance_units,
+      mode = "standard"
+    ))
+    eligible <- rep(TRUE, length(point_distances))
+
+    if (!is.null(maximum_distance)) {
+      eligible <- point_distance_values <= as.numeric(units::set_units(
+        maximum_distance,
+        distance_units,
+        mode = "standard"
+      ))
+    }
+
+    if (!any(eligible)) {
+      stop(
+        "No stream sample points are within maximum_distance for pump_id ",
+        prepared_pumping_wells$pump_id[[pump_index]],
+        "."
+      )
+    }
+
+    raw_weights <- numeric(length(point_distances))
+    zero_distance <- eligible & point_distance_values == 0
+
+    if (any(zero_distance)) {
+      raw_weights[zero_distance] <- sampled_length_values[zero_distance]
+    } else {
+      raw_weights[eligible] <- sampled_length_values[eligible] /
+        point_distance_values[eligible]^distance_exponent
+    }
+
+    point_fractions <- raw_weights / sum(raw_weights)
+
+    for (segment_index in seq_len(number_of_segments)) {
+      segment_fractions[pump_index, segment_index] <- sum(
+        point_fractions[
+          sample_points$reach_segment_id ==
+            stream_segments$reach_segment_id[[segment_index]]
+        ]
+      )
+    }
+  }
+
+  segment_rows <- rep(seq_len(number_of_segments), times = number_of_pumps)
+  stream_apportionment <- stream_segments[segment_rows, , drop = FALSE]
+  stream_apportionment$pump_id <- rep(
+    prepared_pumping_wells$pump_id,
+    each = number_of_segments
+  )
+  stream_apportionment$pump_to_reach_distance <- do.call(c, exact_distances)
+  stream_apportionment$apportionment_fraction <- as.vector(
+    t(segment_fractions)
+  )
+  geometry_column <- attr(stream_apportionment, "sf_column")
+  key_columns <- c(
+    "pump_id",
+    "reach_id",
+    "reach_segment_id",
+    "represented_length",
+    "well_diam",
     "pump_to_reach_distance",
     "apportionment_fraction"
   )
@@ -464,6 +634,9 @@ get_stream_reach_apportionment <- function(
 #' that evaluation. Every requested evaluation time and reach segment is
 #' returned, with zero depletion when no earlier pumping event contributes.
 #'
+#' This function remains available for compatibility and is planned for
+#' deprecation. New workflows should use [get_adf_stream_depletion()].
+#'
 #' @examples
 #' pumping_wells <- example_pumping_wells
 #' stream_reaches <- example_stream_reaches
@@ -591,5 +764,34 @@ get_apportioned_stream_depletion <- function(
     reach_id = reach_output,
     reach_segment_id = segment_output,
     stream_depletion_rate = rate_output
+  )
+}
+
+#' Calculate ADF stream depletion
+#'
+#' Apply an ADF stream apportionment to intermittent pumping schedules using
+#' Glover response fractions and superposition.
+#'
+#' @inheritParams get_apportioned_stream_depletion
+#'
+#' @return A tibble with one row per pump, evaluation time, and stream segment.
+#'
+#' @details
+#' This is the preferred ADF-specific name. The older
+#' [get_apportioned_stream_depletion()] function remains available for
+#' compatibility and is planned for deprecation.
+#'
+#' @export
+get_adf_stream_depletion <- function(
+    pumping_wells,
+    pumping_schedules,
+    stream_apportionment,
+    evaluation_times = NULL) {
+
+  get_apportioned_stream_depletion(
+    pumping_wells,
+    pumping_schedules,
+    stream_apportionment,
+    evaluation_times
   )
 }

@@ -30,11 +30,11 @@ one point per modeled stream segment. A zero-diameter point well has an
 unbounded analytical response at zero distance and can therefore produce an
 artificially large recovery value at an observation point on the stream.
 
-`get_apportioned_aquifer_drawdown()` regularizes this response by assigning
-each injection well an effective diameter equal to the segment's actual
+`get_stream_segments()` regularizes this response by assigning each injection
+well an effective diameter equal to half the segment's actual
 `represented_length`. The response is consequently held constant inside a
-radius of half that length. This vignette examines the remaining sensitivity
-to stream-segment spacing:
+radius of one quarter of that length. This analysis examines the remaining
+sensitivity to stream-segment spacing:
 
 * at several fixed observation points on the stream; and
 * along perpendicular transects extending away from the stream.
@@ -42,9 +42,10 @@ to stream-segment spacing:
 The model reports water-level change, not absolute hydraulic head. Therefore,
 `aquifer_drawdown = 0` is the relevant constant-head boundary condition at the
 stream. The effective-diameter approach limits a numerical artifact but does
-not enforce that boundary condition. A nonzero result at the stream is a
-boundary residual and motivates a future coupled solution for the injection
-rates.
+not enforce that boundary condition. A nonzero result at the stream is an ADF
+boundary residual. The separate constant-head method solves the injection
+rates as a coupled system; see the package vignette
+`stream-injection-methods.Rmd` for that comparison.
 
 ## Construct a controlled straight-stream example
 
@@ -143,30 +144,38 @@ fixed across runs, separating spatial from temporal sensitivity.
 segment_spacings <- c(200, 100, 50, 20, 10)
 
 run_spacing <- function(spacing_m) {
-  stream_apportionment <- get_stream_reach_apportionment(
-    pumping_wells,
+  stream_segments <- get_stream_segments(
     stream_reaches,
     reach_spacing = set_units(spacing_m, "m"),
-    sample_spacing = set_units(spacing_m / 4, "m"),
-    method = "web_squared",
     analysis_crs = analysis_crs
   )
+  stream_apportionment <- get_adf_stream_apportionment(
+    pumping_wells,
+    stream_segments,
+    sample_spacing = set_units(spacing_m / 4, "m"),
+    method = "web_squared"
+  )
 
-  drawdown <- get_apportioned_aquifer_drawdown(
+  drawdown <- get_aquifer_water_level_change(
     pumping_wells,
     pumping_schedules,
     observation_wells,
-    stream_apportionment,
+    stream_segments,
     evaluation_times,
-    injection_times = injection_times
+    injection_times = injection_times,
+    injection_method = "adf",
+    stream_apportionment = stream_apportionment
   )
 
   drawdown |>
     left_join(st_drop_geometry(observation_wells), by = "observation_id") |>
     mutate(
       segment_spacing_m = spacing_m,
-      number_of_segments = n_distinct(stream_apportionment$reach_segment_id),
-      aquifer_drawdown_m = drop_units(set_units(aquifer_drawdown, "m"))
+      number_of_segments = n_distinct(stream_segments$reach_segment_id),
+      aquifer_drawdown_m = -drop_units(set_units(
+        water_level_change,
+        "m"
+      ))
     )
 }
 
@@ -271,7 +280,7 @@ The most useful convergence checks are:
 
 Neither result guarantees a constant-head boundary. Injection rates are still
 assigned from apportioned stream depletion and are not solved simultaneously
-to make net drawdown zero at all stream collocation points. Enforcing that
-condition requires the coupled response-matrix approach described in the
-introduction; the residuals calculated here provide direct diagnostics for
-designing and testing that extension.
+to make net drawdown zero at all stream collocation points. Use
+`method = "constant_head"` in `get_stream_injection_schedule()` when that
+endpoint constraint is required. The residuals calculated here remain useful
+for evaluating the ADF approximation.

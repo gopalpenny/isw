@@ -71,6 +71,10 @@ stream-depletion kernel.
 
 If a pump coincides with one or more sample points, only those zero-distance
 points receive weight, divided in proportion to their `sampled_length`.
+
+This combined segmentation-and-apportionment interface remains available
+for compatibility and is planned for deprecation. New workflows should use
+[get_stream_segments()] followed by [get_adf_stream_apportionment()].
 }
 \examples{
 pumping_wells <- example_pumping_wells

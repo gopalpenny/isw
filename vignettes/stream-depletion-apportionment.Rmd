@@ -43,6 +43,9 @@ For a step-by-step treatment of spatial preparation, stream discretization,
 sampling, pumping events, and the analytical response calculation, see
 `vignette("stream-depletion-apportionment-internals")`.
 
+For a shared workflow comparing this ADF method with the endpoint-collocated
+constant-head method, see `vignette("stream-injection-methods")`.
+
 ## Load the example spatial inputs
 
 The package includes example spatial objects with two pumping wells (`example_pumping_wells`), three connected stream reaches (`example_stream_reaches`), and two observation wells (`example_observation_wells`). Pumping wells carry aquifer parameters (hydraulic conductivity,
@@ -125,11 +128,11 @@ pumping_schedules
 
 ## Apportioning depletion among stream reaches
 
-The ADF approach involves apportioning stream depletion to each reach of the river.
-`get_stream_reach_apportionment()` first transforms the spatial inputs to a
-common projected analysis CRS. It divides each reach into modeled segments no
-longer than `reach_spacing` and represents the detailed geometry of each
-segment with points separated by at most `sample_spacing`.
+The ADF approach involves apportioning stream depletion to each reach of the
+river. `get_stream_segments()` first transforms the stream to a projected
+analysis CRS and divides each reach into modeled segments no longer than
+`reach_spacing`. `get_adf_stream_apportionment()` then represents the detailed
+geometry of each segment with points separated by at most `sample_spacing`.
 
 A smaller `reach_spacing` creates more computational segments, increasing
 spatial resolution, output size, and computational burden. A smaller
@@ -147,10 +150,14 @@ the allocation near each pump. The optional `maximum_distance` excludes sample
 points beyond a specified distance from the pump.
 
 ```{r calculate-stream-apportionment}
-stream_apportionment <- get_stream_reach_apportionment(
-  pumping_wells,
+stream_segments <- get_stream_segments(
   stream_reaches,
-  reach_spacing = set_units(400, "m"),
+  reach_spacing = set_units(400, "m")
+)
+
+stream_apportionment <- get_adf_stream_apportionment(
+  pumping_wells,
+  stream_segments,
   sample_spacing = set_units(100, "m"),
   method = "web_squared"
 )
@@ -188,7 +195,7 @@ ggplot(stream_apportionment) +
 
 ## Calculate apportioned stream depletion
 
-`get_apportioned_stream_depletion()` converts each pumping schedule into
+`get_adf_stream_depletion()` converts each pumping schedule into
 nonzero changes in pumping rate and pairs those changes with later evaluation
 times. It evaluates the Glover response only for unique combinations of pump,
 reach segment, and elapsed time. Each event response is multiplied by the
@@ -199,7 +206,7 @@ The returned values remain separated by pump and reach segment. This preserves
 the provenance of each contribution before totals are calculated.
 
 ```{r calculate-apportioned-stream-depletion}
-stream_depletion <- get_apportioned_stream_depletion(
+stream_depletion <- get_adf_stream_depletion(
   pumping_wells,
   pumping_schedules,
   stream_apportionment,
@@ -211,11 +218,8 @@ stream_depletion
 
 Total depletion can be summarized either by pump or across the complete stream
 network. Here it is summed across reach segments while retaining each pump.
-The pumping schedule is plotted above the depletion response over the same
-annual horizon. The final zero-rate schedule row is extended through the last
-evaluation time to make the shutdown period explicit.
 
-```{r summarize-stream-depletion, fig.height=9}
+```{r summarize-stream-depletion}
 total_stream_depletion <- stream_depletion |>
   group_by(pump_id, evaluation_time) |>
   summarize(
@@ -223,6 +227,16 @@ total_stream_depletion <- stream_depletion |>
     .groups = "drop"
   )
 
+total_stream_depletion
+```
+
+The summarized table contains one total stream-depletion rate for each pump
+and evaluation time. The following figure places the pumping schedule above
+that depletion response over the same annual horizon. The final zero-rate
+schedule row is extended through the last evaluation time to make the shutdown
+period explicit in the upper panel.
+
+```{r plot-total-stream-depletion, fig.height=9}
 annual_pumping_schedule <- bind_rows(
   pumping_schedules,
   pumping_schedules[nrow(pumping_schedules), ] |>
@@ -280,15 +294,18 @@ We can let the aquifer-drawdown function construct this schedule internally.
 It is exposed so it can be inspected, refined, or reused.
 
 For the drawdown calculation, each point's effective injection-well diameter
-is its segment's actual `represented_length`. This prevents a point-source
-singularity at the stream.
+is half its segment's actual `represented_length`. The response is capped
+inside the well radius, one quarter of the segment length, preventing a
+point-source singularity at the stream.
 
 ```{r construct-stream-injection-schedule}
 stream_injection_schedule <- get_stream_injection_schedule(
   pumping_wells,
   pumping_schedules,
-  stream_apportionment,
-  evaluation_times
+  stream_segments,
+  evaluation_times,
+  method = "adf",
+  stream_apportionment = stream_apportionment
 )
 
 head(stream_injection_schedule)
@@ -296,7 +313,7 @@ head(stream_injection_schedule)
 
 ## Estimate aquifer drawdown and stream recovery
 
-`get_apportioned_aquifer_drawdown()` superimposes two sets of Theis responses.
+`get_aquifer_water_level_change()` superimposes two sets of Theis responses.
 Physical pumping wells produce positive drawdown at every observation well,
 while the segment injection wells produce positive stream recovery.
 `water_level_change` is negative when pumping lowers the water level and
@@ -307,11 +324,11 @@ evaluation time. Supplying the schedule calculated above avoids repeating the
 stream-depletion calculation and uses exactly the inspected injection grid.
 
 ```{r calculate-apportioned-aquifer-drawdown}
-water_level_changes <- get_apportioned_aquifer_drawdown(
+water_level_changes <- get_aquifer_water_level_change(
   pumping_wells,
   pumping_schedules,
   observation_wells,
-  stream_apportionment,
+  stream_segments,
   evaluation_times,
   stream_injection_schedule = stream_injection_schedule
 )

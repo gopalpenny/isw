@@ -2,44 +2,55 @@
 % Please edit documentation in R/aquifer-drawdown.R
 \name{get_stream_injection_schedule}
 \alias{get_stream_injection_schedule}
-\title{Construct the apportioned stream-injection schedule}
+\title{Construct a stream-injection schedule}
 \usage{
 get_stream_injection_schedule(
   pumping_wells,
   pumping_schedules,
-  stream_apportionment,
+  stream_segments = NULL,
   evaluation_times = NULL,
-  injection_times = NULL
+  injection_times = NULL,
+  method = c("adf", "constant_head"),
+  stream_apportionment = NULL,
+  allow_many_aquifer_parameter_sets = FALSE
 )
 }
 \arguments{
-\item{pumping_wells}{An `sf` pumping-well object accepted by
-[`.validate_pumping_wells()`].}
+\item{pumping_wells}{An `sf` pumping-well object.}
 
-\item{pumping_schedules}{A shared, wide-format pumping schedule accepted by
-[`.validate_pumping_schedules()`].}
+\item{pumping_schedules}{A validated wide pumping schedule.}
 
-\item{stream_apportionment}{An `sf` object returned by
-[get_stream_reach_apportionment()]. Its `model_point` column supplies
-one injection-well location per reach segment.}
+\item{stream_segments}{Either a neutral segment object returned by
+[get_stream_segments()] or, for backward-compatible positional ADF calls,
+an ADF apportionment object.}
 
-\item{evaluation_times}{Either `NULL`, a `Date` vector, or a `units` time
-vector. These control when drawdown is returned. When `NULL`,
-`pumping_schedules$t` is used.}
+\item{evaluation_times}{Evaluation times accepted by
+[`.validate_evaluation_times()`].}
 
-\item{injection_times}{Either `NULL`, a `Date` vector, or a `units` time
-vector. These optionally refine the internal stream-injection grid. When
-`NULL`, pumping-schedule times define the grid.}
+\item{injection_times}{Optional times refining the injection interval grid.}
+
+\item{method}{Character string selecting `"adf"` or `"constant_head"`.
+`"adf"` is the default.}
+
+\item{stream_apportionment}{An ADF apportionment returned by
+[get_adf_stream_apportionment()]. Required for the ADF method unless it
+was supplied as the third positional argument.}
+
+\item{allow_many_aquifer_parameter_sets}{Logical. Constant-head calculations
+stop when more than ten unique aquifer parameter sets are found unless
+this is `TRUE`.}
 }
 \value{
 A tibble with one row per `pump_id`, `reach_segment_id`, and
   injection interval. `interval_start` and `interval_end` retain the time
   representation used by `pumping_schedules$t`. `injection_rate` is negative
-  because injection is represented with the opposite sign from pumping.
+  when water enters the aquifer. Constant-head schedules additionally
+  contain `aquifer_id`, `boundary_residual`, and
+  `matrix_condition_number`.
 }
 \description{
-Convert modeled stream depletion into piecewise-constant injection rates at
-stream-segment model points.
+Calculate piecewise-constant stream injection using ADF depletion or an
+endpoint-collocated constant-head boundary.
 }
 \details{
 The default injection grid contains every pumping-schedule time through the
@@ -47,11 +58,16 @@ final evaluation time. Evaluation times are also included so the final
 requested result is an interval boundary. Optional `injection_times` add
 refinement boundaries; they never remove pumping-schedule boundaries.
 
-Stream depletion is evaluated internally at every injection boundary. The
-injection rate for an interval is the negative arithmetic mean of the
-depletion rates at its beginning and end. User-supplied injection times
-after the final evaluation time are ignored because they cannot affect any
-requested result.
+With `method = "adf"`, stream depletion is evaluated at every injection
+boundary and the negative arithmetic mean of adjacent endpoint rates is
+applied over each interval.
+
+With `method = "constant_head"`, segment model points are discrete
+injection wells and constant-head collocation points. One coupled response
+matrix is factored for each aquifer parameter set and interval duration.
+Pump-specific right-hand sides preserve attribution while sharing that
+factorization. Rates are solved so the signed boundary residual is zero at
+each interval endpoint after accounting for all preceding injection.
 }
 \examples{
 pumping_wells <- example_pumping_wells
@@ -61,15 +77,20 @@ pumping_schedules <- tibble::tibble(
   pump_1 = units::set_units(c(100, 100, 0), "m^3/day"),
   pump_2 = units::set_units(c(0, 75, 0), "m^3/day")
 )
-stream_apportionment <- get_stream_reach_apportionment(
-  pumping_wells, stream_reaches,
+stream_segments <- get_stream_segments(
+  stream_reaches,
   reach_spacing = units::set_units(100, "m"),
-  sample_spacing = units::set_units(25, "m"),
   analysis_crs = 32615
 )
+stream_apportionment <- get_adf_stream_apportionment(
+  pumping_wells,
+  stream_segments,
+  sample_spacing = units::set_units(25, "m")
+)
 get_stream_injection_schedule(
-  pumping_wells, pumping_schedules, stream_apportionment,
-  evaluation_times = units::set_units(30, "days")
+  pumping_wells, pumping_schedules, stream_segments,
+  evaluation_times = units::set_units(30, "days"),
+  stream_apportionment = stream_apportionment
 )
 
 }

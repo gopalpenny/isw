@@ -44,6 +44,15 @@ understanding and diagnosing a calculation, but they may change without the
 compatibility guarantees associated with exported functions. Application code
 should normally use the top-level functions shown at the start of each section.
 
+This detailed walkthrough still names the combined compatibility functions
+`get_stream_reach_apportionment()`, `get_apportioned_stream_depletion()`, and
+`get_apportioned_aquifer_drawdown()` while explaining their internals. They are
+planned for deprecation. New application code should use
+`get_stream_segments()`, `get_adf_stream_apportionment()`,
+`get_adf_stream_depletion()`, and `get_aquifer_water_level_change()`. See
+`vignette("stream-injection-methods")` for the preferred shared workflow and
+the constant-head alternative.
+
 ## Load the example spatial inputs
 
 The walkthrough uses the same two pumping wells, three connected stream

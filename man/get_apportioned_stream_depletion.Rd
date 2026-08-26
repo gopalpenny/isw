@@ -51,6 +51,9 @@ static apportionment fraction. Event responses are summed by superposition.
 A pumping change beginning exactly at an evaluation time is excluded from
 that evaluation. Every requested evaluation time and reach segment is
 returned, with zero depletion when no earlier pumping event contributes.
+
+This function remains available for compatibility and is planned for
+deprecation. New workflows should use [get_adf_stream_depletion()].
 }
 \examples{
 pumping_wells <- example_pumping_wells

@@ -568,17 +568,34 @@
   )
 }
 
-#' Construct the apportioned stream-injection schedule
+#' Construct a stream-injection schedule
 #'
-#' Convert modeled stream depletion into piecewise-constant injection rates at
-#' stream-segment model points.
+#' Calculate piecewise-constant stream injection using ADF depletion or an
+#' endpoint-collocated constant-head boundary.
 #'
-#' @inheritParams get_apportioned_aquifer_drawdown
+#' @param pumping_wells An `sf` pumping-well object.
+#' @param pumping_schedules A validated wide pumping schedule.
+#' @param stream_segments Either a neutral segment object returned by
+#'   [get_stream_segments()] or, for backward-compatible positional ADF calls,
+#'   an ADF apportionment object.
+#' @param evaluation_times Evaluation times accepted by
+#'   [`.validate_evaluation_times()`].
+#' @param injection_times Optional times refining the injection interval grid.
+#' @param method Character string selecting `"adf"` or `"constant_head"`.
+#'   `"adf"` is the default.
+#' @param stream_apportionment An ADF apportionment returned by
+#'   [get_adf_stream_apportionment()]. Required for the ADF method unless it
+#'   was supplied as the third positional argument.
+#' @param allow_many_aquifer_parameter_sets Logical. Constant-head calculations
+#'   stop when more than ten unique aquifer parameter sets are found unless
+#'   this is `TRUE`.
 #'
 #' @return A tibble with one row per `pump_id`, `reach_segment_id`, and
 #'   injection interval. `interval_start` and `interval_end` retain the time
 #'   representation used by `pumping_schedules$t`. `injection_rate` is negative
-#'   because injection is represented with the opposite sign from pumping.
+#'   when water enters the aquifer. Constant-head schedules additionally
+#'   contain `aquifer_id`, `boundary_residual`, and
+#'   `matrix_condition_number`.
 #'
 #' @details
 #' The default injection grid contains every pumping-schedule time through the
@@ -586,11 +603,16 @@
 #' requested result is an interval boundary. Optional `injection_times` add
 #' refinement boundaries; they never remove pumping-schedule boundaries.
 #'
-#' Stream depletion is evaluated internally at every injection boundary. The
-#' injection rate for an interval is the negative arithmetic mean of the
-#' depletion rates at its beginning and end. User-supplied injection times
-#' after the final evaluation time are ignored because they cannot affect any
-#' requested result.
+#' With `method = "adf"`, stream depletion is evaluated at every injection
+#' boundary and the negative arithmetic mean of adjacent endpoint rates is
+#' applied over each interval.
+#'
+#' With `method = "constant_head"`, segment model points are discrete
+#' injection wells and constant-head collocation points. One coupled response
+#' matrix is factored for each aquifer parameter set and interval duration.
+#' Pump-specific right-hand sides preserve attribution while sharing that
+#' factorization. Rates are solved so the signed boundary residual is zero at
+#' each interval endpoint after accounting for all preceding injection.
 #'
 #' @examples
 #' pumping_wells <- example_pumping_wells
@@ -600,45 +622,79 @@
 #'   pump_1 = units::set_units(c(100, 100, 0), "m^3/day"),
 #'   pump_2 = units::set_units(c(0, 75, 0), "m^3/day")
 #' )
-#' stream_apportionment <- get_stream_reach_apportionment(
-#'   pumping_wells, stream_reaches,
+#' stream_segments <- get_stream_segments(
+#'   stream_reaches,
 #'   reach_spacing = units::set_units(100, "m"),
-#'   sample_spacing = units::set_units(25, "m"),
 #'   analysis_crs = 32615
 #' )
+#' stream_apportionment <- get_adf_stream_apportionment(
+#'   pumping_wells,
+#'   stream_segments,
+#'   sample_spacing = units::set_units(25, "m")
+#' )
 #' get_stream_injection_schedule(
-#'   pumping_wells, pumping_schedules, stream_apportionment,
-#'   evaluation_times = units::set_units(30, "days")
+#'   pumping_wells, pumping_schedules, stream_segments,
+#'   evaluation_times = units::set_units(30, "days"),
+#'   stream_apportionment = stream_apportionment
 #' )
 #'
 #' @export
 get_stream_injection_schedule <- function(
     pumping_wells,
     pumping_schedules,
-    stream_apportionment,
+    stream_segments = NULL,
     evaluation_times = NULL,
-    injection_times = NULL) {
+    injection_times = NULL,
+    method = c("adf", "constant_head"),
+    stream_apportionment = NULL,
+    allow_many_aquifer_parameter_sets = FALSE) {
 
+  method <- match.arg(method)
   .validate_pumping_schedules(pumping_schedules, pumping_wells)
-  .validate_stream_depletion_apportionment(
-    stream_apportionment,
-    pumping_wells
-  )
   time_grid <- .get_stream_injection_times(
     pumping_schedules,
     evaluation_times,
     injection_times
   )
-  internal_depletion <- get_apportioned_stream_depletion(
-    pumping_wells,
-    pumping_schedules,
-    stream_apportionment,
-    time_grid$injection_times
-  )
-  injection_schedule <- .get_interval_average_injection_schedule(
-    internal_depletion,
-    pumping_schedules
-  )
+
+  if (method == "adf") {
+    if (is.null(stream_apportionment) &&
+        !is.null(stream_segments) &&
+        "apportionment_fraction" %in% names(stream_segments)) {
+      stream_apportionment <- stream_segments
+    }
+
+    if (is.null(stream_apportionment)) {
+      stop("stream_apportionment is required when method = \"adf\".")
+    }
+
+    .validate_stream_depletion_apportionment(
+      stream_apportionment,
+      pumping_wells
+    )
+    internal_depletion <- get_adf_stream_depletion(
+      pumping_wells,
+      pumping_schedules,
+      stream_apportionment,
+      time_grid$injection_times
+    )
+    injection_schedule <- .get_interval_average_injection_schedule(
+      internal_depletion,
+      pumping_schedules
+    )
+  } else {
+    if (is.null(stream_segments)) {
+      stop("stream_segments is required when method = \"constant_head\".")
+    }
+    injection_schedule <- .get_constant_head_injection_schedule(
+      pumping_wells,
+      pumping_schedules,
+      stream_segments,
+      time_grid,
+      allow_many_aquifer_parameter_sets
+    )
+  }
+
   start_rows <- match(
     as.numeric(injection_schedule$interval_start),
     as.numeric(time_grid$injection_days)
@@ -690,10 +746,9 @@ get_stream_injection_schedule <- function(
 #' depletion assigned to each reach segment is represented as injection at the
 #' segment's along-line `model_point`. The injection schedule is constructed by
 #' [get_stream_injection_schedule()] and uses the aquifer properties associated
-#' with the originating `pump_id`. Each injection point uses the segment's
-#' `represented_length` as its effective well diameter. Thus, the analytical
-#' response is held constant inside a radius of half the represented stream
-#' length instead of increasing without bound at a point source.
+#' with the originating `pump_id`. When the apportionment contains `well_diam`,
+#' it defines each injection point's effective diameter; older objects fall
+#' back to `represented_length`.
 #'
 #' Both pumping and injection responses use the infinite-aquifer
 #' [get_aquifer_drawdown_ratio()] kernel. No image well is included because the
@@ -716,6 +771,10 @@ get_stream_injection_schedule <- function(
 #' `NULL` because the supplied schedule already defines the injection grid.
 #' The schedule must contain continuous intervals for every pump and reach
 #' segment from the first pumping time through the final evaluation time.
+#'
+#' This ADF-oriented interface remains available for compatibility and is
+#' planned for deprecation. New workflows should use
+#' [get_aquifer_water_level_change()].
 #'
 #' @examples
 #' pumping_wells <- example_pumping_wells
@@ -814,7 +873,11 @@ get_apportioned_aquifer_drawdown <- function(
   injection_points <- sf::st_sf(
     pump_id = stream_apportionment$pump_id,
     reach_segment_id = stream_apportionment$reach_segment_id,
-    well_diam = stream_apportionment$represented_length,
+    well_diam = if ("well_diam" %in% names(stream_apportionment)) {
+      stream_apportionment$well_diam
+    } else {
+      stream_apportionment$represented_length
+    },
     geometry = sf::st_transform(
       stream_apportionment$model_point,
       analysis_crs
@@ -975,5 +1038,116 @@ get_apportioned_aquifer_drawdown <- function(
     pumping_drawdown = pumping_output,
     stream_recovery = recovery_output,
     water_level_change = -pumping_output + recovery_output
+  )
+}
+
+# Expand neutral stream segments to the pump-specific geometry structure used
+# by the existing response engine. ADF-only fields are inert when a completed
+# injection schedule is supplied.
+.expand_stream_segments_for_pumps <- function(
+    stream_segments,
+    pumping_wells) {
+
+  .validate_stream_segments(stream_segments)
+  .validate_pumping_wells(pumping_wells)
+  number_of_segments <- nrow(stream_segments)
+  segment_rows <- rep(
+    seq_len(number_of_segments),
+    times = nrow(pumping_wells)
+  )
+  expanded <- stream_segments[segment_rows, , drop = FALSE]
+  expanded$pump_id <- rep(
+    pumping_wells$pump_id,
+    each = number_of_segments
+  )
+  expanded$pump_to_reach_distance <- units::set_units(
+    rep(0, nrow(expanded)),
+    "m"
+  )
+  expanded$apportionment_fraction <- rep(
+    1 / number_of_segments,
+    nrow(expanded)
+  )
+  expanded
+}
+
+#' Calculate aquifer water-level change
+#'
+#' Superimpose physical pumping and stream-injection responses at observation
+#' wells using a general stream-segment representation.
+#'
+#' @param pumping_wells An `sf` pumping-well object.
+#' @param pumping_schedules A validated wide pumping schedule.
+#' @param observation_wells An `sf` observation-well object.
+#' @param stream_segments A neutral stream-segment object returned by
+#'   [get_stream_segments()].
+#' @param evaluation_times Evaluation times for returned responses.
+#' @param injection_times Optional injection-grid refinement times.
+#' @param stream_injection_schedule Either `NULL` or a completed schedule from
+#'   [get_stream_injection_schedule()].
+#' @param injection_method Character string selecting `"adf"` or
+#'   `"constant_head"` when a schedule is not supplied. `"adf"` is the
+#'   default.
+#' @param stream_apportionment An ADF apportionment required when an ADF
+#'   schedule is constructed internally.
+#' @param allow_many_aquifer_parameter_sets Passed to
+#'   [get_stream_injection_schedule()] for constant-head calculations.
+#'
+#' @return A tibble with pump-specific `pumping_drawdown`, `stream_recovery`,
+#'   and signed `water_level_change` at each observation and evaluation time.
+#'
+#' @details
+#' This is the preferred general response interface. The older
+#' [get_apportioned_aquifer_drawdown()] function remains available for
+#' compatibility and is planned for deprecation.
+#'
+#' @export
+get_aquifer_water_level_change <- function(
+    pumping_wells,
+    pumping_schedules,
+    observation_wells,
+    stream_segments,
+    evaluation_times = NULL,
+    injection_times = NULL,
+    stream_injection_schedule = NULL,
+    injection_method = c("adf", "constant_head"),
+    stream_apportionment = NULL,
+    allow_many_aquifer_parameter_sets = FALSE) {
+
+  injection_method <- match.arg(injection_method)
+  .validate_stream_segments(stream_segments)
+
+  if (!is.null(stream_injection_schedule) && !is.null(injection_times)) {
+    stop(
+      "injection_times must be NULL when stream_injection_schedule is ",
+      "supplied."
+    )
+  }
+
+  if (is.null(stream_injection_schedule)) {
+    stream_injection_schedule <- get_stream_injection_schedule(
+      pumping_wells,
+      pumping_schedules,
+      stream_segments,
+      evaluation_times,
+      injection_times,
+      method = injection_method,
+      stream_apportionment = stream_apportionment,
+      allow_many_aquifer_parameter_sets =
+        allow_many_aquifer_parameter_sets
+    )
+  }
+
+  response_geometry <- .expand_stream_segments_for_pumps(
+    stream_segments,
+    pumping_wells
+  )
+  get_apportioned_aquifer_drawdown(
+    pumping_wells,
+    pumping_schedules,
+    observation_wells,
+    response_geometry,
+    evaluation_times,
+    stream_injection_schedule = stream_injection_schedule
   )
 }

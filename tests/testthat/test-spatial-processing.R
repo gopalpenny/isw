@@ -352,6 +352,67 @@ make_projected_stream_reach <- function(length = 250) {
   )
 }
 
+test_that("get_stream_segments projects geographic streams and sets diameter", {
+  inputs <- make_spatial_test_inputs()
+
+  stream_segments <- get_stream_segments(
+    inputs$stream_reaches,
+    units::set_units(5000, "m")
+  )
+
+  expect_s3_class(stream_segments, "sf")
+  expect_identical(sf::st_crs(stream_segments)$epsg, 32615L)
+  expect_equal(
+    stream_segments$well_diam,
+    stream_segments$represented_length / 2
+  )
+  expect_silent(isw:::.validate_stream_segments(stream_segments))
+})
+
+test_that("get_stream_segments retains a projected stream CRS", {
+  stream_reaches <- make_projected_stream_reach()
+
+  stream_segments <- get_stream_segments(
+    stream_reaches,
+    units::set_units(100, "m")
+  )
+
+  expect_identical(sf::st_crs(stream_segments), sf::st_crs(stream_reaches))
+})
+
+test_that("get_stream_segments honors a supplied projected CRS", {
+  inputs <- make_spatial_test_inputs()
+
+  stream_segments <- get_stream_segments(
+    inputs$stream_reaches,
+    units::set_units(5000, "m"),
+    analysis_crs = 26915
+  )
+
+  expect_identical(sf::st_crs(stream_segments), sf::st_crs(26915))
+  expect_error(
+    get_stream_segments(
+      inputs$stream_reaches,
+      units::set_units(5000, "m"),
+      analysis_crs = 4326
+    ),
+    "projected CRS"
+  )
+})
+
+test_that("stream-segment well diameters must be positive lengths", {
+  stream_segments <- get_stream_segments(
+    make_projected_stream_reach(),
+    units::set_units(100, "m")
+  )
+  stream_segments$well_diam[[1]] <- units::set_units(0, "m")
+
+  expect_error(
+    isw:::.validate_stream_segments(stream_segments),
+    "finite, positive"
+  )
+})
+
 test_that("stream reaches are divided into equal reach segments", {
   stream_reaches <- make_projected_stream_reach()
 

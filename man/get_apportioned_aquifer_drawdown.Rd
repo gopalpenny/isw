@@ -57,10 +57,9 @@ Physical pumping-well responses use the pumping schedule directly. Stream
 depletion assigned to each reach segment is represented as injection at the
 segment's along-line `model_point`. The injection schedule is constructed by
 [get_stream_injection_schedule()] and uses the aquifer properties associated
-with the originating `pump_id`. Each injection point uses the segment's
-`represented_length` as its effective well diameter. Thus, the analytical
-response is held constant inside a radius of half the represented stream
-length instead of increasing without bound at a point source.
+with the originating `pump_id`. When the apportionment contains `well_diam`,
+it defines each injection point's effective diameter; older objects fall
+back to `represented_length`.
 
 Both pumping and injection responses use the infinite-aquifer
 [get_aquifer_drawdown_ratio()] kernel. No image well is included because the
@@ -83,6 +82,10 @@ When `stream_injection_schedule` is supplied, `injection_times` must be
 `NULL` because the supplied schedule already defines the injection grid.
 The schedule must contain continuous intervals for every pump and reach
 segment from the first pumping time through the final evaluation time.
+
+This ADF-oriented interface remains available for compatibility and is
+planned for deprecation. New workflows should use
+[get_aquifer_water_level_change()].
 }
 \examples{
 pumping_wells <- example_pumping_wells
