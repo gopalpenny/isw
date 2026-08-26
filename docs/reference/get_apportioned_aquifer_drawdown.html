@@ -18,7 +18,7 @@ from stream-depletion injection wells using superposition."><!-- mathjax --><scr
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">isw</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0.9000</span>
       </span>
     </div>
 
@@ -33,27 +33,18 @@ from stream-depletion injection wells using superposition."><!-- mathjax --><scr
     <span class="caret"></span>
   </a>
   <ul class="dropdown-menu" role="menu"><li>
-      <a href="../articles/depletion-observation-example.html">Depletion observation example</a>
-    </li>
-    <li>
-      <a href="../articles/Getting-started-with-ISW-package.html">Getting started with ISW package</a>
-    </li>
-    <li>
-      <a href="../articles/Identify-blind-spots.html">Identify-blind-spots</a>
-    </li>
-    <li>
-      <a href="../articles/ISW-reporting-scenarios.html">ISW reporting scenarios</a>
-    </li>
-    <li>
-      <a href="../articles/Stream-depletion-and-aquifer-drawdown.html">Stream depletion and aquifer drawdown</a>
-    </li>
-    <li>
       <a href="../articles/stream-depletion-apportionment-internals.html">Stream Depletion Apportionment: Detailed Walkthrough</a>
     </li>
     <li>
       <a href="../articles/stream-depletion-apportionment.html">Stream Depletion Apportionment</a>
     </li>
+    <li>
+      <a href="../articles/stream-injection-methods.html">Comparing ADF and Constant-Head Stream Injection</a>
+    </li>
   </ul></li>
+<li>
+  <a href="../news/index.html">Changelog</a>
+</li>
       </ul><ul class="nav navbar-nav navbar-right"></ul></div><!--/.nav-collapse -->
   </div><!--/.container -->
 </div><!--/.navbar -->
@@ -143,10 +134,9 @@ instead of being recalculated internally.</p></dd>
 depletion assigned to each reach segment is represented as injection at the
 segment's along-line `model_point`. The injection schedule is constructed by
 [get_stream_injection_schedule()] and uses the aquifer properties associated
-with the originating `pump_id`. Each injection point uses the segment's
-`represented_length` as its effective well diameter. Thus, the analytical
-response is held constant inside a radius of half the represented stream
-length instead of increasing without bound at a point source.</p>
+with the originating `pump_id`. When the apportionment contains `well_diam`,
+it defines each injection point's effective diameter; older objects fall
+back to `represented_length`.</p>
 <p>Both pumping and injection responses use the infinite-aquifer
 [get_aquifer_drawdown_ratio()] kernel. No image well is included because the
 apportioned stream injection explicitly represents the stream contribution.
@@ -165,6 +155,9 @@ can be assessed with more closely spaced injection times.</p>
 `NULL` because the supplied schedule already defines the injection grid.
 The schedule must contain continuous intervals for every pump and reach
 segment from the first pumping time through the final evaluation time.</p>
+<p>This ADF-oriented interface remains available for compatibility and is
+planned for deprecation. New workflows should use
+[get_aquifer_water_level_change()].</p>
     </div>
 
     <div id="ref-examples">
@@ -205,17 +198,17 @@ segment from the first pumping time through the final evaluation time.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    pump_id observation_id evaluation_time pumping_drawdown stream_recovery</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                      <span style="color: #949494;">[d]</span>              <span style="color: #949494;">[m]</span>             <span style="color: #949494;">[m]</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> pump_1  obs_near                     0         0   <span style="color: #949494;"> </span>           0   <span style="color: #949494;"> </span>   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> pump_1  obs_near                    10         6.59<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>        2.22<span style="color: #949494;">e</span><span style="color: #BB0000;">- 5</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> pump_1  obs_near                    20         7.62<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>        2.48<span style="color: #949494;">e</span><span style="color: #BB0000;">- 4</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> pump_1  obs_near                    10         4.64<span style="color: #949494;">e</span><span style="color: #BB0000;">- 7</span>        4.24<span style="color: #949494;">e</span><span style="color: #BB0000;">-21</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> pump_1  obs_near                    20         1.61<span style="color: #949494;">e</span><span style="color: #BB0000;">- 4</span>        9.62<span style="color: #949494;">e</span><span style="color: #BB0000;">-15</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> pump_1  obs_downstream               0         0   <span style="color: #949494;"> </span>           0   <span style="color: #949494;"> </span>   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> pump_1  obs_downstream              10         8.41<span style="color: #949494;">e</span><span style="color: #BB0000;">- 8</span>        8.38<span style="color: #949494;">e</span><span style="color: #BB0000;">- 6</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> pump_1  obs_downstream              20         6.49<span style="color: #949494;">e</span><span style="color: #BB0000;">- 5</span>        1.66<span style="color: #949494;">e</span><span style="color: #BB0000;">- 4</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> pump_1  obs_downstream              10         4.42<span style="color: #949494;">e</span><span style="color: #BB0000;">-42</span>        2.49<span style="color: #949494;">e</span><span style="color: #BB0000;">-25</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> pump_1  obs_downstream              20         1.88<span style="color: #949494;">e</span><span style="color: #BB0000;">-22</span>        3.83<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> pump_2  obs_near                     0         0   <span style="color: #949494;"> </span>           0   <span style="color: #949494;"> </span>   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> pump_2  obs_near                    10         1.97<span style="color: #949494;">e</span><span style="color: #BB0000;">-18</span>        1.05<span style="color: #949494;">e</span><span style="color: #BB0000;">-11</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> pump_2  obs_near                    20         1.78<span style="color: #949494;">e</span><span style="color: #BB0000;">-10</span>        1.14<span style="color: #949494;">e</span><span style="color: #BB0000;">- 8</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> pump_2  obs_near                    10         4.13<span style="color: #949494;">e</span><span style="color: #BB0000;">-80</span>        1.33<span style="color: #949494;">e</span><span style="color: #BB0000;">-42</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> pump_2  obs_near                    20         1.19<span style="color: #949494;">e</span><span style="color: #BB0000;">-41</span>        2.39<span style="color: #949494;">e</span><span style="color: #BB0000;">-30</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> pump_2  obs_downstream               0         0   <span style="color: #949494;"> </span>           0   <span style="color: #949494;"> </span>   </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">11</span> pump_2  obs_downstream              10         2.96<span style="color: #949494;">e</span><span style="color: #BB0000;">- 7</span>        3.20<span style="color: #949494;">e</span><span style="color: #BB0000;">- 7</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">12</span> pump_2  obs_downstream              20         1.16<span style="color: #949494;">e</span><span style="color: #BB0000;">- 4</span>        4.61<span style="color: #949494;">e</span><span style="color: #BB0000;">- 5</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">11</span> pump_2  obs_downstream              10         4.62<span style="color: #949494;">e</span><span style="color: #BB0000;">-13</span>        4.07<span style="color: #949494;">e</span><span style="color: #BB0000;">- 9</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">12</span> pump_2  obs_downstream              20         1.04<span style="color: #949494;">e</span><span style="color: #BB0000;">- 7</span>        2.61<span style="color: #949494;">e</span><span style="color: #BB0000;">- 7</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 1 more variable: water_level_change [m]</span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>

@@ -18,7 +18,7 @@ well's analytical stream depletion assigned to each reach segment."><!-- mathjax
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">isw</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0.9000</span>
       </span>
     </div>
 
@@ -33,27 +33,18 @@ well's analytical stream depletion assigned to each reach segment."><!-- mathjax
     <span class="caret"></span>
   </a>
   <ul class="dropdown-menu" role="menu"><li>
-      <a href="../articles/depletion-observation-example.html">Depletion observation example</a>
-    </li>
-    <li>
-      <a href="../articles/Getting-started-with-ISW-package.html">Getting started with ISW package</a>
-    </li>
-    <li>
-      <a href="../articles/Identify-blind-spots.html">Identify-blind-spots</a>
-    </li>
-    <li>
-      <a href="../articles/ISW-reporting-scenarios.html">ISW reporting scenarios</a>
-    </li>
-    <li>
-      <a href="../articles/Stream-depletion-and-aquifer-drawdown.html">Stream depletion and aquifer drawdown</a>
-    </li>
-    <li>
       <a href="../articles/stream-depletion-apportionment-internals.html">Stream Depletion Apportionment: Detailed Walkthrough</a>
     </li>
     <li>
       <a href="../articles/stream-depletion-apportionment.html">Stream Depletion Apportionment</a>
     </li>
+    <li>
+      <a href="../articles/stream-injection-methods.html">Comparing ADF and Constant-Head Stream Injection</a>
+    </li>
   </ul></li>
+<li>
+  <a href="../news/index.html">Changelog</a>
+</li>
       </ul><ul class="nav navbar-nav navbar-right"></ul></div><!--/.nav-collapse -->
   </div><!--/.container -->
 </div><!--/.navbar -->
@@ -153,6 +144,9 @@ of `sample_spacing` and is the distance supplied to the analytical
 stream-depletion kernel.</p>
 <p>If a pump coincides with one or more sample points, only those zero-distance
 points receive weight, divided in proportion to their `sampled_length`.</p>
+<p>This combined segmentation-and-apportionment interface remains available
+for compatibility and is planned for deprecation. New workflows should use
+[get_stream_segments()] followed by [get_adf_stream_apportionment()].</p>
     </div>
     <div id="references">
     <h2>References</h2>
@@ -179,34 +173,34 @@ Performance of Simple Management Tools. *Water Resources Research*, 54,
 <span class="r-in"><span>  <span class="st">"pump_id"</span>, <span class="st">"reach_id"</span>, <span class="st">"reach_segment_id"</span>,</span></span>
 <span class="r-in"><span>  <span class="st">"pump_to_reach_distance"</span>, <span class="st">"apportionment_fraction"</span></span></span>
 <span class="r-in"><span><span class="op">)</span><span class="op">]</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Simple feature collection with 18 features and 5 fields</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Simple feature collection with 56 features and 5 fields</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Geometry type: LINESTRING</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Dimension:     XY</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Bounding box:  xmin: 5e+05 ymin: 4979850 xmax: 500350 ymax: 4980200</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Bounding box:  xmin: 499500 ymin: 4979500 xmax: 501080 ymax: 4980500</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Projected CRS: WGS 84 / UTM zone 15N</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> First 10 features:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    pump_id   reach_id     reach_segment_id pump_to_reach_distance</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1   pump_1 upstream_1 upstream_1_segment_1           250.0000 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2   pump_1 upstream_1 upstream_1_segment_2           269.2582 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3   pump_1 upstream_1 upstream_1_segment_3           304.1381 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4   pump_1 upstream_2 upstream_2_segment_1           250.0000 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5   pump_1 upstream_2 upstream_2_segment_2           269.2582 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6   pump_1 upstream_2 upstream_2_segment_3           304.1381 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7   pump_1 downstream downstream_segment_1           350.0000 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8   pump_1 downstream downstream_segment_2           421.9663 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9   pump_1 downstream downstream_segment_3           501.3870 [m]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 10  pump_2 upstream_1 upstream_1_segment_1           400.0000 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1   pump_1 upstream_1 upstream_1_segment_1           702.8641 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2   pump_1 upstream_1 upstream_1_segment_2           707.8831 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3   pump_1 upstream_1 upstream_1_segment_3           723.7306 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4   pump_1 upstream_1 upstream_1_segment_4           749.7323 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5   pump_1 upstream_1 upstream_1_segment_5           784.8796 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6   pump_1 upstream_1 upstream_1_segment_6           828.0088 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7   pump_1 upstream_1 upstream_1_segment_7           877.9442 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8   pump_1 upstream_1 upstream_1_segment_8           933.5944 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9   pump_1 upstream_2 upstream_2_segment_1           702.8641 [m]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10  pump_1 upstream_2 upstream_2_segment_2           707.8831 [m]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    apportionment_fraction                       geometry</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1              0.16085181 LINESTRING (5e+05 4980200, ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2              0.13165556 LINESTRING (500050 4980150,...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3              0.10092931 LINESTRING (500100 4980100,...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4              0.16085181 LINESTRING (5e+05 4979900, ...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5              0.13165556 LINESTRING (500050 4979950,...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6              0.10092931 LINESTRING (500100 4980000,...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7              0.09694901 LINESTRING (500150 4980050,...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8              0.06753111 LINESTRING (500216.7 497998...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9              0.04864652 LINESTRING (500283.3 497991...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 10             0.06392835 LINESTRING (5e+05 4980200, ...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1              0.06364296 LINESTRING (499500 4980500,...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2              0.06179921 LINESTRING (499562.5 498043...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3              0.05833280 LINESTRING (499625 4980375,...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4              0.05376915 LINESTRING (499687.5 498031...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5              0.04866854 LINESTRING (499750 4980250,...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6              0.04349535 LINESTRING (499812.5 498018...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7              0.03856561 LINESTRING (499875 4980125,...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8              0.03405533 LINESTRING (499937.5 498006...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9              0.06364296 LINESTRING (499500 4979500,...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10             0.06179921 LINESTRING (499562.5 497956...</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/tapply.html" class="external-link">tapply</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="va">stream_apportionment</span><span class="op">$</span><span class="va">apportionment_fraction</span>,</span></span>
 <span class="r-in"><span>  <span class="va">stream_apportionment</span><span class="op">$</span><span class="va">pump_id</span>,</span></span>
