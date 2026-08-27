@@ -82,7 +82,8 @@
       </header><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
-      <h1 data-toc-skip>Stream Depletion and Drawdown in the ISW package</h1>
+      <h1 data-toc-skip>Stream Depletion and Drawdown in the ISW
+package</h1>
             
       
 
@@ -102,19 +103,30 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>This vignette presents the main <code>isw</code> workflow for estimating stream depletion and the resulting water-level changes in an aquifer. It compares the package’s two methods for estimating depletion and stream-injection using spatial inputs included with the package:</p>
+<p>This vignette presents the main <code>isw</code> workflow for
+estimating stream depletion and the resulting water-level changes in an
+aquifer. It compares the package’s two methods for estimating depletion
+and stream-injection using spatial inputs included with the package:</p>
 <ul>
 <li>
-<code>method = "adf"</code>, the default, calculates analytical depletion and apportions it among stream segments; and</li>
+<code>method = "adf"</code>, the default, calculates analytical
+depletion and apportions it among stream segments; and</li>
 <li>
-<code>method = "constant_head"</code> solves the injection rates needed to keep water-level change equal to zero at the stream-segment model points.</li>
+<code>method = "constant_head"</code> solves the injection rates
+needed to keep water-level change equal to zero at the stream-segment
+model points.</li>
 </ul>
-<p>The focus here is how to prepare the inputs and connect the main functions. For more detail, see the website articles on the <a href="https://gopalpenny.github.io/isw/articles/stream-injection-methods.html">comparison of the two methods</a> and the <a href="https://gopalpenny.github.io/isw/articles/stream-depletion-apportionment-internals.html">internals of ADF apportionment</a>.</p>
+<p>The focus here is how to prepare the inputs and connect the main
+functions. For more detail, see the website articles on the <a href="https://gopalpenny.github.io/isw/articles/stream-injection-methods.html">comparison
+of the two methods</a> and the <a href="https://gopalpenny.github.io/isw/articles/stream-depletion-apportionment-internals.html">internals
+of ADF apportionment</a>.</p>
 </div>
 <div class="section level2">
 <h2 id="load-the-spatial-inputs">Load the spatial inputs<a class="anchor" aria-label="anchor" href="#load-the-spatial-inputs"></a>
 </h2>
-<p>The package includes a synthetic example domain with two pumping wells, three connected stream reaches, and two observation wells, all as <code>sf</code> objects.</p>
+<p>The package includes a synthetic example domain with two pumping
+wells, three connected stream reaches, and two observation wells, all as
+<code>sf</code> objects.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pumping_wells</span> <span class="op">&lt;-</span> <span class="va">example_pumping_wells</span></span>
 <span><span class="va">stream_reaches</span> <span class="op">&lt;-</span> <span class="va">example_stream_reaches</span></span>
@@ -133,9 +145,18 @@
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="cn">NULL</span>, y <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><img src="stream-depletion-and-drawdown_files/figure-html/spatial-inputs-1.png" class="r-plt" alt="" width="100%" style="display: block; margin: auto;"></p>
-<p>See the <a href="https://gopalpenny.github.io/isw/reference/get_stream_segments.html"><code>get_stream_segments()</code> reference</a> for CRS requirements, coordinate transformations, and automatic selection of a projected analysis CRS.</p>
-<p>Required identifiers for spatial inputs are <code>reach_id</code>, <code>pump_id</code>, and <code>observation_id</code>, respectively. Pumping wells must also provide aquifer properties as <code>units</code> vectors including: hydraulic conductivity <code>K</code>, aquifer thickness <code>D</code>, and drainable porosity <code>V</code>. The optional <code>well_diam</code> prevents a point-well singularity when a response is evaluated inside the well radius.</p>
-<p>The individual objects and their columns can be inspected directly.</p>
+<p>See the <a href="https://gopalpenny.github.io/isw/reference/get_stream_segments.html"><code>get_stream_segments()</code>
+reference</a> for CRS requirements, coordinate transformations, and
+automatic selection of a projected analysis CRS.</p>
+<p>Required identifiers for spatial inputs are <code>reach_id</code>,
+<code>pump_id</code>, and <code>observation_id</code>, respectively.
+Pumping wells must also provide aquifer properties as <code>units</code>
+vectors including: hydraulic conductivity <code>K</code>, aquifer
+thickness <code>D</code>, and drainable porosity <code>V</code>. The
+optional <code>well_diam</code> prevents a point-well singularity when a
+response is evaluated inside the well radius.</p>
+<p>The individual objects and their columns can be inspected
+directly.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pumping_wells</span></span>
 <span><span class="co">#&gt; Simple feature collection with 2 features and 5 fields</span></span>
@@ -144,10 +165,10 @@
 <span><span class="co">#&gt; Bounding box:  xmin: 499006 ymin: 4980000 xmax: 500350 ymax: 4980120</span></span>
 <span><span class="co">#&gt; Projected CRS: WGS 84 / UTM zone 15N</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 6</span></span></span>
-<span><span class="co">#&gt;   pump_id         K   D     V well_diam         geometry</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">*</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>       <span style="color: #949494;">[m/s]</span> <span style="color: #949494;">[m]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494;">[m]</span>      <span style="color: #949494; font-style: italic;">&lt;POINT [m]&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> pump_1  0.000<span style="text-decoration: underline;">01</span>    50  0.1        0.3 (499006 4980000)</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> pump_2  0.000<span style="text-decoration: underline;">007</span>5  40  0.12       0.3 (500350 4980120)</span></span>
+<span><span class="co">#&gt;   pump_id        K   D     V well_diam         geometry</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">*</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>      <span style="color: #949494;">[m/s]</span> <span style="color: #949494;">[m]</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>       <span style="color: #949494;">[m]</span>      <span style="color: #949494; font-style: italic;">&lt;POINT [m]&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> pump_1  0.000<span style="text-decoration: underline;">02</span>  110  0.1        0.3 (499006 4980000)</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> pump_2  0.000<span style="text-decoration: underline;">012</span>  90  0.12       0.3 (500350 4980120)</span></span>
 <span><span class="va">stream_reaches</span></span>
 <span><span class="co">#&gt; Simple feature collection with 3 features and 1 field</span></span>
 <span><span class="co">#&gt; Geometry type: LINESTRING</span></span>
@@ -173,8 +194,15 @@
 <div class="section level2">
 <h2 id="divide-the-stream-into-model-segments">Divide the stream into model segments<a class="anchor" aria-label="anchor" href="#divide-the-stream-into-model-segments"></a>
 </h2>
-<p>Both the <code>adf</code> and <code>constant-head</code> methods can use the same stream segments object. <code>reach_spacing</code> is the maximum modeled segment length; smaller values represent the stream boundary at greater spatial resolution but increase the number of injection rates that must be calculated.</p>
-<p>Each returned segment contains a <code>model_point</code>. This is the discrete injection location and, for constant head, the location where the zero-change condition is imposed. The effective injection-well diameter is based on the segment’s <code>represented_length</code>.</p>
+<p>Both the <code>adf</code> and <code>constant-head</code> methods can
+use the same stream segments object. <code>reach_spacing</code> is the
+maximum modeled segment length; smaller values represent the stream
+boundary at greater spatial resolution but increase the number of
+injection rates that must be calculated.</p>
+<p>Each returned segment contains a <code>model_point</code>. This is
+the discrete injection location and, for constant head, the location
+where the zero-change condition is imposed. The effective injection-well
+diameter is based on the segment’s <code>represented_length</code>.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stream_segments</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_stream_segments.html">get_stream_segments</a></span><span class="op">(</span></span>
 <span>  <span class="va">stream_reaches</span>,</span>
@@ -213,7 +241,12 @@
 <div class="section level2">
 <h2 id="define-pumping-and-model-times">Define pumping and model times<a class="anchor" aria-label="anchor" href="#define-pumping-and-model-times"></a>
 </h2>
-<p><code>pumping_schedules</code> is a wide tibble, with pumping provided in units. Its first column, <code>t</code>, gives the start of each pumping period; every other column is named for a <code>pump_id</code> and contains that well’s rate. Rates continue until the next schedule row, so a shutdown must be represented by a row that sets the rate to zero.</p>
+<p><code>pumping_schedules</code> is a wide tibble, with pumping
+provided in units. Its first column, <code>t</code>, gives the start of
+each pumping period; every other column is named for a
+<code>pump_id</code> and contains that well’s rate. Rates continue until
+the next schedule row, so a shutdown must be represented by a row that
+sets the rate to zero.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pumping_schedules</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
 <span>  t <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2025-01-01"</span>, <span class="st">"2025-02-01"</span>, <span class="st">"2025-03-01"</span>, <span class="st">"2025-04-01"</span><span class="op">)</span><span class="op">)</span>,</span>
@@ -229,8 +262,21 @@
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> 2025-02-01     500     250</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> 2025-03-01     300     250</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> 2025-04-01       0       0</span></span></code></pre></div>
-<p><code>evaluation_times</code> specifies when stream depletion and water-level results are returned. Pumping-schedule times and evaluation times are always included as boundaries of the piecewise-constant stream-injection schedule.</p>
-<p>The optional <code>injection_times</code> argument can add schedule boundaries without requesting additional water-level output. This can improve the interval-average approximation to continuously changing ADF depletion, but it increases computation for both methods. Constant-head rates are solved to satisfy the boundary at each interval end. Very short intervals can therefore require large corrective rates, especially when a regular refinement grid is combined with nearby evaluation or pumping times. This example leaves <code>injection_times</code> as <code>NULL</code> and uses monthly evaluation boundaries for a stable, readily interpreted comparison. Applications that add refinement times should inspect sensitivity to the resulting interval lengths.</p>
+<p><code>evaluation_times</code> specifies when stream depletion and
+water-level results are returned. Pumping-schedule times and evaluation
+times are always included as boundaries of the piecewise-constant
+stream-injection schedule.</p>
+<p>The optional <code>injection_times</code> argument can add schedule
+boundaries without requesting additional water-level output. This can
+improve the interval-average approximation to continuously changing ADF
+depletion, but it increases computation for both methods. Constant-head
+rates are solved to satisfy the boundary at each interval end. Very
+short intervals can therefore require large corrective rates, especially
+when a regular refinement grid is combined with nearby evaluation or
+pumping times. This example leaves <code>injection_times</code> as
+<code>NULL</code> and uses monthly evaluation boundaries for a stable,
+readily interpreted comparison. Applications that add refinement times
+should inspect sensitivity to the resulting interval lengths.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">evaluation_times</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.Date.html" class="external-link">seq.Date</a></span><span class="op">(</span></span>
 <span>  from <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="st">"2025-01-01"</span><span class="op">)</span>,</span>
@@ -239,12 +285,20 @@
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">injection_times</span> <span class="op">&lt;-</span> <span class="cn">NULL</span></span></code></pre></div>
-<p>See the <a href="https://gopalpenny.github.io/isw/reference/get_stream_injection_schedule.html"><code>get_stream_injection_schedule()</code> reference</a> for the complete input requirements and interval construction rules.</p>
+<p>See the <a href="https://gopalpenny.github.io/isw/reference/get_stream_injection_schedule.html"><code>get_stream_injection_schedule()</code>
+reference</a> for the complete input requirements and interval
+construction rules.</p>
 </div>
 <div class="section level2">
 <h2 id="construct-both-stream-injection-schedules">Construct both stream-injection schedules<a class="anchor" aria-label="anchor" href="#construct-both-stream-injection-schedules"></a>
 </h2>
-<p>ADF requires one additional step because its total analytical depletion must be apportioned spatially. <code><a href="../reference/get_adf_stream_apportionment.html">get_adf_stream_apportionment()</a></code> calculates a set of segment weights independently for each pumping well. <code>sample_spacing</code> controls how finely curved stream geometry is sampled when those weights are calculated; it does not change the number of modeled stream segments.</p>
+<p>ADF requires one additional step because its total analytical
+depletion must be apportioned spatially.
+<code><a href="../reference/get_adf_stream_apportionment.html">get_adf_stream_apportionment()</a></code> calculates a set of segment
+weights independently for each pumping well. <code>sample_spacing</code>
+controls how finely curved stream geometry is sampled when those weights
+are calculated; it does not change the number of modeled stream
+segments.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stream_apportionment</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_adf_stream_apportionment.html">get_adf_stream_apportionment</a></span><span class="op">(</span></span>
 <span>  <span class="va">pumping_wells</span>,</span>
@@ -265,7 +319,9 @@
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                          <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> pump_1                             1</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> pump_2                             1</span></span></code></pre></div>
-<p>We can first calculate ADF stream depletion directly at the requested times. This is the simplest route when only ADF depletion, rather than its effect on aquifer water levels, is needed.</p>
+<p>We can first calculate ADF stream depletion directly at the requested
+times. This is the simplest route when only ADF depletion, rather than
+its effect on aquifer water levels, is needed.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">adf_depletion</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_adf_stream_depletion.html">get_adf_stream_depletion</a></span><span class="op">(</span></span>
 <span>  pumping_wells <span class="op">=</span> <span class="va">pumping_wells</span>,</span>
@@ -286,20 +342,36 @@
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 26 × 3</span></span></span>
 <span><span class="co">#&gt;    pump_id evaluation_time adf_depletion_at_time</span></span>
 <span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>                        <span style="color: #949494;">[m^3/d]</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> pump_1  2025-01-01                    0      </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> pump_1  2025-02-01                    0.004<span style="text-decoration: underline;">43</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> pump_1  2025-03-01                    0.524  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> pump_1  2025-04-01                    3.61   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> pump_1  2025-05-01                    9.19   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> pump_1  2025-06-01                   15.5    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> pump_1  2025-07-01                   20.1    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> pump_1  2025-08-01                   22.8    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> pump_1  2025-09-01                   23.9    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> pump_1  2025-10-01                   24.0    </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> pump_1  2025-01-01                        0  </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> pump_1  2025-02-01                       13.5</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> pump_1  2025-03-01                       50.7</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> pump_1  2025-04-01                       83.9</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> pump_1  2025-05-01                       91.0</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> pump_1  2025-06-01                       76.9</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> pump_1  2025-07-01                       63.3</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> pump_1  2025-08-01                       52.4</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> pump_1  2025-09-01                       44.2</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> pump_1  2025-10-01                       38.0</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 16 more rows</span></span></span></code></pre></div>
-<p>The two interval schedules can now be constructed with the same function and time grid. <code>"adf"</code> is the default method, but it is written explicitly here to make the comparison clear.</p>
-<p>With <code>method = "adf"</code>, <code><a href="../reference/get_stream_injection_schedule.html">get_stream_injection_schedule()</a></code> calls <code><a href="../reference/get_adf_stream_depletion.html">get_adf_stream_depletion()</a></code> at every schedule boundary and averages depletion at adjacent boundaries. It reports the resulting aquifer injection as a signed <code>injection_rate</code>, which is negative when water enters the aquifer. Its magnitude is the average stream-depletion rate applied over the interval. By contrast, <code><a href="../reference/get_adf_stream_depletion.html">get_adf_stream_depletion()</a></code> returns positive depletion at each requested time. If ADF depletion has already been calculated at every schedule boundary, it can be supplied through <code>adf_stream_depletion</code> to avoid recalculation. The supplied result must include all pumping, evaluation, and optional refinement boundaries used by the schedule.</p>
-<p>With <code>method = "constant_head"</code>, each returned interval rate is the rate solved to satisfy the constant-head boundary condition at the interval end.</p>
+<p>The two interval schedules can now be constructed with the same
+function and time grid. <code>"adf"</code> is the default method, but it
+is written explicitly here to make the comparison clear.</p>
+<p>With <code>method = "adf"</code>,
+<code><a href="../reference/get_stream_injection_schedule.html">get_stream_injection_schedule()</a></code> calls
+<code><a href="../reference/get_adf_stream_depletion.html">get_adf_stream_depletion()</a></code> at every schedule boundary and
+averages depletion at adjacent boundaries. It reports the resulting
+aquifer injection as a signed <code>injection_rate</code>, which is
+negative when water enters the aquifer. Its magnitude is the average
+stream-depletion rate applied over the interval. By contrast,
+<code><a href="../reference/get_adf_stream_depletion.html">get_adf_stream_depletion()</a></code> returns positive depletion at
+each requested time. If ADF depletion has already been calculated at
+every schedule boundary, it can be supplied through
+<code>adf_stream_depletion</code> to avoid recalculation. The supplied
+result must include all pumping, evaluation, and optional refinement
+boundaries used by the schedule.</p>
+<p>With <code>method = "constant_head"</code>, each returned interval
+rate is the rate solved to satisfy the constant-head boundary condition
+at the interval end.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">adf_schedule</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_stream_injection_schedule.html">get_stream_injection_schedule</a></span><span class="op">(</span></span>
 <span>  pumping_wells <span class="op">=</span> <span class="va">pumping_wells</span>,</span>
@@ -320,8 +392,18 @@
 <span>  injection_times <span class="op">=</span> <span class="va">injection_times</span>,</span>
 <span>  method <span class="op">=</span> <span class="st">"constant_head"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>The constant-head result includes two diagnostics. <code>boundary_residual</code> is the signed water-level change remaining at a segment model point after the solve. <code>matrix_condition_number</code> indicates the numerical sensitivity of the system; <code>isw</code> warns when it exceeds <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mn>6</mn></msup><annotation encoding="application/x-tex">10^6</annotation></semantics></math>.</p>
-<p>An aquifer factorization is the decomposition of the stream-response matrix used to solve for the constant-head depletion rates. Wells with the same aquifer properties share this matrix, so <code>isw</code> factorizes it once for that aquifer-property combination and reuses the result for each associated pumping well. This reduces computation while preserving the depletion response attributed to each pump.</p>
+<p>The constant-head result includes two diagnostics.
+<code>boundary_residual</code> is the signed water-level change
+remaining at a segment model point after the solve.
+<code>matrix_condition_number</code> indicates the numerical sensitivity
+of the system; <code>isw</code> warns when it exceeds
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mn>6</mn></msup><annotation encoding="application/x-tex">10^6</annotation></semantics></math>.</p>
+<p>An aquifer factorization is the decomposition of the stream-response
+matrix used to solve for the constant-head depletion rates. Wells with
+the same aquifer properties share this matrix, so <code>isw</code>
+factorizes it once for that aquifer-property combination and reuses the
+result for each associated pumping well. This reduces computation while
+preserving the depletion response attributed to each pump.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">constant_head_schedule</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -335,15 +417,20 @@
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 3</span></span></span>
 <span><span class="co">#&gt;   maximum_absolute_boundary_resi…¹ maximum_matrix_condi…² number_of_aquifer_fa…³</span></span>
 <span><span class="co">#&gt;                              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>                         2.78<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span>                   1.39                      2</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>                         5.55<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span>                   3.09                      2</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ abbreviated names: ¹​maximum_absolute_boundary_residual_m,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   ²​maximum_matrix_condition_number, ³​number_of_aquifer_factorizations</span></span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="compare-stream-depletion">Compare stream depletion<a class="anchor" aria-label="anchor" href="#compare-stream-depletion"></a>
 </h2>
-<p><code>injection_rate</code> is negative when water leaves the stream and enters the aquifer. For each pumping well, total stream depletion is therefore the negative of the injection rate summed across all stream segments.</p>
-<p>For ADF, the schedule contains interval-average analytical depletion. For constant head, it contains the depletion required to impose the stream boundary condition at the interval end.</p>
+<p><code>injection_rate</code> is negative when water leaves the stream
+and enters the aquifer. For each pumping well, total stream depletion is
+therefore the negative of the injection rate summed across all stream
+segments.</p>
+<p>For ADF, the schedule contains interval-average analytical depletion.
+For constant head, it contains the depletion required to impose the
+stream boundary condition at the interval end.</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stream_depletion</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span><span class="va">adf_schedule</span>, method <span class="op">=</span> <span class="st">"ADF"</span><span class="op">)</span>,</span>
@@ -361,18 +448,20 @@
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 48 × 5</span></span></span>
 <span><span class="co">#&gt;    method pump_id interval_start interval_end stream_depletion_rate</span></span>
 <span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>                     <span style="color: #949494;">[m^3/d]</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> ADF    pump_1  2025-01-01     2025-02-01                 0.002<span style="text-decoration: underline;">21</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> ADF    pump_1  2025-02-01     2025-03-01                 0.264  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> ADF    pump_1  2025-03-01     2025-04-01                 2.07   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> ADF    pump_1  2025-04-01     2025-05-01                 6.40   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> ADF    pump_1  2025-05-01     2025-06-01                12.4    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> ADF    pump_1  2025-06-01     2025-07-01                17.8    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> ADF    pump_1  2025-07-01     2025-08-01                21.4    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> ADF    pump_1  2025-08-01     2025-09-01                23.3    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> ADF    pump_1  2025-09-01     2025-10-01                23.9    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> ADF    pump_1  2025-10-01     2025-11-01                23.8    </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> ADF    pump_1  2025-01-01     2025-02-01                    6.76</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> ADF    pump_1  2025-02-01     2025-03-01                   32.1 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> ADF    pump_1  2025-03-01     2025-04-01                   67.3 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> ADF    pump_1  2025-04-01     2025-05-01                   87.4 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> ADF    pump_1  2025-05-01     2025-06-01                   83.9 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> ADF    pump_1  2025-06-01     2025-07-01                   70.1 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> ADF    pump_1  2025-07-01     2025-08-01                   57.9 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> ADF    pump_1  2025-08-01     2025-09-01                   48.3 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> ADF    pump_1  2025-09-01     2025-10-01                   41.1 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> ADF    pump_1  2025-10-01     2025-11-01                   35.5 </span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 38 more rows</span></span></span></code></pre></div>
-<p>The direct ADF result at an interval end generally differs from the average rate applied during that interval. The following comparison makes that distinction explicit.</p>
+<p>The direct ADF result at an interval end generally differs from the
+average rate applied during that interval. The following comparison
+makes that distinction explicit.</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">adf_interval_comparison</span> <span class="op">&lt;-</span> <span class="va">adf_schedule</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -396,16 +485,16 @@
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 24 × 5</span></span></span>
 <span><span class="co">#&gt;    pump_id interval_start interval_end adf_interval_average</span></span>
 <span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>                    <span style="color: #949494;">[m^3/d]</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> pump_1  2025-01-01     2025-02-01                0.002<span style="text-decoration: underline;">21</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> pump_1  2025-02-01     2025-03-01                0.264  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> pump_1  2025-03-01     2025-04-01                2.07   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> pump_1  2025-04-01     2025-05-01                6.40   </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> pump_1  2025-05-01     2025-06-01               12.4    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> pump_1  2025-06-01     2025-07-01               17.8    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> pump_1  2025-07-01     2025-08-01               21.4    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> pump_1  2025-08-01     2025-09-01               23.3    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> pump_1  2025-09-01     2025-10-01               23.9    </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> pump_1  2025-10-01     2025-11-01               23.8    </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> pump_1  2025-01-01     2025-02-01                   6.76</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> pump_1  2025-02-01     2025-03-01                  32.1 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> pump_1  2025-03-01     2025-04-01                  67.3 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> pump_1  2025-04-01     2025-05-01                  87.4 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> pump_1  2025-05-01     2025-06-01                  83.9 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> pump_1  2025-06-01     2025-07-01                  70.1 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> pump_1  2025-07-01     2025-08-01                  57.9 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> pump_1  2025-08-01     2025-09-01                  48.3 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> pump_1  2025-09-01     2025-10-01                  41.1 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> pump_1  2025-10-01     2025-11-01                  35.5 </span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 14 more rows</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 1 more variable: adf_depletion_at_interval_end [m^3/d]</span></span></span></code></pre></div>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
@@ -442,7 +531,11 @@
 <span>  <span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><img src="stream-depletion-and-drawdown_files/figure-html/plot-stream-depletion-1.png" class="r-plt" alt="" width="100%" style="display: block; margin: auto;"></p>
-<p>The following map compares the spatial distribution of the two injection schedules during May 2025. Because package injection rates are negative when water enters the aquifer, the mapped values are their positive magnitudes. Each panel shows the rates attributed to one pumping well and one method.</p>
+<p>The following map compares the spatial distribution of the two
+injection schedules during May 2025. Because package injection rates are
+negative when water enters the aquifer, the mapped values are their
+positive magnitudes. Each panel shows the rates attributed to one
+pumping well and one method.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">may_date</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="st">"2025-05-15"</span><span class="op">)</span></span>
 <span></span>
@@ -494,7 +587,11 @@
 <div class="section level2">
 <h2 id="calculate-aquifer-drawdown-and-stream-recovery">Calculate aquifer drawdown and stream recovery<a class="anchor" aria-label="anchor" href="#calculate-aquifer-drawdown-and-stream-recovery"></a>
 </h2>
-<p><code><a href="../reference/get_aquifer_water_level_change.html">get_aquifer_water_level_change()</a></code> combines the effects of the physical pumping wells and stream injection at each observation well and evaluation time. Supplying a previously calculated schedule ensures that the water-level calculation uses exactly the injection rates inspected above.</p>
+<p><code><a href="../reference/get_aquifer_water_level_change.html">get_aquifer_water_level_change()</a></code> combines the effects of
+the physical pumping wells and stream injection at each observation well
+and evaluation time. Supplying a previously calculated schedule ensures
+that the water-level calculation uses exactly the injection rates
+inspected above.</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">adf_water_levels</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_aquifer_water_level_change.html">get_aquifer_water_level_change</a></span><span class="op">(</span></span>
 <span>  pumping_wells <span class="op">=</span> <span class="va">pumping_wells</span>,</span>
@@ -532,19 +629,22 @@
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 104 × 7</span></span></span>
 <span><span class="co">#&gt;    method pump_id observation_id evaluation_time pumping_drawdown</span></span>
 <span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>          <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>                       <span style="color: #949494;">[m]</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> ADF    pump_1  obs_near       2025-01-01               0      </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> ADF    pump_1  obs_near       2025-02-01               0.007<span style="text-decoration: underline;">51</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> ADF    pump_1  obs_near       2025-03-01               0.062<span style="text-decoration: underline;">0</span> </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> ADF    pump_1  obs_near       2025-04-01               0.152  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> ADF    pump_1  obs_near       2025-05-01               0.221  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> ADF    pump_1  obs_near       2025-06-01               0.244  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> ADF    pump_1  obs_near       2025-07-01               0.240  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> ADF    pump_1  obs_near       2025-08-01               0.226  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> ADF    pump_1  obs_near       2025-09-01               0.211  </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> ADF    pump_1  obs_near       2025-10-01               0.196  </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> ADF    pump_1  obs_near       2025-01-01                0     </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> ADF    pump_1  obs_near       2025-02-01                0.069<span style="text-decoration: underline;">1</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> ADF    pump_1  obs_near       2025-03-01                0.146 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> ADF    pump_1  obs_near       2025-04-01                0.182 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> ADF    pump_1  obs_near       2025-05-01                0.158 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> ADF    pump_1  obs_near       2025-06-01                0.122 </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> ADF    pump_1  obs_near       2025-07-01                0.099<span style="text-decoration: underline;">7</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> ADF    pump_1  obs_near       2025-08-01                0.083<span style="text-decoration: underline;">7</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> ADF    pump_1  obs_near       2025-09-01                0.072<span style="text-decoration: underline;">1</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> ADF    pump_1  obs_near       2025-10-01                0.063<span style="text-decoration: underline;">6</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 94 more rows</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ 2 more variables: stream_recovery [m], water_level_change [m]</span></span></span></code></pre></div>
-<p><code>pumping_drawdown</code> and <code>stream_recovery</code> are reported as positive magnitudes. <code>water_level_change</code> is their signed net effect: negative values indicate a decline and positive values indicate a rise.</p>
+<p><code>pumping_drawdown</code> and <code>stream_recovery</code> are
+reported as positive magnitudes. <code>water_level_change</code> is
+their signed net effect: negative values indicate a decline and positive
+values indicate a rise.</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">water_level_totals</span> <span class="op">&lt;-</span> <span class="va">water_levels</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -571,12 +671,22 @@
 <span>  <span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><img src="stream-depletion-and-drawdown_files/figure-html/plot-water-levels-1.png" class="r-plt" alt="" width="100%" style="display: block; margin: auto;"></p>
-<p>The <a href="https://gopalpenny.github.io/isw/reference/get_aquifer_water_level_change.html"><code>get_aquifer_water_level_change()</code> reference</a> documents the returned pumping, recovery, and net water-level components. The <a href="https://gopalpenny.github.io/isw/articles/stream-injection-methods.html">method-comparison article</a> extends this workflow with observations along the stream and on transects, and compares the discrete constant-head result with the analytical image-well solution.</p>
+<p>The <a href="https://gopalpenny.github.io/isw/reference/get_aquifer_water_level_change.html"><code>get_aquifer_water_level_change()</code>
+reference</a> documents the returned pumping, recovery, and net
+water-level components. The <a href="https://gopalpenny.github.io/isw/articles/stream-injection-methods.html">method-comparison
+article</a> extends this workflow with observations along the stream and
+on transects, and compares the discrete constant-head result with the
+analytical image-well solution.</p>
 </div>
 <div class="section level2">
 <h2 id="map-water-level-change-along-the-stream">Map water-level change along the stream<a class="anchor" aria-label="anchor" href="#map-water-level-change-along-the-stream"></a>
 </h2>
-<p>The stream boundary can also be evaluated directly by treating points along the stream as observation wells. Here, the segment <code>model_point</code> locations are combined with more closely spaced points generated along each segment. The model points are the locations where the constant-head condition is imposed, and the additional sample points show how water levels behave between them.</p>
+<p>The stream boundary can also be evaluated directly by treating points
+along the stream as observation wells. Here, the segment
+<code>model_point</code> locations are combined with more closely spaced
+points generated along each segment. The model points are the locations
+where the constant-head condition is imposed, and the additional sample
+points show how water levels behave between them.</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stream_sample_points</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_segment_sample_points.html">generate_segment_sample_points</a></span><span class="op">(</span></span>
 <span>  <span class="va">stream_segments</span>,</span>
@@ -600,7 +710,9 @@
 <span>  <span class="va">stream_sample_points</span>,</span>
 <span>  <span class="va">stream_model_points</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>In the figure below, negative values indicate a decline from the initial condition. The following calculation sums the two pump-specific responses at each observation point on May 1, 2025.</p>
+<p>In the figure below, negative values indicate a decline from the
+initial condition. The following calculation sums the two pump-specific
+responses at each observation point on May 1, 2025.</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stream_map_time</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="st">"2025-05-01"</span><span class="op">)</span></span>
 <span></span>
@@ -679,7 +791,9 @@
 <span>  <span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><img src="stream-depletion-and-drawdown_files/figure-html/map-stream-water-levels-1.png" class="r-plt" alt="" width="100%" style="display: block; margin: auto;"></p>
-<p>Finally, we can summarize the distribution of hydraulic-head change by method and observation type to confirm that the constant-head method is working at the segment model points.</p>
+<p>Finally, we can summarize the distribution of hydraulic-head change
+by method and observation type to confirm that the constant-head method
+is working at the segment model points.</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stream_water_level_summary</span> <span class="op">&lt;-</span> <span class="va">stream_water_level_map</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -696,10 +810,10 @@
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 4 × 6</span></span></span>
 <span><span class="co">#&gt;   method        point_type       mean_m standard_deviation_m minimum_m maximum_m</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> ADF           Sample point  -<span style="color: #BB0000;">3.48</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>             6.07<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span> -<span style="color: #BB0000;">2.27</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 1</span>  5.20<span style="color: #949494;">e</span><span style="color: #BB0000;">- 3</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> ADF           Segment mode… -<span style="color: #BB0000;">3.06</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>             5.39<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span> -<span style="color: #BB0000;">1.51</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 1</span>  3.70<span style="color: #949494;">e</span><span style="color: #BB0000;">- 4</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Constant head Sample point  -<span style="color: #BB0000;">8.36</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 3</span>             3.97<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span> -<span style="color: #BB0000;">1.43</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 1</span>  4.73<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> Constant head Segment mode… -<span style="color: #BB0000;">1.02</span><span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span>             2.11<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span> -<span style="color: #BB0000;">5.55</span><span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span>  6.95<span style="color: #949494;">e</span><span style="color: #BB0000;">-18</span></span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> ADF           Sample point  -<span style="color: #BB0000;">3.15</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>             2.10<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span> -<span style="color: #BB0000;">8.18</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span> -<span style="color: #BB0000;">3.67</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 5</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> ADF           Segment mode… -<span style="color: #BB0000;">2.89</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>             1.84<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span> -<span style="color: #BB0000;">5.49</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span> -<span style="color: #BB0000;">3.22</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 3</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Constant head Sample point  -<span style="color: #BB0000;">3.13</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 3</span>             1.02<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span> -<span style="color: #BB0000;">2.96</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>  9.17<span style="color: #949494;">e</span><span style="color: #BB0000;">- 3</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> Constant head Segment mode… -<span style="color: #BB0000;">1.11</span><span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span>             2.39<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span> -<span style="color: #BB0000;">5.90</span><span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span>  1.39<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span></span></span></code></pre></div>
 </div>
   </div>
 
