@@ -498,3 +498,139 @@ documents the returned pumping, recovery, and net water-level components. The
 extends this workflow with observations along the stream and on transects,
 and compares the discrete constant-head result with the analytical image-well
 solution.
+
+## Map water-level change along the stream
+
+The stream boundary can also be evaluated directly by treating points along
+the stream as observation wells. Here, the segment `model_point` locations are
+combined with more closely spaced points generated along each segment. The
+model points are the locations where the constant-head condition is imposed, and
+the additional sample points show how water levels behave between them.
+
+```{r stream-observation-points}
+stream_sample_points <- generate_segment_sample_points(
+  stream_segments,
+  sample_spacing = set_units(100, "m")
+) |>
+  transmute(
+    observation_id = paste0("sample_", sample_point_id),
+    point_type = "Sample point"
+  )
+
+stream_model_points <- st_sf(
+  observation_id = paste0(
+    "model_",
+    stream_segments$reach_segment_id
+  ),
+  point_type = "Segment model point",
+  geometry = stream_segments$model_point
+)
+
+stream_observation_wells <- bind_rows(
+  stream_sample_points,
+  stream_model_points
+)
+```
+
+In the figure below, negative values indicate a decline from
+the initial condition. The following calculation sums the two pump-specific
+responses at each observation point on May 1, 2025.
+
+```{r calculate-stream-water-levels}
+stream_map_time <- as.Date("2025-05-01")
+
+adf_stream_water_levels <- get_aquifer_water_level_change(
+  pumping_wells = pumping_wells,
+  pumping_schedules = pumping_schedules,
+  observation_wells = stream_observation_wells,
+  stream_segments = stream_segments,
+  evaluation_times = stream_map_time,
+  stream_injection_schedule = adf_schedule
+) |>
+  mutate(method = "ADF")
+
+constant_head_stream_water_levels <- get_aquifer_water_level_change(
+  pumping_wells = pumping_wells,
+  pumping_schedules = pumping_schedules,
+  observation_wells = stream_observation_wells,
+  stream_segments = stream_segments,
+  evaluation_times = stream_map_time,
+  stream_injection_schedule = constant_head_schedule
+) |>
+  mutate(method = "Constant head")
+
+stream_water_level_map <- bind_rows(
+  adf_stream_water_levels,
+  constant_head_stream_water_levels
+) |>
+  st_drop_geometry() |>
+  group_by(method, observation_id, evaluation_time) |>
+  summarize(
+    water_level_change_m = as.numeric(set_units(
+      sum(water_level_change),
+      "m"
+    )),
+    .groups = "drop"
+  ) |>
+  left_join(
+    stream_observation_wells,
+    by = "observation_id"
+  ) |>
+  st_as_sf()
+```
+
+```{r map-stream-water-levels, fig.height = 10}
+water_level_limit <- max(abs(
+  stream_water_level_map$water_level_change_m
+))
+
+ggplot() +
+  geom_sf(data = stream_segments, color = "grey75", linewidth = 1) +
+  geom_sf(
+    data = stream_water_level_map,
+    aes(
+      fill = water_level_change_m,
+      shape = point_type
+    ),
+    color = "black",
+    size = 4.5,
+    stroke = 0.35
+  ) +
+  facet_wrap(~method, ncol = 1) +
+  scale_fill_gradient2(
+    low = "#B2182B",
+    mid = "white",
+    high = "#2166AC",
+    midpoint = 0,
+    limits = c(-water_level_limit, water_level_limit)
+  ) +
+  scale_shape_manual(values = c(
+    "Sample point" = 21,
+    "Segment model point" = 23
+  )) +
+  labs(
+    x = NULL,
+    y = NULL,
+    fill = "Net water-level\nchange (m)",
+    shape = "Observation type"
+  ) +
+  theme_minimal()
+```
+
+Finally, we can summarize the distribution of hydraulic-head change by method
+and observation type to confirm that the constant-head method is working at the segment model points.
+
+```{r summarize-stream-water-levels}
+stream_water_level_summary <- stream_water_level_map |>
+  st_drop_geometry() |>
+  group_by(method, point_type) |>
+  summarize(
+    mean_m = mean(water_level_change_m),
+    standard_deviation_m = sd(water_level_change_m),
+    minimum_m = min(water_level_change_m),
+    maximum_m = max(water_level_change_m),
+    .groups = "drop"
+  )
+
+stream_water_level_summary
+```

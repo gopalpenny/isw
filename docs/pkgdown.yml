@@ -5,7 +5,7 @@ articles:
   stream-depletion-and-drawdown: stream-depletion-and-drawdown.html
   articles/stream-depletion-apportionment-internals: stream-depletion-apportionment-internals.html
   articles/stream-injection-methods: stream-injection-methods.html
-last_built: 2026-08-27T14:44Z
+last_built: 2026-08-27T16:16Z
 urls:
   reference: https://gopalpenny.github.io/isw/reference
   article: https://gopalpenny.github.io/isw/articles

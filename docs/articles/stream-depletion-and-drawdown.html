@@ -573,6 +573,134 @@
 <p><img src="stream-depletion-and-drawdown_files/figure-html/plot-water-levels-1.png" class="r-plt" alt="" width="100%" style="display: block; margin: auto;"></p>
 <p>The <a href="https://gopalpenny.github.io/isw/reference/get_aquifer_water_level_change.html"><code>get_aquifer_water_level_change()</code> reference</a> documents the returned pumping, recovery, and net water-level components. The <a href="https://gopalpenny.github.io/isw/articles/stream-injection-methods.html">method-comparison article</a> extends this workflow with observations along the stream and on transects, and compares the discrete constant-head result with the analytical image-well solution.</p>
 </div>
+<div class="section level2">
+<h2 id="map-water-level-change-along-the-stream">Map water-level change along the stream<a class="anchor" aria-label="anchor" href="#map-water-level-change-along-the-stream"></a>
+</h2>
+<p>The stream boundary can also be evaluated directly by treating points along the stream as observation wells. Here, the segment <code>model_point</code> locations are combined with more closely spaced points generated along each segment. The model points are the locations where the constant-head condition is imposed, and the additional sample points show how water levels behave between them.</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">stream_sample_points</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_segment_sample_points.html">generate_segment_sample_points</a></span><span class="op">(</span></span>
+<span>  <span class="va">stream_segments</span>,</span>
+<span>  sample_spacing <span class="op">=</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">100</span>, <span class="st">"m"</span><span class="op">)</span></span>
+<span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/transmute.html" class="external-link">transmute</a></span><span class="op">(</span></span>
+<span>    observation_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"sample_"</span>, <span class="va">sample_point_id</span><span class="op">)</span>,</span>
+<span>    point_type <span class="op">=</span> <span class="st">"Sample point"</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span><span class="va">stream_model_points</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/sf.html" class="external-link">st_sf</a></span><span class="op">(</span></span>
+<span>  observation_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span></span>
+<span>    <span class="st">"model_"</span>,</span>
+<span>    <span class="va">stream_segments</span><span class="op">$</span><span class="va">reach_segment_id</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  point_type <span class="op">=</span> <span class="st">"Segment model point"</span>,</span>
+<span>  geometry <span class="op">=</span> <span class="va">stream_segments</span><span class="op">$</span><span class="va">model_point</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">stream_observation_wells</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span>
+<span>  <span class="va">stream_sample_points</span>,</span>
+<span>  <span class="va">stream_model_points</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>In the figure below, negative values indicate a decline from the initial condition. The following calculation sums the two pump-specific responses at each observation point on May 1, 2025.</p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">stream_map_time</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="st">"2025-05-01"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">adf_stream_water_levels</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_aquifer_water_level_change.html">get_aquifer_water_level_change</a></span><span class="op">(</span></span>
+<span>  pumping_wells <span class="op">=</span> <span class="va">pumping_wells</span>,</span>
+<span>  pumping_schedules <span class="op">=</span> <span class="va">pumping_schedules</span>,</span>
+<span>  observation_wells <span class="op">=</span> <span class="va">stream_observation_wells</span>,</span>
+<span>  stream_segments <span class="op">=</span> <span class="va">stream_segments</span>,</span>
+<span>  evaluation_times <span class="op">=</span> <span class="va">stream_map_time</span>,</span>
+<span>  stream_injection_schedule <span class="op">=</span> <span class="va">adf_schedule</span></span>
+<span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"ADF"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">constant_head_stream_water_levels</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_aquifer_water_level_change.html">get_aquifer_water_level_change</a></span><span class="op">(</span></span>
+<span>  pumping_wells <span class="op">=</span> <span class="va">pumping_wells</span>,</span>
+<span>  pumping_schedules <span class="op">=</span> <span class="va">pumping_schedules</span>,</span>
+<span>  observation_wells <span class="op">=</span> <span class="va">stream_observation_wells</span>,</span>
+<span>  stream_segments <span class="op">=</span> <span class="va">stream_segments</span>,</span>
+<span>  evaluation_times <span class="op">=</span> <span class="va">stream_map_time</span>,</span>
+<span>  stream_injection_schedule <span class="op">=</span> <span class="va">constant_head_schedule</span></span>
+<span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"Constant head"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">stream_water_level_map</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span>
+<span>  <span class="va">adf_stream_water_levels</span>,</span>
+<span>  <span class="va">constant_head_stream_water_levels</span></span>
+<span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">method</span>, <span class="va">observation_id</span>, <span class="va">evaluation_time</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
+<span>    water_level_change_m <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">water_level_change</span><span class="op">)</span>,</span>
+<span>      <span class="st">"m"</span></span>
+<span>    <span class="op">)</span><span class="op">)</span>,</span>
+<span>    .groups <span class="op">=</span> <span class="st">"drop"</span></span>
+<span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span></span>
+<span>    <span class="va">stream_observation_wells</span>,</span>
+<span>    by <span class="op">=</span> <span class="st">"observation_id"</span></span>
+<span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_as_sf.html" class="external-link">st_as_sf</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">water_level_limit</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span></span>
+<span>  <span class="va">stream_water_level_map</span><span class="op">$</span><span class="va">water_level_change_m</span></span>
+<span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">stream_segments</span>, color <span class="op">=</span> <span class="st">"grey75"</span>, linewidth <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span></span>
+<span>    data <span class="op">=</span> <span class="va">stream_water_level_map</span>,</span>
+<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span></span>
+<span>      fill <span class="op">=</span> <span class="va">water_level_change_m</span>,</span>
+<span>      shape <span class="op">=</span> <span class="va">point_type</span></span>
+<span>    <span class="op">)</span>,</span>
+<span>    color <span class="op">=</span> <span class="st">"black"</span>,</span>
+<span>    size <span class="op">=</span> <span class="fl">4.5</span>,</span>
+<span>    stroke <span class="op">=</span> <span class="fl">0.35</span></span>
+<span>  <span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">method</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_gradient.html" class="external-link">scale_fill_gradient2</a></span><span class="op">(</span></span>
+<span>    low <span class="op">=</span> <span class="st">"#B2182B"</span>,</span>
+<span>    mid <span class="op">=</span> <span class="st">"white"</span>,</span>
+<span>    high <span class="op">=</span> <span class="st">"#2166AC"</span>,</span>
+<span>    midpoint <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>    limits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="va">water_level_limit</span>, <span class="va">water_level_limit</span><span class="op">)</span></span>
+<span>  <span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_shape_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    <span class="st">"Sample point"</span> <span class="op">=</span> <span class="fl">21</span>,</span>
+<span>    <span class="st">"Segment model point"</span> <span class="op">=</span> <span class="fl">23</span></span>
+<span>  <span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
+<span>    x <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>    y <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>    fill <span class="op">=</span> <span class="st">"Net water-level\nchange (m)"</span>,</span>
+<span>    shape <span class="op">=</span> <span class="st">"Observation type"</span></span>
+<span>  <span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p><img src="stream-depletion-and-drawdown_files/figure-html/map-stream-water-levels-1.png" class="r-plt" alt="" width="100%" style="display: block; margin: auto;"></p>
+<p>Finally, we can summarize the distribution of hydraulic-head change by method and observation type to confirm that the constant-head method is working at the segment model points.</p>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">stream_water_level_summary</span> <span class="op">&lt;-</span> <span class="va">stream_water_level_map</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">method</span>, <span class="va">point_type</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
+<span>    mean_m <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">water_level_change_m</span><span class="op">)</span>,</span>
+<span>    standard_deviation_m <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">water_level_change_m</span><span class="op">)</span>,</span>
+<span>    minimum_m <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">water_level_change_m</span><span class="op">)</span>,</span>
+<span>    maximum_m <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">water_level_change_m</span><span class="op">)</span>,</span>
+<span>    .groups <span class="op">=</span> <span class="st">"drop"</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span><span class="va">stream_water_level_summary</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 4 × 6</span></span></span>
+<span><span class="co">#&gt;   method        point_type       mean_m standard_deviation_m minimum_m maximum_m</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> ADF           Sample point  -<span style="color: #BB0000;">3.48</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>             6.07<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span> -<span style="color: #BB0000;">2.27</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 1</span>  5.20<span style="color: #949494;">e</span><span style="color: #BB0000;">- 3</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> ADF           Segment mode… -<span style="color: #BB0000;">3.06</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>             5.39<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span> -<span style="color: #BB0000;">1.51</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 1</span>  3.70<span style="color: #949494;">e</span><span style="color: #BB0000;">- 4</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Constant head Sample point  -<span style="color: #BB0000;">8.36</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 3</span>             3.97<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span> -<span style="color: #BB0000;">1.43</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 1</span>  4.73<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> Constant head Segment mode… -<span style="color: #BB0000;">1.02</span><span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span>             2.11<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span> -<span style="color: #BB0000;">5.55</span><span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span>  6.95<span style="color: #949494;">e</span><span style="color: #BB0000;">-18</span></span></span></code></pre></div>
+</div>
   </div>
 
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
