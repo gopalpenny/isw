@@ -82,8 +82,7 @@
       </header><div class="row">
   <div class="col-md-9 contents">
     <div class="page-header toc-ignore">
-      <h1 data-toc-skip>Comparing ADF and Constant-Head Stream
-Injection</h1>
+      <h1 data-toc-skip>Comparing ADF and Constant-Head Stream Injection</h1>
             
       
 
@@ -103,65 +102,30 @@ Injection</h1>
 <div class="section level2">
 <h2 id="purpose">Purpose<a class="anchor" aria-label="anchor" href="#purpose"></a>
 </h2>
-<p><code>isw</code> supports two ways to model how a stream responds to
-pumping:</p>
+<p><code>isw</code> supports two ways to model how a stream responds to pumping:</p>
 <ul>
 <li>
-<code>method = "adf"</code> estimates total stream depletion with
-analytical depletion functions, then distributes that depletion among
-stream segments. This is the default method.</li>
+<code>method = "adf"</code> estimates total stream depletion with analytical depletion functions, then distributes that depletion among stream segments. This is the default method.</li>
 <li>
-<code>method = "constant_head"</code> solves for the injection rate
-at each stream segment. The rates are chosen so that net water-level
-change is zero at each segment’s model point at the end of every
-injection interval.</li>
+<code>method = "constant_head"</code> solves for the injection rate at each stream segment. The rates are chosen so that net water-level change is zero at each segment’s model point at the end of every injection interval.</li>
 </ul>
-<p>This vignette uses both methods to evaluate the same aquifer and
-pumping scenario. The methods share the stream geometry, pumping
-schedule, temporal grid, and observation locations so their results can
-be compared directly. The scenario is deliberately simple: one pumping
-well beside a straight stream in a homogeneous aquifer. This geometry
-also permits comparison with the analytical image-well solution.</p>
+<p>This vignette uses both methods to evaluate the same aquifer and pumping scenario. The methods share the stream geometry, pumping schedule, temporal grid, and observation locations so their results can be compared directly. The scenario is deliberately simple: one pumping well beside a straight stream in a homogeneous aquifer. This geometry also permits comparison with the analytical image-well solution.</p>
 </div>
 <div class="section level2">
 <h2 id="define-a-common-model">Define a common model<a class="anchor" aria-label="anchor" href="#define-a-common-model"></a>
 </h2>
-<p>Distance calculations require a projected CRS. This example creates
-its inputs directly in UTM zone 15N. When <code>stream_reaches</code>
-uses a geographic CRS, <code><a href="../reference/get_stream_segments.html">get_stream_segments()</a></code> selects a
-local UTM CRS unless the user supplies <code>analysis_crs</code>. Later
-functions transform pumping and observation wells to the CRS used by the
-stream segments.</p>
-<p>The full UTM coordinates are not helpful for understanding the
-layout, so the example defines <code>origin_x</code> and
-<code>origin_y</code> at the point where the stream crosses the
-pumping-well transect. Every location is written as a distance from this
-origin while remaining in the projected CRS.</p>
+<p>Distance calculations require a projected CRS. This example creates its inputs directly in UTM zone 15N. When <code>stream_reaches</code> uses a geographic CRS, <code><a href="../reference/get_stream_segments.html">get_stream_segments()</a></code> selects a local UTM CRS unless the user supplies <code>analysis_crs</code>. Later functions transform pumping and observation wells to the CRS used by the stream segments.</p>
+<p>The full UTM coordinates are not helpful for understanding the layout, so the example defines <code>origin_x</code> and <code>origin_y</code> at the point where the stream crosses the pumping-well transect. Every location is written as a distance from this origin while remaining in the projected CRS.</p>
 <p>Each input has a distinct role in the shared workflow:</p>
 <ul>
 <li>
-<code>stream_reaches</code> defines the stream geometry.
-<code><a href="../reference/get_stream_segments.html">get_stream_segments()</a></code> divides this geometry into segments
-that can be used with either injection method.</li>
+<code>stream_reaches</code> defines the stream geometry. <code><a href="../reference/get_stream_segments.html">get_stream_segments()</a></code> divides this geometry into segments that can be used with either injection method.</li>
 <li>
-<code>pumping_wells</code> identifies the pumping wells and provides
-their locations and aquifer properties. These data are needed for ADF
-apportionment, the stream depletion schedules, and the water-level
-calculation.</li>
+<code>pumping_wells</code> identifies the pumping wells and provides their locations and aquifer properties. These data are needed for ADF apportionment, the stream depletion schedules, and the water-level calculation.</li>
 <li>
-<code>pumping_schedules</code> gives the pumping rate through time
-for each well. <code><a href="../reference/get_stream_injection_schedule.html">get_stream_injection_schedule()</a></code> uses it to
-calculate the stream response, and
-<code><a href="../reference/get_aquifer_water_level_change.html">get_aquifer_water_level_change()</a></code> uses it to calculate
-drawdown from the pumping wells.</li>
+<code>pumping_schedules</code> gives the pumping rate through time for each well. <code><a href="../reference/get_stream_injection_schedule.html">get_stream_injection_schedule()</a></code> uses it to calculate the stream response, and <code><a href="../reference/get_aquifer_water_level_change.html">get_aquifer_water_level_change()</a></code> uses it to calculate drawdown from the pumping wells.</li>
 </ul>
-<p>See the <a href="stream-depletion-apportionment-internals.html#what-the-spatial-inputs-control">detailed
-spatial-input discussion</a> for the required stream and well columns.
-The <a href="stream-depletion-apportionment-internals.html#what-happens-to-the-temporal-inputs">temporal-input
-discussion</a> describes the pumping-schedule format. The corresponding
-function references are also available with
-<code><a href="../reference/get_stream_segments.html">?get_stream_segments</a></code> and
-<code><a href="../reference/get_stream_injection_schedule.html">?get_stream_injection_schedule</a></code>.</p>
+<p>See the <a href="stream-depletion-apportionment-internals.html#what-the-spatial-inputs-control">detailed spatial-input discussion</a> for the required stream and well columns. The <a href="stream-depletion-apportionment-internals.html#what-happens-to-the-temporal-inputs">temporal-input discussion</a> describes the pumping-schedule format. The corresponding function references are also available with <code><a href="../reference/get_stream_segments.html">?get_stream_segments</a></code> and <code><a href="../reference/get_stream_injection_schedule.html">?get_stream_injection_schedule</a></code>.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">analysis_crs</span> <span class="op">&lt;-</span> <span class="fl">32615</span></span>
 <span><span class="va">origin_x</span> <span class="op">&lt;-</span> <span class="fl">500000</span></span>
@@ -204,15 +168,8 @@ function references are also available with
 <div class="section level2">
 <h2 id="create-neutral-stream-segments">Create neutral stream segments<a class="anchor" aria-label="anchor" href="#create-neutral-stream-segments"></a>
 </h2>
-<p><code><a href="../reference/get_stream_segments.html">get_stream_segments()</a></code> divides the stream before either
-injection method is applied. Its output contains no ADF weights or
-injection rates, so the same segments can be used by both methods.</p>
-<p>Each segment has a <code>model_point</code>. This point is the
-location of the segment’s discrete injection well and, for the
-constant-head method, the point where the zero-change condition is
-enforced. By default, <code>well_diam</code> is half the length
-represented by the segment. The Theis response is therefore capped
-within a radius equal to one quarter of that length.</p>
+<p><code><a href="../reference/get_stream_segments.html">get_stream_segments()</a></code> divides the stream before either injection method is applied. Its output contains no ADF weights or injection rates, so the same segments can be used by both methods.</p>
+<p>Each segment has a <code>model_point</code>. This point is the location of the segment’s discrete injection well and, for the constant-head method, the point where the zero-change condition is enforced. By default, <code>well_diam</code> is half the length represented by the segment. The Theis response is therefore capped within a radius equal to one quarter of that length.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stream_segments</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_stream_segments.html">get_stream_segments</a></span><span class="op">(</span></span>
 <span>  <span class="va">stream_reaches</span>,</span>
@@ -254,10 +211,7 @@ within a radius equal to one quarter of that length.</p>
 <div class="section level2">
 <h2 id="place-observations-on-and-away-from-the-stream">Place observations on and away from the stream<a class="anchor" aria-label="anchor" href="#place-observations-on-and-away-from-the-stream"></a>
 </h2>
-<p>Observations spaced every 25 m along the stream show the modeled
-water level at the collocation points and between them. Two
-perpendicular transects show how the response changes with distance from
-the stream. One crosses the pumping well; the other is 300 m north.</p>
+<p>Observations spaced every 25 m along the stream show the modeled water level at the collocation points and between them. Two perpendicular transects show how the response changes with distance from the stream. One crosses the pumping well; the other is 300 m north.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">segment_coordinates</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_coordinates.html" class="external-link">st_coordinates</a></span><span class="op">(</span><span class="va">stream_segments</span><span class="op">$</span><span class="va">model_point</span><span class="op">)</span></span>
 <span><span class="va">boundary_y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="va">origin_y</span> <span class="op">-</span> <span class="fl">575</span>, <span class="va">origin_y</span> <span class="op">+</span> <span class="fl">575</span>, by <span class="op">=</span> <span class="fl">25</span><span class="op">)</span></span>
@@ -364,56 +318,22 @@ the stream. One crosses the pumping well; the other is 300 m north.</p>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>legend.position <span class="op">=</span> <span class="st">"bottom"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="stream-injection-methods_files/figure-html/observation-wells-1.png" class="r-plt" alt="" width="100%" style="display: block; margin: auto;"></p>
-<p>Boundary observations that coincide with model points are shown only
-as a blue injection/collocation point, rather than as two overlapping
-symbols.</p>
+<p>Boundary observations that coincide with model points are shown only as a blue injection/collocation point, rather than as two overlapping symbols.</p>
 </div>
 <div class="section level2">
 <h2 id="construct-adf-and-constant-head-schedules">Construct ADF and constant-head schedules<a class="anchor" aria-label="anchor" href="#construct-adf-and-constant-head-schedules"></a>
 </h2>
-<p>Before constructing the schedules, we choose the output times and the
-time step used for stream injection.</p>
+<p>Before constructing the schedules, we choose the output times and the time step used for stream injection.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">evaluation_times</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">30</span>, <span class="fl">60</span>, <span class="fl">90</span>, <span class="fl">120</span>, <span class="fl">180</span><span class="op">)</span>, <span class="st">"days"</span><span class="op">)</span></span>
 <span><span class="va">injection_times</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">180</span>, by <span class="op">=</span> <span class="fl">15</span><span class="op">)</span>, <span class="st">"days"</span><span class="op">)</span></span></code></pre></div>
-<p><code>evaluation_times</code> specifies when the model returns
-water-level results. The stream-depletion schedule must extend through
-all of these times.</p>
-<p><code>injection_times</code> controls the internal time resolution of
-that schedule. It adds boundaries between piecewise-constant injection
-intervals but does not request more water-level output. Pumping-schedule
-times and evaluation times are always included as interval boundaries,
-whether or not <code>injection_times</code> is supplied.</p>
-<p>For ADF, stream depletion changes continuously. The schedule
-approximates this change with a constant rate in each interval, using
-the average depletion at the interval’s two endpoints. Shorter intervals
-improve this approximation.</p>
-<p>For constant head, the model solves one set of injection rates for
-each interval and holds those rates constant until the next interval
-begins. The zero-change condition for hydraulic head at the stream is
-enforced at the interval end. Shorter intervals let the rates adjust
-more often and enforce the condition more frequently. They also alter
-the injection history carried into later intervals, so they can change
-constant-head results even when <code>evaluation_times</code> stays the
-same. This example uses the same 15-day increment for both methods so
-that differences in the results are less likely to be caused by
-different time steps.</p>
-<p>The extra <code>injection_times</code> are optional. If
-<code>injection_times</code> is omitted, the package uses the
-pumping-schedule and evaluation times as the interval endpoints to set
-constant injections.</p>
-<p>More intervals require more analytical response evaluations for ADF
-and more matrix solves for constant head. Note that the constant-head
-calculation reuses a matrix factorization when the interval duration and
-aquifer properties are the same. The <a href="stream-depletion-apportionment-internals.html#what-happens-to-the-temporal-inputs">temporal-input
-discussion</a> provides more detail about evaluation times, and the <a href="stream-depletion-apportionment-internals.html#what-happens-inside-get_stream_injection_schedule">schedule-grid
-walkthrough</a> shows how optional injection times are merged with
-required boundaries.</p>
-<p>The ADF workflow first calculates pump-specific weights for the
-stream segments, then passes those weights to
-<code><a href="../reference/get_stream_injection_schedule.html">get_stream_injection_schedule()</a></code>. The constant-head workflow
-passes the stream segments directly to the same function. Both schedules
-use the interval grid defined above.</p>
+<p><code>evaluation_times</code> specifies when the model returns water-level results. The stream-depletion schedule must extend through all of these times.</p>
+<p><code>injection_times</code> controls the internal time resolution of that schedule. It adds boundaries between piecewise-constant injection intervals but does not request more water-level output. Pumping-schedule times and evaluation times are always included as interval boundaries, whether or not <code>injection_times</code> is supplied.</p>
+<p>For ADF, stream depletion changes continuously. The schedule approximates this change with a constant rate in each interval, using the average depletion at the interval’s two endpoints. Shorter intervals improve this approximation.</p>
+<p>For constant head, the model solves one set of injection rates for each interval and holds those rates constant until the next interval begins. The zero-change condition for hydraulic head at the stream is enforced at the interval end. Shorter intervals let the rates adjust more often and enforce the condition more frequently. They also alter the injection history carried into later intervals, so they can change constant-head results even when <code>evaluation_times</code> stays the same. This example uses the same 15-day increment for both methods so that differences in the results are less likely to be caused by different time steps.</p>
+<p>The extra <code>injection_times</code> are optional. If <code>injection_times</code> is omitted, the package uses the pumping-schedule and evaluation times as the interval endpoints to set constant injections.</p>
+<p>More intervals require more analytical response evaluations for ADF and more matrix solves for constant head. Note that the constant-head calculation reuses a matrix factorization when the interval duration and aquifer properties are the same. The <a href="stream-depletion-apportionment-internals.html#what-happens-to-the-temporal-inputs">temporal-input discussion</a> provides more detail about evaluation times, and the <a href="stream-depletion-apportionment-internals.html#what-happens-inside-get_stream_injection_schedule">schedule-grid walkthrough</a> shows how optional injection times are merged with required boundaries.</p>
+<p>The ADF workflow first calculates pump-specific weights for the stream segments, then passes those weights to <code><a href="../reference/get_stream_injection_schedule.html">get_stream_injection_schedule()</a></code>. The constant-head workflow passes the stream segments directly to the same function. Both schedules use the interval grid defined above.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stream_apportionment</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_adf_stream_apportionment.html">get_adf_stream_apportionment</a></span><span class="op">(</span></span>
 <span>  <span class="va">pumping_wells</span>,</span>
@@ -440,13 +360,7 @@ use the interval grid defined above.</p>
 <span>  <span class="va">injection_times</span>,</span>
 <span>  method <span class="op">=</span> <span class="st">"constant_head"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>The constant-head schedule keeps each pump’s contribution separate.
-It also reports two diagnostics. <code>boundary_residual</code> is the
-signed water-level change remaining at a collocation point after the
-solve. <code>matrix_condition_number</code> indicates how sensitive the
-solved rates are to small numerical or input changes. <code>isw</code>
-warns when the condition number exceeds
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mn>6</mn></msup><annotation encoding="application/x-tex">10^6</annotation></semantics></math>.</p>
+<p>The constant-head schedule keeps each pump’s contribution separate. It also reports two diagnostics. <code>boundary_residual</code> is the signed water-level change remaining at a collocation point after the solve. <code>matrix_condition_number</code> indicates how sensitive the solved rates are to small numerical or input changes. <code>isw</code> warns when the condition number exceeds <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mn>6</mn></msup><annotation encoding="application/x-tex">10^6</annotation></semantics></math>.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">constant_head_diagnostics</span> <span class="op">&lt;-</span> <span class="va">constant_head_schedule</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -468,13 +382,8 @@ warns when the condition number exceeds
 <div class="section level3">
 <h3 id="compare-total-stream-depletion">Compare total stream depletion<a class="anchor" aria-label="anchor" href="#compare-total-stream-depletion"></a>
 </h3>
-<p>Water lost from the stream enters the aquifer. The schedule reports
-this as a negative <code>injection_rate</code> at each stream model
-point. Its negative is the corresponding positive stream-depletion
-rate.</p>
-<p>For ADF, this quantity is the interval-average analytical depletion
-distributed among the segments. For constant head, it is the total
-injection needed to maintain the boundary condition.</p>
+<p>Water lost from the stream enters the aquifer. The schedule reports this as a negative <code>injection_rate</code> at each stream model point. Its negative is the corresponding positive stream-depletion rate.</p>
+<p>For ADF, this quantity is the interval-average analytical depletion distributed among the segments. For constant head, it is the total injection needed to maintain the boundary condition.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stream_depletion_comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span><span class="va">adf_schedule</span>, method <span class="op">=</span> <span class="st">"ADF"</span><span class="op">)</span>,</span>
@@ -507,15 +416,8 @@ injection needed to maintain the boundary condition.</p>
 <div class="section level2">
 <h2 id="compare-water-levels-at-the-stream">Compare water levels at the stream<a class="anchor" aria-label="anchor" href="#compare-water-levels-at-the-stream"></a>
 </h2>
-<p><code><a href="../reference/get_aquifer_water_level_change.html">get_aquifer_water_level_change()</a></code> can use either
-completed schedule. For the constant-head schedule, net water-level
-change should be zero to numerical precision at every collocation point
-and interval end. The method does not enforce zero change between
-collocation points, so those values help reveal how well the discrete
-wells represent the full stream boundary.</p>
-<p>ADF calculates depletion but does not directly enforce water level at
-the stream. Nonzero water-level changes are therefore expected for the
-ADF result.</p>
+<p><code><a href="../reference/get_aquifer_water_level_change.html">get_aquifer_water_level_change()</a></code> can use either completed schedule. For the constant-head schedule, net water-level change should be zero to numerical precision at every collocation point and interval end. The method does not enforce zero change between collocation points, so those values help reveal how well the discrete wells represent the full stream boundary.</p>
+<p>ADF calculates depletion but does not directly enforce water level at the stream. Nonzero water-level changes are therefore expected for the ADF result.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">adf_water_levels</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/get_aquifer_water_level_change.html">get_aquifer_water_level_change</a></span><span class="op">(</span></span>
 <span>  <span class="va">pumping_wells</span>,</span>
@@ -598,16 +500,8 @@ ADF result.</p>
 <div class="section level2">
 <h2 id="compare-transects-and-the-image-well-solution">Compare transects and the image-well solution<a class="anchor" aria-label="anchor" href="#compare-transects-and-the-image-well-solution"></a>
 </h2>
-<p>The transect plots show how the discrete stream representation
-behaves away from the boundary. At day 90, the center transect can also
-be compared with the analytical image-well solution for a straight,
-constant-head stream.</p>
-<p><code>isw</code> uses positive rates for pumping and negative rates
-for injection. <code><a href="../reference/get_straight_stream_drawdown_ratio.html">get_straight_stream_drawdown_ratio()</a></code> returns
-the signed ratio
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">Δ</mi><mi>h</mi><mi>/</mi><mi>Q</mi></mrow><annotation encoding="application/x-tex">\Delta h / Q</annotation></semantics></math>,
-which is negative. Multiplying the positive pumping rate directly by
-this ratio gives the signed water-level change.</p>
+<p>The transect plots show how the discrete stream representation behaves away from the boundary. At day 90, the center transect can also be compared with the analytical image-well solution for a straight, constant-head stream.</p>
+<p><code>isw</code> uses positive rates for pumping and negative rates for injection. <code><a href="../reference/get_straight_stream_drawdown_ratio.html">get_straight_stream_drawdown_ratio()</a></code> returns the signed ratio <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Δ</mi><mi>h</mi><mi>/</mi><mi>Q</mi></mrow><annotation encoding="application/x-tex">\Delta h / Q</annotation></semantics></math>, which is negative. Multiplying the positive pumping rate directly by this ratio gives the signed water-level change.</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">image_well_reference</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
 <span>  method <span class="op">=</span> <span class="st">"Image well"</span>,</span>
@@ -658,16 +552,12 @@ this ratio gives the signed water-level change.</p>
 <div class="section level2">
 <h2 id="interpreting-the-comparison">Interpreting the comparison<a class="anchor" aria-label="anchor" href="#interpreting-the-comparison"></a>
 </h2>
-<p>The constant-head method used here represents the stream with
-discrete wells. The following checks help assess that approximation:</p>
+<p>The constant-head method used here represents the stream with discrete wells. The following checks help assess that approximation:</p>
 <ol style="list-style-type: decimal">
 <li>boundary residuals at collocation points are near zero;</li>
-<li>water levels between collocation points do not show unacceptable
-oscillation;</li>
-<li>off-stream transects converge as segment and time spacing are
-refined; and</li>
-<li>the response mimics the image-well solution for this straight,
-homogeneous test case.</li>
+<li>water levels between collocation points do not show unacceptable oscillation;</li>
+<li>off-stream transects converge as segment and time spacing are refined; and</li>
+<li>the response mimics the image-well solution for this straight, homogeneous test case.</li>
 </ol>
 </div>
   </div>

@@ -1,6 +1,5 @@
 # TODO: Before finalizing this public interface, review the source options,
-# buffering and clipping defaults, retained USGS attributes, and the extent and
-# field selection used for the packaged Sixmile Creek example.
+# buffering and clipping defaults, and retained USGS attributes.
 
 #' Retrieve USGS stream reaches
 #'

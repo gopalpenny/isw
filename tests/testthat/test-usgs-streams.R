@@ -144,20 +144,3 @@ test_that("only the current 3DHP source is accepted", {
     'currently be "3dhp"'
   )
 })
-
-test_that("the packaged Sixmile Creek network is a valid stream input", {
-  data("sixmile_creek_stream_reaches", package = "isw")
-
-  expect_s3_class(sixmile_creek_stream_reaches, "sf")
-  expect_named(
-    sixmile_creek_stream_reaches,
-    c("reach_id", "stream_name", "geometry")
-  )
-  expect_setequal(
-    unique(sixmile_creek_stream_reaches$stream_name),
-    c("Sixmile Creek", "Dorn Creek")
-  )
-  expect_silent(
-    isw:::.validate_stream_reaches(sixmile_creek_stream_reaches)
-  )
-})

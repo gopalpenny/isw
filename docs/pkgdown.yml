@@ -1,11 +1,11 @@
-pandoc: 3.8.3
+pandoc: '2.5'
 pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
   stream-depletion-and-drawdown: stream-depletion-and-drawdown.html
   articles/stream-depletion-apportionment-internals: stream-depletion-apportionment-internals.html
   articles/stream-injection-methods: stream-injection-methods.html
-last_built: 2026-08-27T14:37Z
+last_built: 2026-08-27T14:44Z
 urls:
   reference: https://gopalpenny.github.io/isw/reference
   article: https://gopalpenny.github.io/isw/articles
