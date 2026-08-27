@@ -32,14 +32,18 @@ endpoint-collocated constant-head boundary."><!-- mathjax --><script src="https:
 
     <span class="caret"></span>
   </a>
-  <ul class="dropdown-menu" role="menu"><li>
-      <a href="../articles/stream-depletion-apportionment-internals.html">Stream Depletion Apportionment: Detailed Walkthrough</a>
-    </li>
+  <ul class="dropdown-menu" role="menu"><li class="divider">
+    <li class="dropdown-header">Package workflow</li>
     <li>
-      <a href="../articles/stream-depletion-apportionment.html">Stream Depletion Apportionment</a>
+      <a href="../articles/stream-depletion-and-drawdown.html">Stream Depletion and Drawdown in the ISW package</a>
     </li>
+    <li class="divider">
+    <li class="dropdown-header">Detailed methods</li>
     <li>
       <a href="../articles/stream-injection-methods.html">Comparing ADF and Constant-Head Stream Injection</a>
+    </li>
+    <li>
+      <a href="../articles/stream-depletion-apportionment-internals.html">Stream Depletion Apportionment: Detailed Walkthrough</a>
     </li>
   </ul></li>
 <li>
@@ -73,7 +77,8 @@ endpoint-collocated constant-head boundary.</p>
 <span>  injection_times <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"adf"</span>, <span class="st">"constant_head"</span><span class="op">)</span>,</span>
 <span>  stream_apportionment <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  allow_many_aquifer_parameter_sets <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  allow_many_aquifer_parameter_sets <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  adf_stream_depletion <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -120,6 +125,13 @@ was supplied as the third positional argument.</p></dd>
 stop when more than ten unique aquifer parameter sets are found unless
 this is `TRUE`.</p></dd>
 
+
+<dt id="arg-adf-stream-depletion">adf_stream_depletion<a class="anchor" aria-label="anchor" href="#arg-adf-stream-depletion"></a></dt>
+<dd><p>Optional output from
+[get_adf_stream_depletion()] that includes every schedule boundary. When
+supplied with `method = "adf"`, these rates are reused instead of being
+recalculated; results at additional times are ignored.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
@@ -136,9 +148,9 @@ this is `TRUE`.</p></dd>
 final evaluation time. Evaluation times are also included so the final
 requested result is an interval boundary. Optional `injection_times` add
 refinement boundaries; they never remove pumping-schedule boundaries.</p>
-<p>With `method = "adf"`, stream depletion is evaluated at every injection
-boundary and the negative arithmetic mean of adjacent endpoint rates is
-applied over each interval.</p>
+<p>With `method = "adf"`, [get_adf_stream_depletion()] evaluates stream
+depletion at every schedule boundary. The arithmetic mean of adjacent
+endpoint rates is applied over each interval.</p>
 <p>With `method = "constant_head"`, segment model points are discrete
 injection wells and constant-head collocation points. One coupled response
 matrix is factored for each aquifer parameter set and interval duration.
