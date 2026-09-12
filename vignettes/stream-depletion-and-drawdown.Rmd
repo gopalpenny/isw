@@ -97,22 +97,23 @@ maximum modeled segment length; smaller values represent the stream boundary
 at greater spatial resolution but increase the number of injection rates that
 must be calculated.
 
-Each returned segment contains a `model_point`. This is the discrete injection
-location and, for constant head, the location where the zero-change condition
-is imposed. The effective injection-well diameter is based on the segment's
-`represented_length`.
+Each returned line is a finite injection element. Its `model_point` is the
+constant-head collocation location, not an injection well. `stream_width`
+sets the near-line minimum response radius and should normally be supplied as
+a physical stream width.
 
 ```{r stream-segments}
 stream_segments <- get_stream_segments(
   stream_reaches,
-  reach_spacing = set_units(400, "m")
+  reach_spacing = set_units(400, "m"),
+  stream_width = set_units(20, "m")
 )
 
 stream_segments[c(
   "reach_id",
   "reach_segment_id",
   "represented_length",
-  "well_diam"
+  "stream_width"
 )]
 ```
 

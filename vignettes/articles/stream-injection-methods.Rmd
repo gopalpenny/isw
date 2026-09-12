@@ -8,9 +8,9 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   warning = FALSE,
-  fig.width = 10,
-  fig.height = 5.5,
-  out.width = "100%",
+  fig.width = 8,
+  fig.height = 4.5,
+  out.width = "82%",
   fig.align = "center"
 )
 ```
@@ -120,20 +120,25 @@ pumping_schedules <- tibble(
 applied. Its output contains no ADF weights or injection rates, so the same
 segments can be used by both methods.
 
-Each segment has a `model_point`. This point is the location of the segment's
-discrete injection well and, for the constant-head method, the point where the
-zero-change condition is enforced. By default, `well_diam` is half the length
-represented by the segment. The Theis response is therefore capped within a
-radius equal to one quarter of that length.
+Each segment's line geometry is a finite injection element. Its `model_point`
+is only the collocation location where the constant-head method enforces zero
+change. `stream_width` sets the minimum response radius at half the physical
+width. Here it is supplied explicitly; when omitted, the backward-compatible
+default is half the represented segment length.
+
+In other words, injection is distributed along the line element; the
+collocation point does not act as an injection well. It is simply where the
+model enforces the constant-head boundary condition.
 
 ```{r stream-segments}
 stream_segments <- get_stream_segments(
   stream_reaches,
-  reach_spacing = set_units(100, "m")
+  reach_spacing = set_units(100, "m"),
+  stream_width = set_units(10, "m")
 )
 
 stream_segments[c(
-  "reach_id", "reach_segment_id", "represented_length", "well_diam"
+  "reach_id", "reach_segment_id", "represented_length", "stream_width"
 )]
 ```
 
@@ -144,7 +149,7 @@ the collocation points and between them. Two perpendicular transects show how
 the response changes with distance from the stream. One crosses the pumping
 well; the other is 300 m north.
 
-```{r observation-wells, fig.height = 8.25}
+```{r observation-wells, fig.height = 6.5}
 segment_coordinates <- st_coordinates(stream_segments$model_point)
 boundary_y <- seq(origin_y - 575, origin_y + 575, by = 25)
 boundary_observations <- tibble(
@@ -190,60 +195,100 @@ observation_wells <- st_as_sf(
   crs = analysis_crs
 )
 
+stream_plot_coordinates <- as.data.frame(st_coordinates(stream_segments)) |>
+  mutate(
+    plot_x = X - origin_x,
+    plot_y = Y - origin_y
+  )
+observation_plot <- observation_table |>
+  mutate(
+    plot_x = x - origin_x,
+    plot_y = y - origin_y
+  )
+collocation_plot <- as.data.frame(segment_coordinates) |>
+  mutate(
+    plot_x = X - origin_x,
+    plot_y = Y - origin_y
+  )
+pumping_plot <- as.data.frame(st_coordinates(pumping_wells)) |>
+  mutate(
+    plot_x = X - origin_x,
+    plot_y = Y - origin_y
+  )
+
 ggplot() +
-  geom_sf(data = stream_segments, color = "grey70", linewidth = 1.4) +
-  geom_sf(
+  geom_path(
+    data = stream_plot_coordinates,
+    aes(plot_x, plot_y, group = L1),
+    color = "grey70",
+    linewidth = 1.4
+  ) +
+  geom_point(
     data = filter(
-      observation_wells,
+      observation_plot,
       observation_type == "transect"
     ),
-    aes(color = "Transect observation", shape = "Transect observation"),
+    aes(
+      plot_x,
+      plot_y,
+      color = "Transect observation",
+      shape = "Transect observation"
+    ),
     size = 2
   ) +
-  geom_sf(
+  geom_point(
     data = filter(
-      observation_wells,
+      observation_plot,
       observation_type == "stream boundary" & !is_collocation
     ),
     aes(
+      plot_x,
+      plot_y,
       color = "Other boundary observation",
       shape = "Other boundary observation"
     ),
     size = 2.4
   ) +
-  geom_sf(
-    data = st_sf(geometry = stream_segments$model_point),
+  geom_point(
+    data = collocation_plot,
     aes(
-      color = "Injection / collocation point",
-      shape = "Injection / collocation point"
+      plot_x,
+      plot_y,
+      color = "Collocation point (constant-head enforced)",
+      shape = "Collocation point (constant-head enforced)"
     ),
     size = 5.4
   ) +
-  geom_sf(
-    data = pumping_wells,
-    aes(color = "Pumping well", shape = "Pumping well"),
+  geom_point(
+    data = pumping_plot,
+    aes(
+      plot_x,
+      plot_y,
+      color = "Pumping well",
+      shape = "Pumping well"
+    ),
     size = 3.5
   ) +
   scale_color_manual(values = c(
     "Pumping well" = "firebrick",
-    "Injection / collocation point" = "navy",
+    "Collocation point (constant-head enforced)" = "navy",
     "Other boundary observation" = "#009E73",
     "Transect observation" = "#6A3D9A"
   )) +
   scale_shape_manual(values = c(
     "Pumping well" = 8,
-    "Injection / collocation point" = 18,
+    "Collocation point (constant-head enforced)" = 18,
     "Other boundary observation" = 17,
     "Transect observation" = 1
   )) +
-  coord_sf(xlim = c(origin_x - 25, origin_x + 825)) +
+  coord_equal(xlim = c(-25, 825), ylim = c(-625, 625)) +
   labs(
     subtitle = paste(
       "The segmented stream has the same footprint as the original",
       "stream reach"
     ),
-    x = NULL,
-    y = NULL,
+    x = "Distance from stream, x (m)",
+    y = "Distance along stream from pumping location, y (m)",
     color = NULL,
     shape = NULL
   ) +
@@ -251,8 +296,8 @@ ggplot() +
   theme(legend.position = "bottom")
 ```
 
-Boundary observations that coincide with model points are shown only
-as a blue injection/collocation point, rather than as two overlapping symbols.
+Boundary observations that coincide with model points are shown only as a blue
+collocation point, rather than as two overlapping symbols.
 
 ## Construct ADF and constant-head schedules
 
@@ -355,8 +400,8 @@ constant_head_diagnostics
 ### Compare total stream depletion
 
 Water lost from the stream enters the aquifer. The schedule reports this as a
-negative `injection_rate` at each stream model point. Its negative is the
-corresponding positive stream-depletion rate.
+negative total `injection_rate` for each finite line element. Its negative is
+the corresponding positive stream-depletion rate.
 
 For ADF, this quantity is the interval-average analytical depletion distributed
 among the segments. For constant head, it is the total injection needed to
@@ -390,13 +435,105 @@ ggplot(
   theme_minimal()
 ```
 
+### Map injection along the stream
+
+The following maps show the active piecewise-constant rate at four times. Each
+line color represents the total rate assigned to that stream segment, expressed
+as a positive injection magnitude into the aquifer. The same color scale is
+used across methods and snapshots so differences can be compared directly.
+
+```{r plot-segment-injection-snapshots, fig.width = 15, fig.height = 8.5, out.width = "115%"}
+injection_snapshots <- set_units(c(25, 75, 125, 175), "days")
+combined_injection_schedule <- bind_rows(
+  mutate(adf_schedule, method = "ADF"),
+  mutate(constant_head_schedule, method = "Constant head")
+)
+
+segment_injection_snapshots <- bind_rows(lapply(
+  seq_along(injection_snapshots),
+  function(snapshot_index) {
+    snapshot <- injection_snapshots[[snapshot_index]]
+    combined_injection_schedule |>
+      filter(interval_start <= snapshot, snapshot < interval_end) |>
+      group_by(method, reach_segment_id) |>
+      summarize(
+        injection_rate = sum(injection_rate),
+        .groups = "drop"
+      ) |>
+      mutate(
+        snapshot = factor(
+          paste("Day", as.numeric(snapshot)),
+          levels = paste("Day", as.numeric(injection_snapshots))
+        ),
+        injection_rate_m3_day = -as.numeric(set_units(
+          injection_rate,
+          "m^3/day"
+        ))
+      )
+  }
+))
+
+stream_segment_plot_coordinates <- stream_plot_coordinates |>
+  mutate(
+    reach_segment_id = stream_segments$reach_segment_id[L1]
+  ) |>
+  inner_join(
+    segment_injection_snapshots,
+    by = "reach_segment_id"
+  )
+
+ggplot(
+  stream_segment_plot_coordinates,
+  aes(
+    plot_x,
+    plot_y,
+    group = reach_segment_id,
+    color = injection_rate_m3_day
+  )
+) +
+  geom_path(linewidth = 4, lineend = "butt") +
+  geom_point(
+    data = pumping_plot,
+    aes(plot_x, plot_y),
+    inherit.aes = FALSE,
+    color = "black",
+    shape = 8,
+    size = 2.5
+  ) +
+  facet_grid(rows = vars(method), cols = vars(snapshot)) +
+  scale_color_viridis_c(option = "C") +
+  scale_x_continuous(
+    breaks = c(0, 300),
+    labels = c("0 m", "300 m")
+  ) +
+  coord_equal(xlim = c(-25, 325), ylim = c(-625, 625)) +
+  labs(
+    x = "Distance from stream, x (m)",
+    y = "Distance along stream from pumping location, y (m)",
+    color = expression("Injection rate"~(m^3/day))
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    legend.position = "bottom",
+    strip.text = element_text(size = 13)
+  )
+```
+
+```{r reset-figure-size, include = FALSE}
+knitr::opts_chunk$set(
+  fig.width = 10,
+  fig.height = 5.5,
+  out.width = "100%"
+)
+```
+
 ## Compare water levels at the stream
 
 `get_aquifer_water_level_change()` can use either completed schedule. For the
 constant-head schedule, net water-level change should be zero to numerical
 precision at every collocation point and interval end. The method does not
 enforce zero change between collocation points, so those values help reveal
-how well the discrete wells represent the full stream boundary.
+how well the finite segments represent the full stream boundary.
 
 ADF calculates depletion but does not directly enforce water level at the
 stream. Nonzero water-level changes are therefore expected for the ADF result.
@@ -430,7 +567,7 @@ water_levels <- bind_rows(adf_water_levels, constant_head_water_levels) |>
   )))
 ```
 
-```{r plot-stream-boundary, fig.height = 6.5}
+```{r plot-stream-boundary, fig.height = 5}
 water_levels |>
   filter(
     observation_type == "stream boundary",
@@ -448,7 +585,7 @@ water_levels |>
     aes(shape = "Collocation point"),
     size = 2
   ) +
-  facet_wrap(~method, scales = "free_y", ncol = 1) +
+  scale_y_continuous() +
   labs(
     x = "Distance along stream from pumping-well transect (m)",
     y = "Net water-level change (m)",
@@ -473,7 +610,7 @@ water_levels |>
 
 ## Compare transects and the image-well solution
 
-The transect plots show how the discrete stream representation behaves away
+The transect plots show how the finite-line stream representation behaves away
 from the boundary. At day 90, the center transect can also be compared with
 the analytical image-well solution for a straight, constant-head stream.
 
@@ -505,7 +642,7 @@ image_well_reference <- tibble(
 )
 ```
 
-```{r plot-transects, fig.height = 7}
+```{r plot-transects, fig.height = 5.5}
 transect_results <- water_levels |>
   filter(
     observation_type == "transect",
@@ -534,7 +671,8 @@ bind_rows(transect_results, image_well_reference) |>
 
 ## Interpreting the comparison
 
-The constant-head method used here represents the stream with discrete wells. The following checks help assess that
+The constant-head method used here represents each segment as a finite line
+element. The following checks help assess the spatial and temporal
 approximation:
 
 1. boundary residuals at collocation points are near zero;

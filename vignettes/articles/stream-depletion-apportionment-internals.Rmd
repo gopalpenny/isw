@@ -200,15 +200,15 @@ the model requires linear distances.
 The function divides every reach into approximately equal segments no longer
 than `reach_spacing`. Each segment retains its parent `reach_id`, receives a
 generated `reach_segment_id`, and stores its actual `represented_length`.
-`model_point` is the along-line midpoint used later as the equivalent
-stream-injection location.
+`model_point` is the along-line midpoint used later as a constant-head
+collocation location. The complete segment line is the injection element.
 
 This creates three distinct spatial units in the ADF workflow:
 
 | Spatial object | Role in the analysis |
 |:---------------|:---------------------|
 | **Reach** | A user-supplied source geometry identified by `reach_id`. Reaches can be used to group or summarize results, but analytical responses are not calculated directly at this level. |
-| **Reach segment** | The primary ADF computational unit, created from each reach according to `reach_spacing`. Each pump--segment pair receives an `apportionment_fraction` and `pump_to_reach_distance`. Depletion is returned by segment; for drawdown, `model_point` becomes an equivalent injection well and `represented_length` becomes its effective diameter. |
+| **Reach segment** | The primary ADF computational unit, created from each reach according to `reach_spacing`. Each pump--segment pair receives an `apportionment_fraction` and `pump_to_reach_distance`. Depletion is returned by segment; for drawdown, the line becomes a finite injection element and `stream_width` regularizes its near-line response. |
 | **Sample point** | A temporary weighting location created within a segment according to `sample_spacing`. Its distance and `sampled_length` determine a web or web-squared weight. These weights are summed to the segment before time-dependent depletion and drawdown are calculated. |
 
 ```{r discretize-stream-reaches}
@@ -517,8 +517,8 @@ patchwork::wrap_plots(
 ## Generate the stream-depletion schedule for ADF drawdown
 
 In order to estimate aquifer drawdown, we represent stream depletion as
-injection wells. Each reach segment becomes an equivalent injection well whose
-schedule is derived from the depletion apportioned to that segment.
+uniform injection along finite line elements. Each reach segment receives a
+total-rate schedule derived from the depletion apportioned to that segment.
 `get_stream_injection_schedule()` returns one row per pump, segment, and time
 interval. Each row specifies the signed aquifer-injection rate represented
 during that interval; negative values indicate water entering the aquifer.
@@ -637,14 +637,14 @@ water_level_changes
 
 Pumping and observation wells are transformed to the projected CRS stored by
 `stream_apportionment`. Direct pumping distances are measured from each
-physical pumping well to each observation well. Each reach segment's
-`model_point` becomes an equivalent injection well, and its distance to every
-observation well is calculated.
+physical pumping well to each observation well. Each reach segment's active
+line geometry becomes a finite injection element. Gauss--Legendre source
+points and weights are prepared once, then their distances to every observation
+well are reused for all elapsed times.
 
-The physical response uses the user-supplied pumping-well diameter. An
-injection point instead uses its segment's `represented_length` as an effective
-diameter. This holds the point-well response constant inside half a segment
-length and prevents a singular response at the stream.
+The physical pumping response uses the user-supplied pumping-well diameter.
+The line response uses `stream_width`, holding the integrand constant inside
+half that width and preventing a singular response on the stream.
 
 These intermediate geometries and distance matrices can be constructed and
 inspected directly:
@@ -658,25 +658,28 @@ prepared_observation_wells <- observation_wells |>
   st_zm(drop = TRUE, what = "ZM") |>
   st_transform(drawdown_crs)
 
-injection_points <- st_sf(
-  pump_id = stream_apportionment$pump_id,
-  reach_segment_id = stream_apportionment$reach_segment_id,
-  well_diam = stream_apportionment$represented_length,
-  geometry = st_transform(stream_apportionment$model_point, drawdown_crs)
-)
-
 pump_to_observation_distances <- st_distance(
   prepared_pumping_wells,
   prepared_observation_wells
 )
-injection_to_observation_distances <- st_distance(
-  injection_points,
-  prepared_observation_wells
+
+unique_segment_rows <- match(
+  unique(stream_apportionment$reach_segment_id),
+  stream_apportionment$reach_segment_id
+)
+line_elements <- isw:::.prepare_line_elements(
+  stream_apportionment[unique_segment_rows, ]
+)
+line_response_operator <- isw:::.prepare_line_response_operator(
+  prepared_observation_wells,
+  line_elements
 )
 
 pump_to_observation_distances
-head(injection_points)
-head(injection_to_observation_distances)
+head(line_elements$quadrature_points)
+line_response_operator$distances[1:min(3, nrow(
+  line_response_operator$distances
+)), 1:min(6, ncol(line_response_operator$distances))]
 ```
 
 #### 2. Convert pumping and injection schedules to events
