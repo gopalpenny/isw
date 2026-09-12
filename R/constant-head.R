@@ -78,39 +78,20 @@
   )
 }
 
-# Calculate a discrete-well response matrix between stream model points.
-.get_stream_well_response_matrix <- function(
-    stream_points,
+# Calculate a finite-line response matrix at stream collocation points.
+.get_stream_line_response_matrix <- function(
+    response_operator,
     K,
     D,
     V,
     elapsed_time) {
 
-  number_of_points <- nrow(stream_points)
-  distance_matrix <- sf::st_distance(stream_points, stream_points)
-  distance_vector <- units::set_units(
-    as.numeric(distance_matrix),
-    units::deparse_unit(distance_matrix),
-    mode = "standard"
-  )
-  response <- .theis_aquifer_drawdown_ratio(
-    distance = distance_vector,
+  .evaluate_line_response_operator(
+    response_operator,
     K = K,
     D = D,
     V = V,
-    t = elapsed_time,
-    well_diam = rep(stream_points$well_diam, each = number_of_points)
-  )
-  response <- units::set_units(
-    response,
-    "days/m^2",
-    mode = "standard"
-  )
-
-  matrix(
-    as.numeric(response),
-    nrow = number_of_points,
-    ncol = number_of_points
+    elapsed_time = elapsed_time
   )
 }
 
@@ -162,7 +143,8 @@
     pumping_schedules,
     stream_segments,
     time_grid,
-    allow_many_aquifer_parameter_sets = FALSE) {
+    allow_many_aquifer_parameter_sets = FALSE,
+    quadrature_order = 16L) {
 
   .validate_stream_segments(stream_segments)
   aquifer_groups <- .get_aquifer_groups(
@@ -187,8 +169,12 @@
   stream_points <- sf::st_sf(
     reach_id = stream_segments$reach_id,
     reach_segment_id = stream_segments$reach_segment_id,
-    well_diam = stream_segments$well_diam,
     geometry = sf::st_transform(stream_segments$model_point, analysis_crs)
+  )
+  line_elements <- .prepare_line_elements(stream_segments, quadrature_order)
+  boundary_response_operator <- .prepare_line_response_operator(
+    stream_points,
+    line_elements
   )
   pumping_events <- .get_pumping_rate_changes(
     pumping_schedules,
@@ -245,8 +231,8 @@
       if (!exists(cache_key, envir = response_cache, inherits = FALSE)) {
         assign(
           cache_key,
-          .get_stream_well_response_matrix(
-            stream_points,
+          .get_stream_line_response_matrix(
+            boundary_response_operator,
             group_pumps$K[[1]],
             group_pumps$D[[1]],
             group_pumps$V[[1]],
@@ -412,7 +398,7 @@
       format(max(affected$matrix_condition_number), digits = 5),
       "; affected aquifer_id values: ",
       paste(unique(affected$aquifer_id), collapse = ", "),
-      ". Inspect stream spacing and well_diam values.",
+      ". Inspect stream spacing and stream_width values.",
       call. = FALSE
     )
   }

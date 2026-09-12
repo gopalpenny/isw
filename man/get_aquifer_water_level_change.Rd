@@ -14,7 +14,8 @@ get_aquifer_water_level_change(
   stream_injection_schedule = NULL,
   injection_method = c("adf", "constant_head"),
   stream_apportionment = NULL,
-  allow_many_aquifer_parameter_sets = FALSE
+  allow_many_aquifer_parameter_sets = FALSE,
+  quadrature_order = 16L
 )
 }
 \arguments{
@@ -43,6 +44,9 @@ schedule is constructed internally.}
 
 \item{allow_many_aquifer_parameter_sets}{Passed to
 [get_stream_injection_schedule()] for constant-head calculations.}
+
+\item{quadrature_order}{Positive integer number of Gauss--Legendre points
+used per straight edge of each finite line element. The default is 16.}
 }
 \value{
 A tibble with pump-specific `pumping_drawdown`, `stream_recovery`,

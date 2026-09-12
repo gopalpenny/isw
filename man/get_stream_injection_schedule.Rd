@@ -13,7 +13,8 @@ get_stream_injection_schedule(
   method = c("adf", "constant_head"),
   stream_apportionment = NULL,
   allow_many_aquifer_parameter_sets = FALSE,
-  adf_stream_depletion = NULL
+  adf_stream_depletion = NULL,
+  quadrature_order = 16L
 )
 }
 \arguments{
@@ -45,6 +46,9 @@ this is `TRUE`.}
 [get_adf_stream_depletion()] that includes every schedule boundary. When
 supplied with `method = "adf"`, these rates are reused instead of being
 recalculated; results at additional times are ignored.}
+
+\item{quadrature_order}{Positive integer number of Gauss--Legendre points
+used per straight edge of each finite line element. The default is 16.}
 }
 \value{
 A tibble with one row per `pump_id`, `reach_segment_id`, and
@@ -68,9 +72,10 @@ With `method = "adf"`, [get_adf_stream_depletion()] evaluates stream
 depletion at every schedule boundary. The arithmetic mean of adjacent
 endpoint rates is applied over each interval.
 
-With `method = "constant_head"`, segment model points are discrete
-injection wells and constant-head collocation points. One coupled response
-matrix is factored for each aquifer parameter set and interval duration.
+With `method = "constant_head"`, segment model points are constant-head
+collocation points and the segment lines are finite injection elements. One
+coupled response matrix is factored for each aquifer parameter set and
+interval duration.
 Pump-specific right-hand sides preserve attribution while sharing that
 factorization. Rates are solved so the signed boundary residual is zero at
 each interval endpoint after accounting for all preceding injection.

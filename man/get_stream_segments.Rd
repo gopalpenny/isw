@@ -4,7 +4,12 @@
 \alias{get_stream_segments}
 \title{Create stream segments for analytical modeling}
 \usage{
-get_stream_segments(stream_reaches, reach_spacing, analysis_crs = NULL)
+get_stream_segments(
+  stream_reaches,
+  reach_spacing,
+  analysis_crs = NULL,
+  stream_width = NULL
+)
 }
 \arguments{
 \item{stream_reaches}{An `sf` stream-reach object accepted by
@@ -17,23 +22,29 @@ model segment.}
 system accepted by [sf::st_crs()]. When `NULL`, an existing projected
 stream CRS is retained; geographic streams are transformed to a local UTM
 CRS selected from their extent.}
+
+\item{stream_width}{Either `NULL` or a positive `units` length. A scalar is
+applied to every segment; one value per generated segment may also be
+supplied. When `NULL`, an existing `stream_width` stream attribute is
+retained. For backward compatibility only, segments without a supplied
+width use half their represented length.}
 }
 \value{
 A projected `sf` object with one line feature per stream segment.
   It contains `reach_id`, `reach_segment_id`, `represented_length`,
-  `well_diam`, `model_point`, and the segment line geometry. `well_diam`
-  defaults to half the actual represented segment length, so the discrete-
-  well self-response is evaluated at one quarter of that length.
+  `stream_width`, `model_point`, and the segment line geometry. The retained
+  `well_diam` column is a backward-compatible alias for `stream_width`.
 }
 \description{
 Transform a stream network to a projected analysis CRS and divide it into
 approximately equal-length model segments.
 }
 \details{
-`model_point` is the along-line midpoint used as the discrete injection-well
-and constant-head collocation location. Input objects are not modified.
-Users may replace the positive `well_diam` values in the returned object
-before constructing an injection schedule.
+`model_point` is the along-line midpoint used as the constant-head
+collocation location. Injection is distributed uniformly along the active
+line geometry. Input objects are not modified.
+`stream_width` regularizes responses on and very near a line element using
+an effective minimum radius of half the width.
 }
 \examples{
 stream_segments <- get_stream_segments(
@@ -41,7 +52,7 @@ stream_segments <- get_stream_segments(
   reach_spacing = units::set_units(100, "m")
 )
 stream_segments[c(
-  "reach_id", "reach_segment_id", "represented_length", "well_diam"
+  "reach_id", "reach_segment_id", "represented_length", "stream_width"
 )]
 
 }

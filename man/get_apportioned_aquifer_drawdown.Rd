@@ -11,7 +11,8 @@ get_apportioned_aquifer_drawdown(
   stream_apportionment,
   evaluation_times = NULL,
   injection_times = NULL,
-  stream_injection_schedule = NULL
+  stream_injection_schedule = NULL,
+  quadrature_order = 16L
 )
 }
 \arguments{
@@ -25,8 +26,8 @@ get_apportioned_aquifer_drawdown(
 [`.validate_observation_wells()`].}
 
 \item{stream_apportionment}{An `sf` object returned by
-[get_stream_reach_apportionment()]. Its `model_point` column supplies
-one injection-well location per reach segment.}
+[get_stream_reach_apportionment()]. Its active line geometry supplies one
+finite injection element per reach segment.}
 
 \item{evaluation_times}{Either `NULL`, a `Date` vector, or a `units` time
 vector. These control when drawdown is returned. When `NULL`,
@@ -39,6 +40,9 @@ vector. These optionally refine the internal stream-injection grid. When
 \item{stream_injection_schedule}{Either `NULL` or a tibble returned by
 [get_stream_injection_schedule()]. When supplied, this schedule is reused
 instead of being recalculated internally.}
+
+\item{quadrature_order}{Positive integer number of Gauss--Legendre points
+used per straight edge of each finite line element. The default is 16.}
 }
 \value{
 A tibble with one row per `pump_id`, `observation_id`, and
@@ -54,16 +58,16 @@ from stream-depletion injection wells using superposition.
 }
 \details{
 Physical pumping-well responses use the pumping schedule directly. Stream
-depletion assigned to each reach segment is represented as injection at the
-segment's along-line `model_point`. The injection schedule is constructed by
-[get_stream_injection_schedule()] and uses the aquifer properties associated
-with the originating `pump_id`. When the apportionment contains `well_diam`,
-it defines each injection point's effective diameter; older objects fall
-back to `represented_length`.
+depletion assigned to each reach segment is represented as uniform
+injection along its finite line geometry. The injection schedule is
+constructed by [get_stream_injection_schedule()] and uses the aquifer
+properties associated with the originating `pump_id`. `stream_width`
+supplies the effective near-line radius used to regularize the response.
 
-Both pumping and injection responses use the infinite-aquifer
-[get_aquifer_drawdown_ratio()] kernel. No image well is included because the
-apportioned stream injection explicitly represents the stream contribution.
+Pumping uses the infinite-aquifer [get_aquifer_drawdown_ratio()] kernel.
+Injection integrates that kernel along each finite line using
+Gauss--Legendre quadrature. No image well is included because the apportioned
+stream injection explicitly represents the stream contribution.
 `pumping_drawdown` and `stream_recovery` are positive component magnitudes.
 The signed net response is `water_level_change = -pumping_drawdown +
 stream_recovery`; negative values indicate falling water levels and positive

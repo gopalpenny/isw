@@ -319,18 +319,23 @@
 #'   system accepted by [sf::st_crs()]. When `NULL`, an existing projected
 #'   stream CRS is retained; geographic streams are transformed to a local UTM
 #'   CRS selected from their extent.
+#' @param stream_width Either `NULL` or a positive `units` length. A scalar is
+#'   applied to every segment; one value per generated segment may also be
+#'   supplied. When `NULL`, an existing `stream_width` stream attribute is
+#'   retained. For backward compatibility only, segments without a supplied
+#'   width use half their represented length.
 #'
 #' @return A projected `sf` object with one line feature per stream segment.
 #'   It contains `reach_id`, `reach_segment_id`, `represented_length`,
-#'   `well_diam`, `model_point`, and the segment line geometry. `well_diam`
-#'   defaults to half the actual represented segment length, so the discrete-
-#'   well self-response is evaluated at one quarter of that length.
+#'   `stream_width`, `model_point`, and the segment line geometry. The retained
+#'   `well_diam` column is a backward-compatible alias for `stream_width`.
 #'
 #' @details
-#' `model_point` is the along-line midpoint used as the discrete injection-well
-#' and constant-head collocation location. Input objects are not modified.
-#' Users may replace the positive `well_diam` values in the returned object
-#' before constructing an injection schedule.
+#' `model_point` is the along-line midpoint used as the constant-head
+#' collocation location. Injection is distributed uniformly along the active
+#' line geometry. Input objects are not modified.
+#' `stream_width` regularizes responses on and very near a line element using
+#' an effective minimum radius of half the width.
 #'
 #' @examples
 #' stream_segments <- get_stream_segments(
@@ -338,14 +343,15 @@
 #'   reach_spacing = units::set_units(100, "m")
 #' )
 #' stream_segments[c(
-#'   "reach_id", "reach_segment_id", "represented_length", "well_diam"
+#'   "reach_id", "reach_segment_id", "represented_length", "stream_width"
 #' )]
 #'
 #' @export
 get_stream_segments <- function(
     stream_reaches,
     reach_spacing,
-    analysis_crs = NULL) {
+    analysis_crs = NULL,
+    stream_width = NULL) {
 
   selected_crs <- .select_stream_analysis_crs(
     stream_reaches,
@@ -359,12 +365,13 @@ get_stream_segments <- function(
     prepared_reaches,
     reach_spacing
   )
-  stream_segments$well_diam <- stream_segments$represented_length / 2
+  stream_segments <- .set_stream_width(stream_segments, stream_width)
   geometry_column <- attr(stream_segments, "sf_column")
   key_columns <- c(
     "reach_id",
     "reach_segment_id",
     "represented_length",
+    "stream_width",
     "well_diam"
   )
   additional_columns <- setdiff(
@@ -379,6 +386,40 @@ get_stream_segments <- function(
   )]
 }
 
+# Attach and validate the physical width used by line-element responses.
+.set_stream_width <- function(stream_segments, stream_width = NULL) {
+  if (!is.null(stream_width)) {
+    check_dimensionality(stream_width, "m", "stream_width")
+
+    if (!(length(stream_width) %in% c(1L, nrow(stream_segments)))) {
+      stop("stream_width must have length one or one value per segment.")
+    }
+
+    stream_segments$stream_width <- rep(
+      stream_width,
+      length.out = nrow(stream_segments)
+    )
+  } else if (!("stream_width" %in% names(stream_segments))) {
+    stream_segments$stream_width <- stream_segments$represented_length / 2
+  }
+
+  check_dimensionality(
+    stream_segments$stream_width,
+    "m",
+    "stream_segments$stream_width"
+  )
+
+  width_values <- as.numeric(stream_segments$stream_width)
+  if (any(!is.finite(width_values)) || any(width_values <= 0)) {
+    stop("stream_width must contain finite, positive values.")
+  }
+
+  # Preserve the old column for callers that inspect it; numerical line
+  # responses use stream_width directly.
+  stream_segments$well_diam <- stream_segments$stream_width
+  stream_segments
+}
+
 # Validate the neutral stream-segment representation.
 .validate_stream_segments <- function(stream_segments) {
   if (!inherits(stream_segments, "sf") || nrow(stream_segments) == 0) {
@@ -389,7 +430,7 @@ get_stream_segments <- function(
     "reach_id",
     "reach_segment_id",
     "represented_length",
-    "well_diam",
+    "stream_width",
     "model_point"
   )
   missing_columns <- setdiff(required_columns, names(stream_segments))
@@ -433,17 +474,16 @@ get_stream_segments <- function(
     "stream_segments$represented_length"
   )
   check_dimensionality(
-    stream_segments$well_diam,
+    stream_segments$stream_width,
     "m",
-    "stream_segments$well_diam"
+    "stream_segments$stream_width"
   )
-
   if (any(!is.finite(as.numeric(stream_segments$represented_length))) ||
       any(as.numeric(stream_segments$represented_length) <= 0) ||
-      any(!is.finite(as.numeric(stream_segments$well_diam))) ||
-      any(as.numeric(stream_segments$well_diam) <= 0)) {
+      any(!is.finite(as.numeric(stream_segments$stream_width))) ||
+      any(as.numeric(stream_segments$stream_width) <= 0)) {
     stop(
-      "stream_segments represented_length and well_diam must contain ",
+      "stream_segments represented_length and stream_width must contain ",
       "finite, positive values."
     )
   }

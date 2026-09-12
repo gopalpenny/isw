@@ -194,7 +194,26 @@ get_stream_depletion_fraction <- function(
   )
   check_dimensionality(response_distance, "m", "response_distance")
 
-  dimensionless_time <- response_distance^2 / (4 * alpha * t)
+  .theis_response_at_distance(
+    distance = response_distance,
+    K = K,
+    D = D,
+    V = V,
+    t = t
+  )
+}
+
+# Evaluate the infinite-aquifer Theis response at an effective distance.
+.theis_response_at_distance <- function(distance, K, D, V, t) {
+  check_dimensionality(distance, "m", "distance")
+  check_dimensionality(K, "m/s", "K")
+  check_dimensionality(D, "m", "D")
+  check_dimensionality(t, "s", "t")
+
+  alpha <- K * D / V
+  check_dimensionality(alpha, "m^2/s", "alpha")
+
+  dimensionless_time <- distance^2 / (4 * alpha * t)
   dimensionless <-
     length(units(dimensionless_time)$numerator) == 0 &&
     length(units(dimensionless_time)$denominator) == 0

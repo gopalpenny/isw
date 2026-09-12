@@ -1,6 +1,6 @@
 # TODO: Before finalizing apportioned aquifer drawdown, review the
-# interval-average temporal approximation, use of one model_point injection
-# well per reach segment, convergence with reach and evaluation-time spacing,
+# interval-average temporal approximation, finite line-element convergence
+# with reach, quadrature, and evaluation-time spacing,
 # and the pump-specific output structure.
 # TODO: Review the optional stream_injection_schedule interface, including its
 # continuous-coverage validation, whether externally supplied schedules should
@@ -593,6 +593,8 @@
 #'   [get_adf_stream_depletion()] that includes every schedule boundary. When
 #'   supplied with `method = "adf"`, these rates are reused instead of being
 #'   recalculated; results at additional times are ignored.
+#' @param quadrature_order Positive integer number of Gauss--Legendre points
+#'   used per straight edge of each finite line element. The default is 16.
 #'
 #' @return A tibble with one row per `pump_id`, `reach_segment_id`, and
 #'   injection interval. `interval_start` and `interval_end` retain the time
@@ -611,9 +613,10 @@
 #' depletion at every schedule boundary. The arithmetic mean of adjacent
 #' endpoint rates is applied over each interval.
 #'
-#' With `method = "constant_head"`, segment model points are discrete
-#' injection wells and constant-head collocation points. One coupled response
-#' matrix is factored for each aquifer parameter set and interval duration.
+#' With `method = "constant_head"`, segment model points are constant-head
+#' collocation points and the segment lines are finite injection elements. One
+#' coupled response matrix is factored for each aquifer parameter set and
+#' interval duration.
 #' Pump-specific right-hand sides preserve attribution while sharing that
 #' factorization. Rates are solved so the signed boundary residual is zero at
 #' each interval endpoint after accounting for all preceding injection.
@@ -652,7 +655,8 @@ get_stream_injection_schedule <- function(
     method = c("adf", "constant_head"),
     stream_apportionment = NULL,
     allow_many_aquifer_parameter_sets = FALSE,
-    adf_stream_depletion = NULL) {
+    adf_stream_depletion = NULL,
+    quadrature_order = 16L) {
 
   method <- match.arg(method)
   .validate_pumping_schedules(pumping_schedules, pumping_wells)
@@ -750,7 +754,8 @@ get_stream_injection_schedule <- function(
       pumping_schedules,
       stream_segments,
       time_grid,
-      allow_many_aquifer_parameter_sets
+      allow_many_aquifer_parameter_sets,
+      quadrature_order
     )
   }
 
@@ -781,8 +786,8 @@ get_stream_injection_schedule <- function(
 #' @param observation_wells An `sf` observation-well object accepted by
 #'   [`.validate_observation_wells()`].
 #' @param stream_apportionment An `sf` object returned by
-#'   [get_stream_reach_apportionment()]. Its `model_point` column supplies
-#'   one injection-well location per reach segment.
+#'   [get_stream_reach_apportionment()]. Its active line geometry supplies one
+#'   finite injection element per reach segment.
 #' @param evaluation_times Either `NULL`, a `Date` vector, or a `units` time
 #'   vector. These control when drawdown is returned. When `NULL`,
 #'   `pumping_schedules$t` is used.
@@ -792,6 +797,8 @@ get_stream_injection_schedule <- function(
 #' @param stream_injection_schedule Either `NULL` or a tibble returned by
 #'   [get_stream_injection_schedule()]. When supplied, this schedule is reused
 #'   instead of being recalculated internally.
+#' @param quadrature_order Positive integer number of Gauss--Legendre points
+#'   used per straight edge of each finite line element. The default is 16.
 #'
 #' @return A tibble with one row per `pump_id`, `observation_id`, and
 #'   `evaluation_time`. `pumping_drawdown` is the positive decline caused by
@@ -802,16 +809,16 @@ get_stream_injection_schedule <- function(
 #'
 #' @details
 #' Physical pumping-well responses use the pumping schedule directly. Stream
-#' depletion assigned to each reach segment is represented as injection at the
-#' segment's along-line `model_point`. The injection schedule is constructed by
-#' [get_stream_injection_schedule()] and uses the aquifer properties associated
-#' with the originating `pump_id`. When the apportionment contains `well_diam`,
-#' it defines each injection point's effective diameter; older objects fall
-#' back to `represented_length`.
+#' depletion assigned to each reach segment is represented as uniform
+#' injection along its finite line geometry. The injection schedule is
+#' constructed by [get_stream_injection_schedule()] and uses the aquifer
+#' properties associated with the originating `pump_id`. `stream_width`
+#' supplies the effective near-line radius used to regularize the response.
 #'
-#' Both pumping and injection responses use the infinite-aquifer
-#' [get_aquifer_drawdown_ratio()] kernel. No image well is included because the
-#' apportioned stream injection explicitly represents the stream contribution.
+#' Pumping uses the infinite-aquifer [get_aquifer_drawdown_ratio()] kernel.
+#' Injection integrates that kernel along each finite line using
+#' Gauss--Legendre quadrature. No image well is included because the apportioned
+#' stream injection explicitly represents the stream contribution.
 #' `pumping_drawdown` and `stream_recovery` are positive component magnitudes.
 #' The signed net response is `water_level_change = -pumping_drawdown +
 #' stream_recovery`; negative values indicate falling water levels and positive
@@ -877,7 +884,8 @@ get_apportioned_aquifer_drawdown <- function(
     stream_apportionment,
     evaluation_times = NULL,
     injection_times = NULL,
-    stream_injection_schedule = NULL) {
+    stream_injection_schedule = NULL,
+    quadrature_order = 16L) {
 
   .validate_observation_wells(observation_wells)
   .validate_pumping_schedules(pumping_schedules, pumping_wells)
@@ -929,25 +937,27 @@ get_apportioned_aquifer_drawdown <- function(
     )
   }
 
-  injection_points <- sf::st_sf(
-    pump_id = stream_apportionment$pump_id,
-    reach_segment_id = stream_apportionment$reach_segment_id,
-    well_diam = if ("well_diam" %in% names(stream_apportionment)) {
-      stream_apportionment$well_diam
-    } else {
-      stream_apportionment$represented_length
-    },
-    geometry = sf::st_transform(
-      stream_apportionment$model_point,
-      analysis_crs
-    )
+  unique_segment_rows <- match(
+    unique(stream_apportionment$reach_segment_id),
+    stream_apportionment$reach_segment_id
+  )
+  unique_stream_segments <- stream_apportionment[
+    unique_segment_rows,
+    ,
+    drop = FALSE
+  ]
+  unique_stream_segments$pump_id <- NULL
+  .validate_stream_segments(unique_stream_segments)
+  line_elements <- .prepare_line_elements(
+    unique_stream_segments,
+    quadrature_order
+  )
+  observation_response_operator <- .prepare_line_response_operator(
+    prepared_observation_wells,
+    line_elements
   )
   pump_distances <- sf::st_distance(
     prepared_pumping_wells,
-    prepared_observation_wells
-  )
-  injection_distances <- sf::st_distance(
-    injection_points,
     prepared_observation_wells
   )
   normalized_times <- .normalize_time_inputs(
@@ -1004,10 +1014,46 @@ get_apportioned_aquifer_drawdown <- function(
   evaluation_output <- output_evaluation_times[0]
   pumping_output <- zero_drawdown[0]
   recovery_output <- zero_drawdown[0]
+  injection_response_cache <- new.env(parent = emptyenv())
+
+  get_injection_response_matrix <- function(pump_row, elapsed_time) {
+    elapsed_days <- as.numeric(units::set_units(
+      elapsed_time,
+      "days",
+      mode = "standard"
+    ))
+    parameter_key <- paste(
+      format(as.numeric(units::set_units(
+        prepared_pumping_wells$K[[pump_row]], "m/day", mode = "standard"
+      )), digits = 17),
+      format(as.numeric(units::set_units(
+        prepared_pumping_wells$D[[pump_row]], "m", mode = "standard"
+      )), digits = 17),
+      format(prepared_pumping_wells$V[[pump_row]], digits = 17),
+      format(elapsed_days, digits = 17),
+      sep = "\r"
+    )
+
+    if (!exists(parameter_key, envir = injection_response_cache,
+        inherits = FALSE)) {
+      assign(
+        parameter_key,
+        .evaluate_line_response_operator(
+          observation_response_operator,
+          K = prepared_pumping_wells$K[[pump_row]],
+          D = prepared_pumping_wells$D[[pump_row]],
+          V = prepared_pumping_wells$V[[pump_row]],
+          elapsed_time = elapsed_time
+        ),
+        envir = injection_response_cache
+      )
+    }
+
+    get(parameter_key, envir = injection_response_cache, inherits = FALSE)
+  }
 
   for (pump_id in pumping_wells$pump_id) {
     pump_row <- match(pump_id, prepared_pumping_wells$pump_id)
-    injection_rows <- which(injection_points$pump_id == pump_id)
 
     for (observation_index in seq_len(nrow(prepared_observation_wells))) {
       for (evaluation_index in seq_along(output_evaluation_times)) {
@@ -1045,24 +1091,30 @@ get_apportioned_aquifer_drawdown <- function(
         )
 
         if (length(contributing_injections) > 0) {
-          matched_injection_rows <- injection_rows[match(
+          matched_segment_columns <- match(
             injection_events$reach_segment_id[contributing_injections],
-            injection_points$reach_segment_id[injection_rows]
-          )]
+            unique_stream_segments$reach_segment_id
+          )
           elapsed_time <- evaluation_days[[evaluation_index]] -
             injection_events$injection_time[contributing_injections]
-          response_ratio <- .theis_aquifer_drawdown_ratio(
-            distance = injection_distances[
-              matched_injection_rows,
-              observation_index
-            ],
-            K = prepared_pumping_wells$K[[pump_row]],
-            D = prepared_pumping_wells$D[[pump_row]],
-            V = prepared_pumping_wells$V[[pump_row]],
-            t = elapsed_time,
-            well_diam = injection_points$well_diam[
-              matched_injection_rows
-            ]
+          response_ratio <- vapply(
+            seq_along(contributing_injections),
+            function(event_index) {
+              response_matrix <- get_injection_response_matrix(
+                pump_row,
+                elapsed_time[[event_index]]
+              )
+              response_matrix[
+                observation_index,
+                matched_segment_columns[[event_index]]
+              ]
+            },
+            numeric(1)
+          )
+          response_ratio <- units::set_units(
+            response_ratio,
+            "days/m^2",
+            mode = "standard"
           )
           stream_change <- units::set_units(
             sum(
@@ -1151,6 +1203,8 @@ get_apportioned_aquifer_drawdown <- function(
 #'   schedule is constructed internally.
 #' @param allow_many_aquifer_parameter_sets Passed to
 #'   [get_stream_injection_schedule()] for constant-head calculations.
+#' @param quadrature_order Positive integer number of Gauss--Legendre points
+#'   used per straight edge of each finite line element. The default is 16.
 #'
 #' @return A tibble with pump-specific `pumping_drawdown`, `stream_recovery`,
 #'   and signed `water_level_change` at each observation and evaluation time.
@@ -1171,7 +1225,8 @@ get_aquifer_water_level_change <- function(
     stream_injection_schedule = NULL,
     injection_method = c("adf", "constant_head"),
     stream_apportionment = NULL,
-    allow_many_aquifer_parameter_sets = FALSE) {
+    allow_many_aquifer_parameter_sets = FALSE,
+    quadrature_order = 16L) {
 
   injection_method <- match.arg(injection_method)
   .validate_stream_segments(stream_segments)
@@ -1193,7 +1248,8 @@ get_aquifer_water_level_change <- function(
       method = injection_method,
       stream_apportionment = stream_apportionment,
       allow_many_aquifer_parameter_sets =
-        allow_many_aquifer_parameter_sets
+        allow_many_aquifer_parameter_sets,
+      quadrature_order = quadrature_order
     )
   }
 
@@ -1207,6 +1263,7 @@ get_aquifer_water_level_change <- function(
     observation_wells,
     response_geometry,
     evaluation_times,
-    stream_injection_schedule = stream_injection_schedule
+    stream_injection_schedule = stream_injection_schedule,
+    quadrature_order = quadrature_order
   )
 }

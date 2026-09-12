@@ -21,6 +21,8 @@
 #' @param analysis_crs Either `NULL` or a projected coordinate reference system
 #'   accepted by [sf::st_crs()]. When `NULL`, a local UTM CRS is selected
 #'   automatically.
+#' @param stream_width Optional positive `units` length used to regularize
+#'   line-element responses. A scalar applies to every generated segment.
 #'
 #' @return An `sf` object with one row per pump--reach-segment pair. It contains
 #'   `pump_id`, `reach_id`, `reach_segment_id`, `represented_length`,
@@ -89,7 +91,8 @@ get_stream_reach_apportionment <- function(
     sample_spacing,
     method = c("web_squared", "web"),
     maximum_distance = NULL,
-    analysis_crs = NULL) {
+    analysis_crs = NULL,
+    stream_width = NULL) {
 
   method <- match.arg(method)
 
@@ -117,6 +120,7 @@ get_stream_reach_apportionment <- function(
     spatial_inputs$stream_reaches,
     reach_spacing
   )
+  reach_segments <- .set_stream_width(reach_segments, stream_width)
   sample_points <- generate_segment_sample_points(
     reach_segments,
     sample_spacing
@@ -212,6 +216,8 @@ get_stream_reach_apportionment <- function(
     "reach_id",
     "reach_segment_id",
     "represented_length",
+    "stream_width",
+    "well_diam",
     "pump_to_reach_distance",
     "apportionment_fraction"
   )
@@ -377,6 +383,7 @@ get_adf_stream_apportionment <- function(
     "reach_id",
     "reach_segment_id",
     "represented_length",
+    "stream_width",
     "well_diam",
     "pump_to_reach_distance",
     "apportionment_fraction"
@@ -410,6 +417,7 @@ get_adf_stream_apportionment <- function(
     "reach_id",
     "reach_segment_id",
     "represented_length",
+    "stream_width",
     "pump_to_reach_distance",
     "apportionment_fraction"
   )
@@ -459,6 +467,18 @@ get_adf_stream_apportionment <- function(
     stop(
       "stream_apportionment$represented_length must contain finite, ",
       "positive values."
+    )
+  }
+
+  check_dimensionality(
+    stream_apportionment$stream_width,
+    desired_units = "m",
+    variable_name = "stream_apportionment$stream_width"
+  )
+  if (any(!is.finite(as.numeric(stream_apportionment$stream_width))) ||
+      any(as.numeric(stream_apportionment$stream_width) <= 0)) {
+    stop(
+      "stream_apportionment$stream_width must contain finite, positive values."
     )
   }
 

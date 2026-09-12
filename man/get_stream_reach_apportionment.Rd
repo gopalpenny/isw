@@ -11,7 +11,8 @@ get_stream_reach_apportionment(
   sample_spacing,
   method = c("web_squared", "web"),
   maximum_distance = NULL,
-  analysis_crs = NULL
+  analysis_crs = NULL,
+  stream_width = NULL
 )
 }
 \arguments{
@@ -39,6 +40,9 @@ points farther than this distance from a pump receive zero weight. When
 \item{analysis_crs}{Either `NULL` or a projected coordinate reference system
 accepted by [sf::st_crs()]. When `NULL`, a local UTM CRS is selected
 automatically.}
+
+\item{stream_width}{Optional positive `units` length used to regularize
+line-element responses. A scalar applies to every generated segment.}
 }
 \value{
 An `sf` object with one row per pump--reach-segment pair. It contains
