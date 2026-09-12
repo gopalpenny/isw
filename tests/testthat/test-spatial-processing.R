@@ -400,12 +400,12 @@ test_that("get_stream_segments honors a supplied projected CRS", {
   )
 })
 
-test_that("stream-segment well diameters must be positive lengths", {
+test_that("stream-segment widths must be positive lengths", {
   stream_segments <- get_stream_segments(
     make_projected_stream_reach(),
     units::set_units(100, "m")
   )
-  stream_segments$well_diam[[1]] <- units::set_units(0, "m")
+  stream_segments$stream_width[[1]] <- units::set_units(0, "m")
 
   expect_error(
     isw:::.validate_stream_segments(stream_segments),

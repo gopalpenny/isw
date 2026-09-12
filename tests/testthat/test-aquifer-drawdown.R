@@ -185,8 +185,18 @@ test_that("apportioned drawdown superimposes pumping and stream injection", {
     -inputs$pumping_schedules$pump_1[[1]] * pumping_ratio_10,
     "m"
   )
+  line_ratio_10 <- isw:::.line_sink_aquifer_drawdown_ratio(
+    along_distance = units::set_units(0, "m"),
+    perpendicular_distance = units::set_units(50, "m"),
+    line_length = inputs$stream_apportionment$represented_length[[1]],
+    K = inputs$pumping_wells$K,
+    D = inputs$pumping_wells$D,
+    V = inputs$pumping_wells$V,
+    t = units::set_units(10, "days"),
+    stream_width = inputs$stream_apportionment$stream_width[[1]]
+  )
   expected_recovery_10 <- units::set_units(
-    injection_events$injection_rate_change[[1]] * pumping_ratio_10,
+    injection_events$injection_rate_change[[1]] * line_ratio_10,
     "m"
   )
 
@@ -212,7 +222,7 @@ test_that("apportioned drawdown superimposes pumping and stream injection", {
   )
 })
 
-test_that("stream injection diameter equals represented segment length", {
+test_that("stream injection uses finite-line geometry and stream width", {
   inputs <- make_drawdown_test_inputs()
   stream_point <- sf::st_as_sf(
     tibble::tibble(
@@ -241,13 +251,15 @@ test_that("stream injection diameter equals represented segment length", {
     stream_injection_schedule = injection_schedule
   )
 
-  expected_ratio <- isw:::.theis_aquifer_drawdown_ratio(
-    distance = units::set_units(0, "m"),
+  expected_ratio <- isw:::.line_sink_aquifer_drawdown_ratio(
+    along_distance = units::set_units(0, "m"),
+    perpendicular_distance = units::set_units(0, "m"),
+    line_length = inputs$stream_apportionment$represented_length[[1]],
     K = inputs$pumping_wells$K,
     D = inputs$pumping_wells$D,
     V = inputs$pumping_wells$V,
     t = evaluation_time,
-    well_diam = inputs$stream_apportionment$represented_length
+    stream_width = inputs$stream_apportionment$stream_width[[1]]
   )
   expected_recovery <- units::set_units(
     injection_events$injection_rate_change[[1]] * expected_ratio,
