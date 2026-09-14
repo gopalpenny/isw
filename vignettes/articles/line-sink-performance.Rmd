@@ -92,13 +92,13 @@ times, but it may also evaluate additional matrices for historical injection
 pulses. Consequently, these measurements describe the core cost rather than a
 universal runtime for every schedule.
 
-The live benchmark stops at 200 segments so the article remains practical to
+The live benchmark stops at 400 segments so the article remains practical to
 rerun interactively. The theoretical memory table extends to 2,000 segments.
-Larger measured cases can be explored by editing `segment_counts`, but response
-evaluation may then take several minutes depending on the computer.
+Larger measured cases can be explored by editing `segment_counts`, with runtime
+and memory requirements depending on the computer.
 
 ```{r benchmark-parameters}
-segment_counts <- c(25L, 50L, 100L, 200L)
+segment_counts <- c(25L, 50L, 100L, 200L, 400L)
 segment_length_m <- 100
 
 K <- set_units(10, "m/day")

@@ -19,6 +19,34 @@ test_that("Gauss-Legendre rule is normalized and symmetric", {
   expect_equal(rule$weight, rev(rule$weight), tolerance = 1e-14)
 })
 
+test_that("Theis responses skip numerical underflow without changing values", {
+  K <- units::set_units(10, "m/day")
+  D <- units::set_units(20, "m")
+  V <- 0.15
+  elapsed_time <- units::set_units(10, "days")
+  alpha <- K * D / V
+  dimensionless_times <- c(1, 699, 701, 1000)
+  distances <- sqrt(
+    4 * alpha * elapsed_time * dimensionless_times
+  )
+
+  expect_silent(
+    response <- isw:::.theis_response_at_distance(
+      distances,
+      K,
+      D,
+      V,
+      elapsed_time
+    )
+  )
+  expected_at_one <- 1 / (2 * pi * K * D) *
+    (-0.5 * expint::expint(1))
+
+  expect_equal(response[[1]], expected_at_one)
+  expect_gt(abs(as.numeric(response[[2]])), 0)
+  expect_identical(as.numeric(response[3:4]), c(0, 0))
+})
+
 test_that("local line response converges with quadrature order", {
   arguments <- list(
     along_distance = units::set_units(20, "m"),

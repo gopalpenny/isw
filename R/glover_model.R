@@ -228,7 +228,19 @@ get_stream_depletion_fraction <- function(
     )
   }
 
-  well_function <- -0.5 * expint(as.numeric(dimensionless_time))
+  dimensionless_time_values <- as.numeric(dimensionless_time)
+  maximum_expint_argument <- 700
+  evaluate_response <- dimensionless_time_values <= maximum_expint_argument
+  well_function <- numeric(length(dimensionless_time_values))
+
+  # E1(700) is approximately 1.4e-307. Larger arguments are effectively zero
+  # for model outputs, and expint() begins emitting underflow warnings near
+  # 701.9. Avoiding those calls also prevents warning handling from dominating
+  # large response-matrix evaluations.
+  well_function[evaluate_response] <- -0.5 * expint(
+    dimensionless_time_values[evaluate_response]
+  )
+
   1 / (2 * pi * K * D) * well_function
 }
 
