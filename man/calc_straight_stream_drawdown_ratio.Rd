@@ -5,22 +5,17 @@
 \title{Drawdown near a straight constant-head stream}
 \usage{
 calc_straight_stream_drawdown_ratio(
-  df,
-  x1 = NULL,
-  x2 = NULL,
-  y_diff = NULL,
-  K = NULL,
-  D = NULL,
-  V = NULL,
-  t = NULL,
+  x1,
+  x2,
+  y_diff,
+  K,
+  D,
+  V,
+  t,
   well_diam = NULL
 )
 }
 \arguments{
-\item{df}{Optional data frame containing columns `x1`, `x2`, `y_diff`, `K`,
-`D`, `V`, and `t`, and optionally `well_diam`. When supplied, values in
-these columns replace the corresponding arguments.}
-
 \item{x1}{Perpendicular distance from the pumping well to the stream. Must
 have units of length.}
 

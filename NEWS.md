@@ -17,6 +17,8 @@
   data, `prep_` constructs static model inputs, `generate_` constructs a stream-
   injection schedule, `model_` evaluates scheduled responses, and `calc_`
   exposes specialized single-pump analytical calculations.
+* Removed the legacy `df` convenience argument from the three `calc_`
+  functions. Their physical inputs must now be supplied explicitly.
 * Removed the former combined apportionment, apportioned-depletion,
   apportioned-drawdown, and single-pump convenience interfaces. Stream geometry
   is now supplied through `stream_segments` rather than duplicated in or

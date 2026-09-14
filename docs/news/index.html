@@ -69,6 +69,7 @@
 <li>Added <code><a href="../reference/generate_stream_injection_schedule.html">generate_stream_injection_schedule()</a></code> with ADF and constant-head methods. It reports signed, piecewise-constant aquifer-injection rates. The constant-head method solves pump-specific discrete-well rates that enforce zero signed water-level change at stream model points at interval endpoints. Precomputed output from <code><a href="../reference/model_adf_stream_depletion.html">model_adf_stream_depletion()</a></code> can be reused when it includes every schedule boundary.</li>
 <li>Added boundary-residual and response-matrix condition-number diagnostics for constant-head schedules. Condition numbers above <code>1e6</code> produce a warning.</li>
 <li>Reorganized the public API around explicit verbs: <code>fetch_</code> retrieves external data, <code>prep_</code> constructs static model inputs, <code>generate_</code> constructs a stream- injection schedule, <code>model_</code> evaluates scheduled responses, and <code>calc_</code> exposes specialized single-pump analytical calculations.</li>
+<li>Removed the legacy <code>df</code> convenience argument from the three <code>calc_</code> functions. Their physical inputs must now be supplied explicitly.</li>
 <li>Removed the former combined apportionment, apportioned-depletion, apportioned-drawdown, and single-pump convenience interfaces. Stream geometry is now supplied through <code>stream_segments</code> rather than duplicated in or recovered from an apportionment object.</li>
 </ul></div>
 </div>

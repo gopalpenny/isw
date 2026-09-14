@@ -1,7 +1,6 @@
 # testing for glover model
 
 suppressMessages(library(units))
-suppressMessages(library(tibble))
 
 
 x1 <- units::set_units(c(1, 5, 10) * 1e3, "ft")
@@ -18,12 +17,6 @@ test_that("calc_straight_stream_depletion_fraction generates correct results for
   expect_equal(round(stream_depletion_fraction, 5), c(0.93655, 0.69059, 0.42597))
 })
 
-stream_depletion_fraction_df <- calc_straight_stream_depletion_fraction(tibble(x1 = x1, K = K, D = D, V = V, t = t)) # % percentage
-test_that("calc_straight_stream_depletion_fraction generates correct results for data.frame input",{
-  expect_equal(round(stream_depletion_fraction, 5), round(stream_depletion_fraction_df, 5))
-})
-
-
 distance <- set_units(c(1, 5, 10) * 1e3, "ft")
 aquifer_drawdown_ratio <- calc_infinite_aquifer_drawdown_ratio(distance = distance, K = K, D = D, V = V, t = t)
 # # For pasting results into expect_equal()
@@ -35,9 +28,25 @@ test_that("calc_infinite_aquifer_drawdown_ratio generates correct results for nu
 })
 
 
-aquifer_drawdown_ratio_df <- calc_infinite_aquifer_drawdown_ratio(tibble(distance = distance, K = K, D = D, V = V, t = t))
-test_that("calc_infinite_aquifer_drawdown_ratio generates correct results for data.frame input",{
-  expect_equal(round(aquifer_drawdown_ratio, 5), round(aquifer_drawdown_ratio_df, 5))
+test_that("calc functions expose only explicit physical inputs", {
+  calc_functions <- list(
+    calc_straight_stream_depletion_fraction,
+    calc_infinite_aquifer_drawdown_ratio,
+    calc_straight_stream_drawdown_ratio
+  )
+
+  expect_false(any(vapply(
+    calc_functions,
+    function(calc_function) "df" %in% names(formals(calc_function)),
+    logical(1)
+  )))
+
+  lapply(calc_functions, function(calc_function) {
+    expect_error(
+      do.call(calc_function, list(df = data.frame())),
+      "unused argument"
+    )
+  })
 })
 
 

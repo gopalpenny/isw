@@ -70,14 +70,13 @@ and its image across a straight, fully penetrating constant-head stream.</p>
 
     <div id="ref-usage">
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">calc_straight_stream_drawdown_ratio</span><span class="op">(</span></span>
-<span>  <span class="va">df</span>,</span>
-<span>  x1 <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  x2 <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  y_diff <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  K <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  D <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  V <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  t <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">x1</span>,</span>
+<span>  <span class="va">x2</span>,</span>
+<span>  <span class="va">y_diff</span>,</span>
+<span>  <span class="va">K</span>,</span>
+<span>  <span class="va">D</span>,</span>
+<span>  <span class="va">V</span>,</span>
+<span>  <span class="va">t</span>,</span>
 <span>  well_diam <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -86,13 +85,7 @@ and its image across a straight, fully penetrating constant-head stream.</p>
     <h2>Arguments</h2>
 
 
-<dl><dt id="arg-df">df<a class="anchor" aria-label="anchor" href="#arg-df"></a></dt>
-<dd><p>Optional data frame containing columns `x1`, `x2`, `y_diff`, `K`,
-`D`, `V`, and `t`, and optionally `well_diam`. When supplied, values in
-these columns replace the corresponding arguments.</p></dd>
-
-
-<dt id="arg-x-">x1<a class="anchor" aria-label="anchor" href="#arg-x-"></a></dt>
+<dl><dt id="arg-x-">x1<a class="anchor" aria-label="anchor" href="#arg-x-"></a></dt>
 <dd><p>Perpendicular distance from the pumping well to the stream. Must
 have units of length.</p></dd>
 

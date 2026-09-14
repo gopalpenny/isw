@@ -71,9 +71,6 @@ prob_integral <- function(Z) {
 #' Evaluate the Glover--Balmer analytical stream-depletion fraction for one
 #' pumping well beside a straight, fully penetrating stream.
 #'
-#' @param df Optional data frame containing columns `x1`, `K`, `D`, `V`, and
-#'   `t`. When supplied, values in these columns replace the corresponding
-#'   arguments.
 #' @param x1 Perpendicular distance from the pumping well to the stream. Must
 #'   have units of length.
 #' @param K Saturated hydraulic conductivity. Must have units of length per
@@ -115,24 +112,11 @@ prob_integral <- function(Z) {
 #'   x1 = x1, K = K, D = D, V = V, t = t
 #' )
 calc_straight_stream_depletion_fraction <- function(
-    df,
-    x1 = NULL,
-    K = NULL,
-    D = NULL,
-    V = NULL,
-    t = NULL) {
-
-  if (!missing(df) && !is.null(df)) {
-    if (!is.data.frame(df)) {
-      stop("df must be a data.frame object")
-    }
-
-    x1 <- df[["x1"]]
-    K <- df[["K"]]
-    D <- df[["D"]]
-    V <- df[["V"]]
-    t <- df[["t"]]
-  }
+    x1,
+    K,
+    D,
+    V,
+    t) {
 
   .glover_stream_depletion_fraction(
     x1 = x1,
@@ -323,9 +307,6 @@ calc_straight_stream_depletion_fraction <- function(
 #' Evaluate the Theis drawdown response to one pumping well in an infinite
 #' aquifer without stream or other boundary effects.
 #'
-#' @param df Optional data frame containing columns `distance`, `K`, `D`, `V`,
-#'   and `t`, and optionally `well_diam`. When supplied, values in these columns
-#'   replace the corresponding arguments.
 #' @param distance Direct distance between the pumping well and observation
 #'   location. Must have units of length.
 #' @param K Saturated hydraulic conductivity. Must have units of length per
@@ -369,27 +350,13 @@ calc_straight_stream_depletion_fraction <- function(
 #'   distance = distance, K = K, D = D, V = V, t = t
 #' )
 calc_infinite_aquifer_drawdown_ratio <- function(
-    df,
-    distance = NULL,
-    K = NULL,
-    D = NULL,
-    V = NULL,
-    t = NULL,
+    distance,
+    K,
+    D,
+    V,
+    t,
     well_diam = NULL) {
-  
-  if (!missing(df) && !is.null(df)) {
-    if (!is.data.frame(df)) {
-      stop("df must be a data.frame object")
-    }
-    
-    distance <- df[["distance"]]
-    K <- df[["K"]]
-    D <- df[["D"]]
-    V <- df[["V"]]
-    t <- df[["t"]]
-    well_diam <- df[["well_diam"]]
-  }
-  
+
   if (is.null(well_diam)) {
     well_diam <- units::set_units(0, "ft")
   }
@@ -409,9 +376,6 @@ calc_infinite_aquifer_drawdown_ratio <- function(
 #' Estimate water-level change at an observation location using a pumping well
 #' and its image across a straight, fully penetrating constant-head stream.
 #'
-#' @param df Optional data frame containing columns `x1`, `x2`, `y_diff`, `K`,
-#'   `D`, `V`, and `t`, and optionally `well_diam`. When supplied, values in
-#'   these columns replace the corresponding arguments.
 #' @param x1 Perpendicular distance from the pumping well to the stream. Must
 #'   have units of length.
 #' @param x2 Perpendicular distance from the observation location to the
@@ -460,31 +424,14 @@ calc_infinite_aquifer_drawdown_ratio <- function(
 #'
 #' @export
 calc_straight_stream_drawdown_ratio <- function(
-    df,
-    x1 = NULL,
-    x2 = NULL,
-    y_diff = NULL,
-    K = NULL,
-    D = NULL,
-    V = NULL,
-    t = NULL,
+    x1,
+    x2,
+    y_diff,
+    K,
+    D,
+    V,
+    t,
     well_diam = NULL) {
-
-  if (!missing(df) && !is.null(df)) {
-    if (!is.data.frame(df)) {
-      stop("df must be a data.frame object")
-    }
-
-    x1 <- df[["x1"]]
-    x2 <- df[["x2"]]
-    y_diff <- df[["y_diff"]]
-    K <- df[["K"]]
-    D <- df[["D"]]
-    V <- df[["V"]]
-    t <- df[["t"]]
-    well_diam <- df[["well_diam"]]
-  }
-
   if (is.null(well_diam)) {
     well_diam <- units::set_units(0, "m")
   }

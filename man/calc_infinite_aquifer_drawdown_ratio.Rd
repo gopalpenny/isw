@@ -4,21 +4,9 @@
 \alias{calc_infinite_aquifer_drawdown_ratio}
 \title{Calculate infinite-aquifer drawdown ratio}
 \usage{
-calc_infinite_aquifer_drawdown_ratio(
-  df,
-  distance = NULL,
-  K = NULL,
-  D = NULL,
-  V = NULL,
-  t = NULL,
-  well_diam = NULL
-)
+calc_infinite_aquifer_drawdown_ratio(distance, K, D, V, t, well_diam = NULL)
 }
 \arguments{
-\item{df}{Optional data frame containing columns `distance`, `K`, `D`, `V`,
-and `t`, and optionally `well_diam`. When supplied, values in these columns
-replace the corresponding arguments.}
-
 \item{distance}{Direct distance between the pumping well and observation
 location. Must have units of length.}
 

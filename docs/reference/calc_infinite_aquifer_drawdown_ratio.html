@@ -69,28 +69,14 @@ aquifer without stream or other boundary effects.</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">calc_infinite_aquifer_drawdown_ratio</span><span class="op">(</span></span>
-<span>  <span class="va">df</span>,</span>
-<span>  distance <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  K <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  D <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  V <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  t <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  well_diam <span class="op">=</span> <span class="cn">NULL</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">calc_infinite_aquifer_drawdown_ratio</span><span class="op">(</span><span class="va">distance</span>, <span class="va">K</span>, <span class="va">D</span>, <span class="va">V</span>, <span class="va">t</span>, well_diam <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
 
 
-<dl><dt id="arg-df">df<a class="anchor" aria-label="anchor" href="#arg-df"></a></dt>
-<dd><p>Optional data frame containing columns `distance`, `K`, `D`, `V`,
-and `t`, and optionally `well_diam`. When supplied, values in these columns
-replace the corresponding arguments.</p></dd>
-
-
-<dt id="arg-distance">distance<a class="anchor" aria-label="anchor" href="#arg-distance"></a></dt>
+<dl><dt id="arg-distance">distance<a class="anchor" aria-label="anchor" href="#arg-distance"></a></dt>
 <dd><p>Direct distance between the pumping well and observation
 location. Must have units of length.</p></dd>
 

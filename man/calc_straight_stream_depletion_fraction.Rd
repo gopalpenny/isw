@@ -4,20 +4,9 @@
 \alias{calc_straight_stream_depletion_fraction}
 \title{Calculate straight-stream depletion fraction}
 \usage{
-calc_straight_stream_depletion_fraction(
-  df,
-  x1 = NULL,
-  K = NULL,
-  D = NULL,
-  V = NULL,
-  t = NULL
-)
+calc_straight_stream_depletion_fraction(x1, K, D, V, t)
 }
 \arguments{
-\item{df}{Optional data frame containing columns `x1`, `K`, `D`, `V`, and
-`t`. When supplied, values in these columns replace the corresponding
-arguments.}
-
 \item{x1}{Perpendicular distance from the pumping well to the stream. Must
 have units of length.}
 
