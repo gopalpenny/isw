@@ -440,6 +440,44 @@ test_that("stream-segment widths must be positive lengths", {
   )
 })
 
+test_that("stream model points remain finite and on their segment", {
+  stream_segments <- get_stream_segments(
+    make_projected_stream_reach(),
+    units::set_units(100, "m")
+  )
+
+  off_line <- stream_segments
+  off_line$model_point[[1]] <- sf::st_point(c(500050, 4980010))
+  expect_error(
+    isw:::.validate_stream_segments(off_line),
+    "must lie on its active segment"
+  )
+
+  nonfinite <- stream_segments
+  nonfinite$model_point[[1]] <- sf::st_point(c(Inf, 4980000))
+  expect_error(
+    isw:::.validate_stream_segments(nonfinite),
+    "finite coordinates"
+  )
+
+  different_crs <- stream_segments
+  different_crs$model_point <- sf::st_transform(
+    different_crs$model_point,
+    4326
+  )
+  expect_error(
+    isw:::.validate_stream_segments(different_crs),
+    "same CRS"
+  )
+
+  off_center <- stream_segments
+  off_center$model_point[[1]] <- sf::st_point(c(500025, 4980000))
+  expect_warning(
+    isw:::.validate_stream_segments(off_center),
+    "should be the along-line midpoint"
+  )
+})
+
 test_that("stream reaches are divided into equal reach segments", {
   stream_reaches <- make_projected_stream_reach()
 

@@ -332,7 +332,9 @@
 #' @details
 #' `model_point` is the along-line midpoint used as the constant-head
 #' collocation location. Injection is distributed uniformly along the active
-#' line geometry. Input objects are not modified.
+#' line geometry. Stream validation requires it to be a finite point in the
+#' segment CRS and on the active line, and warns if it differs from the
+#' along-line midpoint. Input objects are not modified.
 #' `stream_width` regularizes responses on and very near a line element using
 #' an effective minimum radius of half the width.
 #' `well_diam` is reserved for pumping-well objects and is not accepted on
@@ -507,6 +509,73 @@ get_stream_segments <- function(
       any(sf::st_is_empty(stream_segments$model_point))) {
     stop(
       "stream_segments$model_point must contain one nonempty POINT per row."
+    )
+  }
+
+  if (!identical(
+    sf::st_crs(stream_segments$model_point),
+    sf::st_crs(stream_segments)
+  )) {
+    stop(
+      "stream_segments$model_point must use the same CRS as the active ",
+      "segment geometry."
+    )
+  }
+
+  model_point_coordinates <- sf::st_coordinates(
+    stream_segments$model_point
+  )[, 1:2, drop = FALSE]
+  if (any(!is.finite(model_point_coordinates))) {
+    stop("stream_segments$model_point must contain finite coordinates.")
+  }
+
+  model_point_distance <- sf::st_distance(
+    stream_segments$model_point,
+    sf::st_geometry(stream_segments),
+    by_element = TRUE
+  )
+  on_line_tolerance <- units::set_units(
+    1e-7,
+    "m",
+    mode = "standard"
+  )
+  if (any(model_point_distance > on_line_tolerance)) {
+    stop(
+      "Each stream_segments$model_point must lie on its active segment ",
+      "geometry."
+    )
+  }
+
+  segment_midpoints <- sf::st_sfc(
+    lapply(seq_len(nrow(stream_segments)), function(segment_index) {
+      segment_coordinates <- sf::st_coordinates(
+        sf::st_geometry(stream_segments)[[segment_index]]
+      )[, 1:2, drop = FALSE]
+      coordinate_differences <-
+        segment_coordinates[-1, , drop = FALSE] -
+        segment_coordinates[-nrow(segment_coordinates), , drop = FALSE]
+      cumulative_length <- c(
+        0,
+        cumsum(sqrt(rowSums(coordinate_differences^2)))
+      )
+
+      sf::st_point(.point_along_linestring(
+        segment_coordinates,
+        cumulative_length,
+        cumulative_length[[length(cumulative_length)]] / 2
+      ))
+    }),
+    crs = sf::st_crs(stream_segments)
+  )
+  midpoint_distance <- sf::st_distance(
+    stream_segments$model_point,
+    segment_midpoints,
+    by_element = TRUE
+  )
+  if (any(midpoint_distance > on_line_tolerance)) {
+    warning(
+      "stream_segments$model_point should be the along-line midpoint of ",
+      "its active segment geometry."
     )
   }
 
