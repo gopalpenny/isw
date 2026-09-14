@@ -151,9 +151,16 @@ test_that("preferred ADF apportionment accepts prepared stream segments", {
     method = "web"
   )
 
+  expect_s3_class(result, "tbl_df")
+  expect_false(inherits(result, "sf"))
+  expect_identical(
+    names(result),
+    c(
+      "pump_id", "reach_id", "reach_segment_id",
+      "pump_to_reach_distance", "apportionment_fraction"
+    )
+  )
   expect_equal(result$apportionment_fraction, c(1 / 3, 2 / 3))
-  expect_equal(result$well_diam, result$represented_length / 2)
-  expect_identical(sf::st_crs(result), sf::st_crs(stream_segments))
 })
 
 test_that("apportionment fractions sum to one for every pump", {

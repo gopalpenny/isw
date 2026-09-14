@@ -12,7 +12,8 @@ get_apportioned_aquifer_drawdown(
   evaluation_times = NULL,
   injection_times = NULL,
   stream_injection_schedule = NULL,
-  quadrature_order = 16L
+  quadrature_order = 16L,
+  stream_segments = NULL
 )
 }
 \arguments{
@@ -25,9 +26,9 @@ get_apportioned_aquifer_drawdown(
 \item{observation_wells}{An `sf` observation-well object accepted by
 [`.validate_observation_wells()`].}
 
-\item{stream_apportionment}{An `sf` object returned by
-[get_stream_reach_apportionment()]. Its active line geometry supplies one
-finite injection element per reach segment.}
+\item{stream_apportionment}{An ADF relationship table returned by
+[get_adf_stream_apportionment()]. The deprecated spatial output from
+[get_stream_reach_apportionment()] is also accepted.}
 
 \item{evaluation_times}{Either `NULL`, a `Date` vector, or a `units` time
 vector. These control when drawdown is returned. When `NULL`,
@@ -43,6 +44,11 @@ instead of being recalculated internally.}
 
 \item{quadrature_order}{Positive integer number of Gauss--Legendre points
 used per straight edge of each finite line element. The default is 16.}
+
+\item{stream_segments}{Either a neutral stream-segment object returned by
+[get_stream_segments()] or `NULL`. Normalized ADF apportionments require
+this separate geometry source. When `NULL`, geometry is read from a legacy
+spatial apportionment object.}
 }
 \value{
 A tibble with one row per `pump_id`, `observation_id`, and

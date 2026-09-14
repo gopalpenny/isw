@@ -29,8 +29,10 @@ length represented by an apportionment sample point.}
 Sample points farther than this distance from a pump receive zero weight.}
 }
 \value{
-An `sf` object with one row per pump--stream-segment pair, including
-  `pump_to_reach_distance` and `apportionment_fraction`.
+A tibble with one row per pump--stream-segment pair and columns
+  `pump_id`, `reach_id`, `reach_segment_id`, `pump_to_reach_distance`, and
+  `apportionment_fraction`. Physical segment geometry and attributes remain
+  in `stream_segments` and are not duplicated in the returned table.
 }
 \description{
 Calculate static web or web-squared fractions assigning a pumping well's

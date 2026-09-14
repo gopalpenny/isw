@@ -681,6 +681,14 @@ get_stream_injection_schedule <- function(
       stream_apportionment,
       pumping_wells
     )
+    if (!is.null(stream_segments) &&
+        !("apportionment_fraction" %in% names(stream_segments))) {
+      .validate_stream_segments(stream_segments)
+      .validate_stream_apportionment_segments(
+        stream_apportionment,
+        stream_segments
+      )
+    }
     if (is.null(adf_stream_depletion)) {
       internal_depletion <- get_adf_stream_depletion(
         pumping_wells,
@@ -785,9 +793,9 @@ get_stream_injection_schedule <- function(
 #'   [`.validate_pumping_schedules()`].
 #' @param observation_wells An `sf` observation-well object accepted by
 #'   [`.validate_observation_wells()`].
-#' @param stream_apportionment An `sf` object returned by
-#'   [get_stream_reach_apportionment()]. Its active line geometry supplies one
-#'   finite injection element per reach segment.
+#' @param stream_apportionment An ADF relationship table returned by
+#'   [get_adf_stream_apportionment()]. The deprecated spatial output from
+#'   [get_stream_reach_apportionment()] is also accepted.
 #' @param evaluation_times Either `NULL`, a `Date` vector, or a `units` time
 #'   vector. These control when drawdown is returned. When `NULL`,
 #'   `pumping_schedules$t` is used.
@@ -799,6 +807,10 @@ get_stream_injection_schedule <- function(
 #'   instead of being recalculated internally.
 #' @param quadrature_order Positive integer number of Gauss--Legendre points
 #'   used per straight edge of each finite line element. The default is 16.
+#' @param stream_segments Either a neutral stream-segment object returned by
+#'   [get_stream_segments()] or `NULL`. Normalized ADF apportionments require
+#'   this separate geometry source. When `NULL`, geometry is read from a legacy
+#'   spatial apportionment object.
 #'
 #' @return A tibble with one row per `pump_id`, `observation_id`, and
 #'   `evaluation_time`. `pumping_drawdown` is the positive decline caused by
@@ -885,7 +897,8 @@ get_apportioned_aquifer_drawdown <- function(
     evaluation_times = NULL,
     injection_times = NULL,
     stream_injection_schedule = NULL,
-    quadrature_order = 16L) {
+    quadrature_order = 16L,
+    stream_segments = NULL) {
 
   .validate_observation_wells(observation_wells)
   .validate_pumping_schedules(pumping_schedules, pumping_wells)
@@ -901,25 +914,34 @@ get_apportioned_aquifer_drawdown <- function(
     )
   }
 
-  if (!("model_point" %in% names(stream_apportionment)) ||
-      !inherits(stream_apportionment$model_point, "sfc") ||
-      length(stream_apportionment$model_point) != nrow(stream_apportionment) ||
-      !all(as.character(sf::st_geometry_type(
-        stream_apportionment$model_point
-      )) == "POINT") ||
-      any(sf::st_is_empty(stream_apportionment$model_point))) {
-    stop(
-      "stream_apportionment$model_point must contain one nonempty POINT ",
-      "geometry per pump--reach-segment row."
+  if (is.null(stream_segments)) {
+    if (!inherits(stream_apportionment, "sf")) {
+      stop(
+        "stream_segments is required when stream_apportionment does not ",
+        "contain spatial geometry."
+      )
+    }
+    unique_segment_rows <- match(
+      unique(stream_apportionment$reach_segment_id),
+      stream_apportionment$reach_segment_id
     )
+    unique_stream_segments <- stream_apportionment[
+      unique_segment_rows,
+      ,
+      drop = FALSE
+    ]
+    unique_stream_segments$pump_id <- NULL
+    unique_stream_segments$pump_to_reach_distance <- NULL
+    unique_stream_segments$apportionment_fraction <- NULL
+  } else {
+    unique_stream_segments <- stream_segments
   }
-
-  analysis_crs <- sf::st_crs(stream_apportionment)
-
-  if (is.na(analysis_crs) ||
-      !grepl("^PROJCRS\\[", analysis_crs$wkt)) {
-    stop("stream_apportionment must use a projected CRS.")
-  }
+  .validate_stream_segments(unique_stream_segments)
+  .validate_stream_apportionment_segments(
+    stream_apportionment,
+    unique_stream_segments
+  )
+  analysis_crs <- sf::st_crs(unique_stream_segments)
 
   prepare_points <- function(x) {
     x <- sf::st_zm(x, drop = TRUE, what = "ZM")
@@ -937,17 +959,6 @@ get_apportioned_aquifer_drawdown <- function(
     )
   }
 
-  unique_segment_rows <- match(
-    unique(stream_apportionment$reach_segment_id),
-    stream_apportionment$reach_segment_id
-  )
-  unique_stream_segments <- stream_apportionment[
-    unique_segment_rows,
-    ,
-    drop = FALSE
-  ]
-  unique_stream_segments$pump_id <- NULL
-  .validate_stream_segments(unique_stream_segments)
   line_elements <- .prepare_line_elements(
     unique_stream_segments,
     quadrature_order
@@ -973,11 +984,12 @@ get_apportioned_aquifer_drawdown <- function(
   )
   if (is.null(stream_injection_schedule)) {
     injection_schedule <- get_stream_injection_schedule(
-      pumping_wells,
-      pumping_schedules,
-      stream_apportionment,
-      evaluation_times,
-      injection_times
+      pumping_wells = pumping_wells,
+      pumping_schedules = pumping_schedules,
+      stream_segments = unique_stream_segments,
+      evaluation_times = evaluation_times,
+      injection_times = injection_times,
+      stream_apportionment = stream_apportionment
     )
   } else {
     injection_schedule <- .validate_stream_injection_schedule(
@@ -1152,9 +1164,7 @@ get_apportioned_aquifer_drawdown <- function(
   )
 }
 
-# Expand neutral stream segments to the pump-specific geometry structure used
-# by the existing response engine. ADF-only fields are inert when a completed
-# injection schedule is supplied.
+# Expand neutral stream-segment identifiers to every pump for schedule mapping.
 .expand_stream_segments_for_pumps <- function(
     stream_segments,
     pumping_wells) {
@@ -1166,20 +1176,19 @@ get_apportioned_aquifer_drawdown <- function(
     seq_len(number_of_segments),
     times = nrow(pumping_wells)
   )
-  expanded <- stream_segments[segment_rows, , drop = FALSE]
-  expanded$pump_id <- rep(
-    pumping_wells$pump_id,
-    each = number_of_segments
+  tibble::tibble(
+    pump_id = rep(pumping_wells$pump_id, each = number_of_segments),
+    reach_id = stream_segments$reach_id[segment_rows],
+    reach_segment_id = stream_segments$reach_segment_id[segment_rows],
+    pump_to_reach_distance = units::set_units(
+      rep(0, length(segment_rows)),
+      "m"
+    ),
+    apportionment_fraction = rep(
+      1 / number_of_segments,
+      length(segment_rows)
+    )
   )
-  expanded$pump_to_reach_distance <- units::set_units(
-    rep(0, nrow(expanded)),
-    "m"
-  )
-  expanded$apportionment_fraction <- rep(
-    1 / number_of_segments,
-    nrow(expanded)
-  )
-  expanded
 }
 
 #' Calculate aquifer water-level change
@@ -1238,6 +1247,9 @@ get_aquifer_water_level_change <- function(
     )
   }
 
+  constructing_adf_schedule <- is.null(stream_injection_schedule) &&
+    injection_method == "adf"
+
   if (is.null(stream_injection_schedule)) {
     stream_injection_schedule <- get_stream_injection_schedule(
       pumping_wells,
@@ -1253,17 +1265,19 @@ get_aquifer_water_level_change <- function(
     )
   }
 
-  response_geometry <- .expand_stream_segments_for_pumps(
-    stream_segments,
-    pumping_wells
-  )
+  response_apportionment <- if (constructing_adf_schedule) {
+    stream_apportionment
+  } else {
+    .expand_stream_segments_for_pumps(stream_segments, pumping_wells)
+  }
   get_apportioned_aquifer_drawdown(
     pumping_wells,
     pumping_schedules,
     observation_wells,
-    response_geometry,
+    response_apportionment,
     evaluation_times,
     stream_injection_schedule = stream_injection_schedule,
-    quadrature_order = quadrature_order
+    quadrature_order = quadrature_order,
+    stream_segments = stream_segments
   )
 }

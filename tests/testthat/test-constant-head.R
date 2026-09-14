@@ -215,6 +215,20 @@ test_that("ADF remains the default injection method", {
 
   expect_equal(default_schedule, explicit_schedule)
 
+  mismatched_apportionment <- stream_apportionment
+  mismatched_apportionment$reach_segment_id[[1]] <- "different_segment"
+  expect_error(
+    get_stream_injection_schedule(
+      inputs$pumping_wells,
+      inputs$pumping_schedules,
+      inputs$stream_segments,
+      inputs$evaluation_times,
+      method = "adf",
+      stream_apportionment = mismatched_apportionment
+    ),
+    "must match stream_segments"
+  )
+
   direct_depletion <- get_adf_stream_depletion(
     inputs$pumping_wells,
     inputs$pumping_schedules,
@@ -280,7 +294,8 @@ test_that("ADF remains the default injection method", {
       observation_wells,
       stream_apportionment,
       inputs$evaluation_times,
-      stream_injection_schedule = explicit_schedule
+      stream_injection_schedule = explicit_schedule,
+      stream_segments = inputs$stream_segments
     )$water_level_change
   )
 })
