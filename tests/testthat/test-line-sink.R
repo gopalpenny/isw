@@ -154,6 +154,39 @@ test_that("prepared geometry and distances are reusable across evaluations", {
   )
 })
 
+test_that("response operators reject invalid target points", {
+  segments <- make_line_sink_segments(c(-50, 0, 50, 0))
+  elements <- isw:::.prepare_line_elements(segments)
+
+  expect_error(
+    isw:::.prepare_line_response_operator(
+      sf::st_sfc(sf::st_point(), crs = 32615),
+      elements
+    ),
+    "cannot contain empty geometries"
+  )
+  expect_error(
+    isw:::.prepare_line_response_operator(
+      sf::st_sfc(sf::st_point(c(Inf, 0)), crs = 32615),
+      elements
+    ),
+    "nonfinite coordinates"
+  )
+  expect_error(
+    isw:::.prepare_line_response_operator(
+      sf::st_sfc(sf::st_point(c(0, 0))),
+      elements
+    ),
+    "must have a defined CRS"
+  )
+
+  operator <- isw:::.prepare_line_response_operator(
+    sf::st_sfc(sf::st_point(c(0, 0)), crs = 32615),
+    elements
+  )
+  expect_s3_class(operator, "isw_line_response_operator")
+})
+
 test_that("multi-vertex line weights include edge-length fractions", {
   segments <- make_line_sink_segments(c(0, 0, 30, 0, 30, 40))
   elements <- isw:::.prepare_line_elements(segments, quadrature_order = 4)

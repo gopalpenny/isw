@@ -238,13 +238,7 @@
   if (inherits(target_points, "sfc")) {
     target_points <- sf::st_sf(geometry = target_points)
   }
-  if (!inherits(target_points, "sf") || nrow(target_points) == 0 ||
-      !all(as.character(sf::st_geometry_type(
-        target_points,
-        by_geometry = TRUE
-      )) == "POINT")) {
-    stop("target_points must be a nonempty sf or sfc POINT object.")
-  }
+  .validate_point_sf(target_points, "target_points")
 
   prepared_targets <- sf::st_transform(
     sf::st_zm(target_points, drop = TRUE, what = "ZM"),
