@@ -14,5 +14,29 @@ articles:
   - articles/line-sink-performance
   - articles/stream-depletion-apportionment-internals
 
+reference:
+- title: Normal workflow
+  desc: Prepare inputs and model scheduled pumping, stream depletion, and aquifer response.
+  contents:
+  - fetch_usgs_stream_reaches
+  - prep_stream_segments
+  - prep_adf_stream_apportionment
+  - model_adf_stream_depletion
+  - generate_stream_injection_schedule
+  - model_aquifer_water_level_change
+
+- title: Specialized analytical calculations
+  desc: Single-pump, single-elapsed-time analytical response calculations.
+  contents:
+  - calc_straight_stream_depletion_fraction
+  - calc_infinite_aquifer_drawdown_ratio
+  - calc_straight_stream_drawdown_ratio
+
+- title: Example data
+  contents:
+  - example_pumping_wells
+  - example_stream_reaches
+  - example_observation_wells
+
 redirects:
 - ["articles/stream-depletion-apportionment.html", "articles/stream-depletion-and-drawdown.html"]

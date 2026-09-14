@@ -59,7 +59,7 @@
 #' multiplying the result is the total segment rate, not a rate per unit
 #' length.
 #'
-#' @keywords internal
+#' @noRd
 .line_sink_aquifer_drawdown_ratio <- function(
     along_distance,
     perpendicular_distance,

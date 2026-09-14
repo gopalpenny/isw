@@ -612,7 +612,7 @@
 #' interval. Consecutive interval rates are converted to signed rate changes;
 #' exact zero changes are omitted.
 #'
-#' @keywords internal
+#' @noRd
 .get_interval_average_injection_rate_changes <- function(
     stream_depletion,
     pumping_schedules) {
@@ -1182,6 +1182,13 @@ generate_stream_injection_schedule <- function(
 #' [generate_stream_injection_schedule()] generates one using
 #' `injection_method`. A supplied schedule reuses its stored method and
 #' quadrature metadata; `injection_times` must then be `NULL`.
+#'
+#' The ADF path apportions each pump's analytical stream depletion among stream
+#' segments and therefore requires `stream_apportionment`. The constant-head
+#' path solves segment injection rates that keep segment model points as close
+#' as practical to zero head change. Pumping and stream responses are then
+#' superimposed at each observation well. Positive pumping rates produce
+#' positive `pumping_drawdown`; injection produces positive `stream_recovery`.
 #'
 #' @seealso [generate_stream_injection_schedule()],
 #'   [model_adf_stream_depletion()]

@@ -167,7 +167,7 @@ fetch_usgs_stream_reaches <- function(
 #'
 #' @return `aoi`, unchanged.
 #'
-#' @keywords internal
+#' @noRd
 .validate_usgs_stream_aoi <- function(aoi, buffer_distance) {
 
   if (!inherits(aoi, "sf")) {
@@ -240,7 +240,7 @@ fetch_usgs_stream_reaches <- function(
 #'
 #' @return A one-feature `sf` polygon in the CRS of `aoi`.
 #'
-#' @keywords internal
+#' @noRd
 .make_usgs_stream_query_area <- function(aoi, buffer_distance) {
 
   input_crs <- sf::st_crs(aoi)
@@ -285,7 +285,7 @@ fetch_usgs_stream_reaches <- function(
 #'
 #' @return An `sf` object returned by the USGS `get_3dhp()` function.
 #'
-#' @keywords internal
+#' @noRd
 .fetch_3dhp_flowlines <- function(query_area) {
 
   if (!requireNamespace("nhdplusTools", quietly = TRUE)) {

@@ -44,6 +44,17 @@ analytical stream depletion to a prepared stream-segment network.
 Apportionment is static: it describes where a pump's analytical depletion
 is assigned, not how depletion changes through time. Use
 [model_adf_stream_depletion()] to combine it with pumping schedules.
+
+Each stream segment is represented by points spaced no farther apart than
+`sample_spacing`. A point representing length \eqn{L_i} at distance \eqn{d_i}
+from a pump receives raw weight \eqn{L_i / d_i^p}, where \eqn{p = 2} for
+`"web_squared"` and \eqn{p = 1} for `"web"`. Point weights are summed by
+segment and normalized so each pump's segment fractions sum to one.
+`maximum_distance`, when supplied, excludes more distant sample points before
+normalization. If an eligible sample point is exactly colocated with a pump,
+only the eligible zero-distance points receive weight. The reported
+`pump_to_reach_distance` is the exact point-to-segment distance, not a sampled
+distance.
 }
 \examples{
 stream_segments <- prep_stream_segments(

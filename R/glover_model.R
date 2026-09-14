@@ -43,7 +43,7 @@ prob_integral <- function(Z) {
 #' 35(3), 468–470. \doi{10.1029/TR035i003p00468}
 #'
 #' @seealso [calc_straight_stream_depletion_fraction()]
-#' @keywords internal
+#' @noRd
 .glover_stream_depletion_fraction <- function(x1, K, D, V, t) {
   alpha <- K * D / V
   
@@ -168,7 +168,7 @@ calc_straight_stream_depletion_fraction <- function(
 #' \eqn{K D} and hydraulic diffusivity \eqn{K D / V}. It contains no image
 #' well or other boundary correction.
 #'
-#' @keywords internal
+#' @noRd
 .theis_aquifer_drawdown_ratio <- function(
     distance,
     K,
@@ -280,7 +280,7 @@ calc_straight_stream_depletion_fraction <- function(
 #' 35(3), 468–470. \doi{10.1029/TR035i003p00468}
 #'
 #' @seealso [calc_straight_stream_drawdown_ratio()]
-#' @keywords internal
+#' @noRd
 .glover_aquifer_drawdown_ratio <- function(
     x1,
     x2,

@@ -92,6 +92,17 @@ times, but it may also evaluate additional matrices for historical injection
 pulses. Consequently, these measurements describe the core cost rather than a
 universal runtime for every schedule.
 
+### Negligible-response shortcut
+
+The Theis response uses the exponential integral \(E_1(u)\). The implementation
+does not call `expint()` when the dimensionless argument \(u\) is greater than
+700; it assigns a response of zero directly. At that threshold,
+\(E_1(700)\) is approximately \(1.4 \times 10^{-307}\), so the omitted response
+is negligible at ordinary model precision. This also avoids numerical
+underflow warnings and saves the special-function calculation for distant
+source--target pairs or very short elapsed times. The shortcut is applied while
+evaluating response matrices, after distances and elapsed times are known.
+
 The live benchmark stops at 400 segments so the article remains practical to
 rerun interactively. The theoretical memory table extends to 2,000 segments.
 Larger measured cases can be explored by editing `segment_counts`, with runtime

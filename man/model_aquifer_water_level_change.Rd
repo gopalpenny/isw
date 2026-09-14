@@ -78,6 +78,13 @@ or summed by observation and evaluation time. When no schedule is supplied,
 [generate_stream_injection_schedule()] generates one using
 `injection_method`. A supplied schedule reuses its stored method and
 quadrature metadata; `injection_times` must then be `NULL`.
+
+The ADF path apportions each pump's analytical stream depletion among stream
+segments and therefore requires `stream_apportionment`. The constant-head
+path solves segment injection rates that keep segment model points as close
+as practical to zero head change. Pumping and stream responses are then
+superimposed at each observation well. Positive pumping rates produce
+positive `pumping_drawdown`; injection produces positive `stream_recovery`.
 }
 \examples{
 stream_segments <- prep_stream_segments(

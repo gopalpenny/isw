@@ -23,7 +23,7 @@
 #' and negative changes are retained. Pumps with no nonzero changes contribute
 #' no rows to the returned table.
 #'
-#' @keywords internal
+#' @noRd
 .get_pumping_rate_changes <- function(
     pumping_schedules,
     pumping_wells) {
@@ -159,7 +159,7 @@
 #'   evaluation_times = evaluation_times
 #' )
 #'
-#' @keywords internal
+#' @noRd
 .get_pumping_response_times <- function(
     pumping_schedules,
     pumping_wells,

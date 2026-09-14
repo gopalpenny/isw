@@ -13,7 +13,7 @@
 #' reference system. Every feature must have nonempty `POINT` geometry with
 #' finite horizontal coordinates.
 #'
-#' @keywords internal
+#' @noRd
 .validate_point_sf <- function(x, object_name) {
 
   if (!inherits(x, "sf")) {
@@ -71,7 +71,7 @@
 #' This function validates inputs but does not transform geometry or add a
 #' default `well_diam` column.
 #'
-#' @keywords internal
+#' @noRd
 .validate_pumping_wells <- function(pumping_wells) {
 
   .validate_point_sf(pumping_wells, "pumping_wells")
@@ -195,7 +195,7 @@
 #'
 #' This function validates inputs but does not transform geometry.
 #'
-#' @keywords internal
+#' @noRd
 .validate_observation_wells <- function(observation_wells) {
 
   if (is.null(observation_wells)) {
@@ -253,7 +253,7 @@
 #' This function validates inputs but does not transform, split, or otherwise
 #' modify their geometry.
 #'
-#' @keywords internal
+#' @noRd
 .validate_stream_reaches <- function(stream_reaches) {
 
   if (!inherits(stream_reaches, "sf")) {
@@ -349,7 +349,7 @@
 #' This function validates inputs but does not convert dates or time units to
 #' elapsed days.
 #'
-#' @keywords internal
+#' @noRd
 .validate_time_vector <- function(x, object_name) {
 
   if (length(x) == 0) {
@@ -411,7 +411,7 @@
 #' This function validates inputs but does not normalize time units or convert
 #' pumping rates to changes in pumping rate.
 #'
-#' @keywords internal
+#' @noRd
 .validate_pumping_schedules <- function(pumping_schedules, pumping_wells) {
 
   .validate_pumping_wells(pumping_wells)
@@ -504,7 +504,7 @@
 #' This function validates inputs but does not apply that default or normalize
 #' time values to elapsed days.
 #'
-#' @keywords internal
+#' @noRd
 .validate_evaluation_times <- function(evaluation_times, schedule_times) {
 
   .validate_time_vector(schedule_times, "pumping_schedules$t")
@@ -554,7 +554,7 @@
 #' @return `NULL` when `injection_times` is `NULL`; otherwise, the
 #'   `injection_times` vector, unchanged.
 #'
-#' @keywords internal
+#' @noRd
 .validate_injection_times <- function(injection_times, schedule_times) {
 
   .validate_time_vector(schedule_times, "pumping_schedules$t")

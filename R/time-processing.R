@@ -28,7 +28,7 @@
 #' are retained so model results can use the representation expected by the
 #' user even though the analytical calculations operate in days.
 #'
-#' @keywords internal
+#' @noRd
 .normalize_time_inputs <- function(schedule_times, evaluation_times = NULL) {
 
   .validate_time_vector(schedule_times, "pumping_schedules$t")

@@ -51,7 +51,7 @@
 #' )
 #' supplied_crs$epsg
 #'
-#' @keywords internal
+#' @noRd
 .select_analysis_crs <- function(
     pumping_wells,
     stream_reaches,
@@ -191,7 +191,7 @@
 #' prepared_inputs$pumping_wells$well_diam
 #' sf::st_crs(prepared_inputs$stream_reaches)$Name
 #'
-#' @keywords internal
+#' @noRd
 .prepare_spatial_inputs <- function(
     pumping_wells,
     stream_reaches,
@@ -700,7 +700,7 @@ prep_stream_segments <- function(
 #'
 #' plot_stream_discretization(stream_reaches, reach_segments)
 #'
-#' @keywords internal
+#' @noRd
 .discretize_stream_reaches <- function(stream_reaches, reach_spacing) {
 
   .validate_stream_reaches(stream_reaches)
