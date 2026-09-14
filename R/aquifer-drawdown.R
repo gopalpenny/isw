@@ -7,6 +7,62 @@
 # permit additional metadata, and opportunities to cache or reuse internally
 # calculated stream-depletion responses.
 
+# Read a valid quadrature order recorded on a constant-head schedule.
+.get_schedule_quadrature_order <- function(stream_injection_schedule) {
+  metadata <- attr(
+    stream_injection_schedule,
+    "isw_schedule_metadata",
+    exact = TRUE
+  )
+
+  if (!is.list(metadata) ||
+      !identical(metadata$injection_method, "constant_head")) {
+    return(NULL)
+  }
+
+  quadrature_order <- metadata$quadrature_order
+  if (length(quadrature_order) != 1L || is.na(quadrature_order) ||
+      !is.finite(quadrature_order) || quadrature_order < 1 ||
+      quadrature_order != as.integer(quadrature_order)) {
+    return(NULL)
+  }
+
+  as.integer(quadrature_order)
+}
+
+# Reuse schedule quadrature metadata or report an explicit mismatch.
+.resolve_schedule_quadrature_order <- function(
+    stream_injection_schedule,
+    quadrature_order,
+    quadrature_order_supplied) {
+
+  schedule_order <- .get_schedule_quadrature_order(
+    stream_injection_schedule
+  )
+  if (is.null(schedule_order)) {
+    return(quadrature_order)
+  }
+
+  if (!quadrature_order_supplied) {
+    return(schedule_order)
+  }
+
+  supplied_order_is_valid <- length(quadrature_order) == 1L &&
+    !is.na(quadrature_order) && is.finite(quadrature_order) &&
+    quadrature_order >= 1 && quadrature_order == as.integer(quadrature_order)
+  if (supplied_order_is_valid &&
+      as.integer(quadrature_order) != schedule_order) {
+    warning(
+      "quadrature_order = ", as.integer(quadrature_order),
+      " differs from the value used to construct the constant-head ",
+      "stream_injection_schedule (", schedule_order, ").",
+      call. = FALSE
+    )
+  }
+
+  quadrature_order
+}
+
 # Validate apportioned stream-depletion results for drawdown calculations.
 .validate_apportioned_stream_depletion <- function(
     stream_depletion,
@@ -602,6 +658,8 @@
 #'   when water enters the aquifer. Constant-head schedules additionally
 #'   contain `aquifer_id`, `boundary_residual`, and
 #'   `matrix_condition_number`.
+#'   Generated schedules carry an `isw_schedule_metadata` attribute recording
+#'   the injection method and, for constant-head schedules, quadrature order.
 #'
 #' @details
 #' The default injection grid contains every pumping-schedule time through the
@@ -779,6 +837,15 @@ get_stream_injection_schedule <- function(
     time_grid$injection_times[start_rows]
   injection_schedule$interval_end <- time_grid$injection_times[end_rows]
 
+  attr(injection_schedule, "isw_schedule_metadata") <- list(
+    injection_method = method,
+    quadrature_order = if (method == "constant_head") {
+      as.integer(quadrature_order)
+    } else {
+      NULL
+    }
+  )
+
   injection_schedule
 }
 
@@ -807,6 +874,9 @@ get_stream_injection_schedule <- function(
 #'   instead of being recalculated internally.
 #' @param quadrature_order Positive integer number of Gauss--Legendre points
 #'   used per straight edge of each finite line element. The default is 16.
+#'   When a completed constant-head schedule is supplied and this argument is
+#'   omitted, the order recorded in the schedule metadata is reused. Supplying
+#'   a different order raises a warning and uses the supplied value.
 #' @param stream_segments Either a neutral stream-segment object returned by
 #'   [get_stream_segments()] or `NULL`. Normalized ADF apportionments require
 #'   this separate geometry source. When `NULL`, geometry is read from a legacy
@@ -900,6 +970,7 @@ get_apportioned_aquifer_drawdown <- function(
     quadrature_order = 16L,
     stream_segments = NULL) {
 
+  quadrature_order_supplied <- !missing(quadrature_order)
   .validate_observation_wells(observation_wells)
   .validate_pumping_schedules(pumping_schedules, pumping_wells)
   .validate_stream_depletion_apportionment(
@@ -911,6 +982,14 @@ get_apportioned_aquifer_drawdown <- function(
     stop(
       "injection_times must be NULL when stream_injection_schedule is ",
       "supplied."
+    )
+  }
+
+  if (!is.null(stream_injection_schedule)) {
+    quadrature_order <- .resolve_schedule_quadrature_order(
+      stream_injection_schedule,
+      quadrature_order,
+      quadrature_order_supplied
     )
   }
 
@@ -1214,6 +1293,9 @@ get_apportioned_aquifer_drawdown <- function(
 #'   [get_stream_injection_schedule()] for constant-head calculations.
 #' @param quadrature_order Positive integer number of Gauss--Legendre points
 #'   used per straight edge of each finite line element. The default is 16.
+#'   When a completed constant-head schedule is supplied and this argument is
+#'   omitted, the order recorded in the schedule metadata is reused. Supplying
+#'   a different order raises a warning and uses the supplied value.
 #'
 #' @return A tibble with pump-specific `pumping_drawdown`, `stream_recovery`,
 #'   and signed `water_level_change` at each observation and evaluation time.
@@ -1270,14 +1352,22 @@ get_aquifer_water_level_change <- function(
   } else {
     .expand_stream_segments_for_pumps(stream_segments, pumping_wells)
   }
+  response_quadrature_order <- if (missing(quadrature_order)) {
+    schedule_order <- .get_schedule_quadrature_order(
+      stream_injection_schedule
+    )
+    if (is.null(schedule_order)) 16L else schedule_order
+  } else {
+    quadrature_order
+  }
   get_apportioned_aquifer_drawdown(
-    pumping_wells,
-    pumping_schedules,
-    observation_wells,
-    response_apportionment,
-    evaluation_times,
+    pumping_wells = pumping_wells,
+    pumping_schedules = pumping_schedules,
+    observation_wells = observation_wells,
+    stream_apportionment = response_apportionment,
+    evaluation_times = evaluation_times,
     stream_injection_schedule = stream_injection_schedule,
-    quadrature_order = quadrature_order,
+    quadrature_order = response_quadrature_order,
     stream_segments = stream_segments
   )
 }

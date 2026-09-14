@@ -534,6 +534,31 @@ stream_injection_schedule <- get_stream_injection_schedule(
 head(stream_injection_schedule)
 ```
 
+The schedule also carries object-level metadata. It is stored once on the
+whole tibble, not repeated in every row, under the
+`isw_schedule_metadata` attribute:
+
+```{r inspect-schedule-metadata}
+attr(stream_injection_schedule, "isw_schedule_metadata")
+```
+
+For the ADF schedule above, the attribute records `injection_method = "adf"`;
+quadrature is not used to calculate ADF injection rates. A constant-head
+schedule additionally records the integer `quadrature_order` used to construct
+its response matrices. `get_stream_injection_schedule()` adds the attribute
+after it has finished constructing and validating the interval table, so the
+metadata describes the completed schedule rather than any individual row.
+
+When a completed constant-head schedule is later supplied to
+`get_aquifer_water_level_change()` or `get_apportioned_aquifer_drawdown()`, the
+drawdown calculation reads this attribute before preparing its finite-line
+response operator. If `quadrature_order` is omitted, it reuses the stored
+value. If a different order is supplied explicitly, the requested value is
+used and a warning reports that it differs from the value used for the
+constant-head solve. Schedules constructed outside `isw`, or schedules whose
+metadata was removed during reshaping, continue to use the explicitly supplied
+order or the default of 16.
+
 ### What happens inside `get_stream_injection_schedule()`
 
 #### 1. Construct the injection time grid

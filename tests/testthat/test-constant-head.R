@@ -113,6 +113,58 @@ test_that("constant-head schedule enforces endpoint boundary conditions", {
   )
 })
 
+test_that("constant-head schedule metadata preserves quadrature order", {
+  inputs <- make_constant_head_inputs()
+  schedule <- get_stream_injection_schedule(
+    inputs$pumping_wells,
+    inputs$pumping_schedules,
+    inputs$stream_segments,
+    inputs$evaluation_times,
+    method = "constant_head",
+    quadrature_order = 8L
+  )
+  metadata <- attr(schedule, "isw_schedule_metadata", exact = TRUE)
+
+  expect_identical(metadata$injection_method, "constant_head")
+  expect_identical(metadata$quadrature_order, 8L)
+
+  observation_wells <- sf::st_sf(
+    observation_id = "obs_1",
+    geometry = sf::st_sfc(sf::st_point(c(50, 0)), crs = 32615)
+  )
+  reused_order <- get_aquifer_water_level_change(
+    inputs$pumping_wells,
+    inputs$pumping_schedules,
+    observation_wells,
+    inputs$stream_segments,
+    inputs$evaluation_times,
+    stream_injection_schedule = schedule
+  )
+  explicit_order <- get_aquifer_water_level_change(
+    inputs$pumping_wells,
+    inputs$pumping_schedules,
+    observation_wells,
+    inputs$stream_segments,
+    inputs$evaluation_times,
+    stream_injection_schedule = schedule,
+    quadrature_order = 8L
+  )
+
+  expect_equal(reused_order, explicit_order)
+  expect_warning(
+    get_aquifer_water_level_change(
+      inputs$pumping_wells,
+      inputs$pumping_schedules,
+      observation_wells,
+      inputs$stream_segments,
+      inputs$evaluation_times,
+      stream_injection_schedule = schedule,
+      quadrature_order = 16L
+    ),
+    "differs from the value used to construct"
+  )
+})
+
 test_that("shared aquifer factorization preserves pump-specific schedules", {
   inputs <- make_constant_head_inputs(two_pumps = TRUE)
 

@@ -57,6 +57,8 @@ A tibble with one row per `pump_id`, `reach_segment_id`, and
   when water enters the aquifer. Constant-head schedules additionally
   contain `aquifer_id`, `boundary_residual`, and
   `matrix_condition_number`.
+  Generated schedules carry an `isw_schedule_metadata` attribute recording
+  the injection method and, for constant-head schedules, quadrature order.
 }
 \description{
 Calculate piecewise-constant stream injection using ADF depletion or an

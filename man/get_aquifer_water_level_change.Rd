@@ -46,7 +46,10 @@ schedule is constructed internally.}
 [get_stream_injection_schedule()] for constant-head calculations.}
 
 \item{quadrature_order}{Positive integer number of Gauss--Legendre points
-used per straight edge of each finite line element. The default is 16.}
+used per straight edge of each finite line element. The default is 16.
+When a completed constant-head schedule is supplied and this argument is
+omitted, the order recorded in the schedule metadata is reused. Supplying
+a different order raises a warning and uses the supplied value.}
 }
 \value{
 A tibble with pump-specific `pumping_drawdown`, `stream_recovery`,

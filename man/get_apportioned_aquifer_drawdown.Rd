@@ -43,7 +43,10 @@ vector. These optionally refine the internal stream-injection grid. When
 instead of being recalculated internally.}
 
 \item{quadrature_order}{Positive integer number of Gauss--Legendre points
-used per straight edge of each finite line element. The default is 16.}
+used per straight edge of each finite line element. The default is 16.
+When a completed constant-head schedule is supplied and this argument is
+omitted, the order recorded in the schedule metadata is reused. Supplying
+a different order raises a warning and uses the supplied value.}
 
 \item{stream_segments}{Either a neutral stream-segment object returned by
 [get_stream_segments()] or `NULL`. Normalized ADF apportionments require
