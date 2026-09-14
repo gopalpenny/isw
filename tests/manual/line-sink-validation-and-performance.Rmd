@@ -1,5 +1,5 @@
 ---
-title: "Finite Line-Sink Numerical Validation"
+title: "Finite Line-Sink Validation and Performance"
 output:
   rmarkdown::html_document:
     toc: true
@@ -26,7 +26,10 @@ library(tibble)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(sf)
 ```
+
+# Numerical validation
 
 ## Purpose
 
@@ -379,3 +382,333 @@ These results should be interpreted in the context of the model's intended
 accuracy and computational cost. In particular, the on-line and near-line
 cases are intentionally demanding because a fixed quadrature rule may not
 place a source point inside the narrow width-regularized region.
+
+# Performance and memory scaling
+
+## Purpose
+
+This article measures how the finite line-sink implementation scales as the
+number of stream segments increases. It focuses on the core operations used by
+the constant-head method:
+
+1. Expand line segments into Gauss--Legendre source points.
+2. Calculate distances from all collocation targets to all source points.
+3. Evaluate and aggregate the finite-line response matrix.
+4. Factor and solve the dense constant-head matrix.
+
+The code and results are visible so the segment counts, quadrature order, and
+model parameters can be changed and rerun. Elapsed times are specific to the
+computer running the article; memory dimensions and asymptotic relationships
+are platform-independent.
+
+## Expected scaling
+
+Let \(S\) be the number of stream segments, \(M\) the number of observation
+targets, \(q\) the quadrature order, and \(e\) the average number of straight
+edges per segment.
+
+For ordinary observation-well calculations, the stored distance matrix has
+\(M S q e\) entries. For the constant-head calculation, every segment midpoint
+is a target, so \(M=S\) and the distance matrix has \(S^2 q e\) entries. The
+aggregated response matrix has \(S^2\) entries, and its dense QR factorization
+requires approximately cubic work in \(S\).
+
+The table below shows the raw numeric storage implied by these dimensions for
+single-edge segments at the default quadrature order. Actual R objects are
+larger because they also carry units, geometry, dimensions, and other metadata.
+
+```{r theoretical-memory}
+quadrature_order <- 16L
+theoretical_segment_counts <- c(100L, 250L, 500L, 1000L, 2000L)
+
+theoretical_memory <- tibble(
+  segments = theoretical_segment_counts,
+  distance_values = quadrature_order * segments^2,
+  distance_matrix_mib = 8 * distance_values / 1024^2,
+  response_matrix_mib = 8 * segments^2 / 1024^2
+) |>
+  mutate(across(
+    c(distance_matrix_mib, response_matrix_mib),
+    ~ round(.x, 2)
+  ))
+
+knitr::kable(theoretical_memory)
+```
+
+## Benchmark setup
+
+The benchmark uses one straight reach divided into equal 100 m segments. Each
+segment therefore has one edge and 16 quadrature points. Its midpoint is used
+as the constant-head collocation target. The hydraulic parameters remain fixed
+across sizes.
+
+The benchmark isolates one response matrix and one right-hand side. A complete
+schedule can reuse response matrices and QR factorizations for repeated elapsed
+times, but it may also evaluate additional matrices for historical injection
+pulses. Consequently, these measurements describe the core cost rather than a
+universal runtime for every schedule.
+
+### Negligible-response shortcut
+
+The Theis response uses the exponential integral \(E_1(u)\). The implementation
+does not call `expint()` when the dimensionless argument \(u\) is greater than
+700; it assigns a response of zero directly. At that threshold,
+\(E_1(700)\) is approximately \(1.4 \times 10^{-307}\), so the omitted response
+is negligible at ordinary model precision. This also avoids numerical
+underflow warnings and saves the special-function calculation for distant
+source--target pairs or very short elapsed times. The shortcut is applied while
+evaluating response matrices, after distances and elapsed times are known.
+
+The live benchmark stops at 400 segments so the article remains practical to
+rerun interactively. The theoretical memory table extends to 2,000 segments.
+Larger measured cases can be explored by editing `segment_counts`, with runtime
+and memory requirements depending on the computer.
+
+```{r benchmark-parameters}
+segment_counts <- c(25L, 50L, 100L, 200L, 400L)
+segment_length_m <- 100
+
+K <- set_units(10, "m/day")
+D <- set_units(20, "m")
+V <- 0.15
+elapsed_time <- set_units(10, "day")
+```
+
+```{r benchmark-function}
+object_mib <- function(x) {
+  as.numeric(object.size(x)) / 1024^2
+}
+
+elapsed <- function(expression) {
+  gc()
+  unname(system.time(force(expression))[["elapsed"]])
+}
+
+benchmark_segment_count <- function(number_of_segments) {
+  stream_reach <- st_sf(
+    reach_id = "benchmark_reach",
+    geometry = st_sfc(
+      st_linestring(matrix(
+        c(
+          0, 0,
+          number_of_segments * segment_length_m, 0
+        ),
+        ncol = 2,
+        byrow = TRUE
+      )),
+      crs = 32615
+    )
+  )
+  stream_segments <- prep_stream_segments(
+    stream_reach,
+    reach_spacing = set_units(segment_length_m, "m")
+  )
+  stopifnot(nrow(stream_segments) == number_of_segments)
+  collocation_targets <- st_sf(
+    reach_segment_id = stream_segments$reach_segment_id,
+    geometry = stream_segments$model_point
+  )
+
+  prepare_seconds <- elapsed({
+    line_elements <- isw:::.prepare_line_elements(
+      stream_segments,
+      quadrature_order = quadrature_order
+    )
+  })
+  distance_seconds <- elapsed({
+    response_operator <- isw:::.prepare_line_response_operator(
+      collocation_targets,
+      line_elements
+    )
+  })
+  response_seconds <- elapsed({
+    response_matrix <- isw:::.evaluate_line_response_operator(
+      response_operator,
+      K = K,
+      D = D,
+      V = V,
+      elapsed_time = elapsed_time
+    )
+  })
+  factor_and_solve_seconds <- elapsed({
+    response_qr <- qr(response_matrix)
+    condition_number <- kappa(response_qr, exact = FALSE)
+    solved_rates <- qr.coef(
+      response_qr,
+      matrix(1, nrow = number_of_segments, ncol = 1)
+    )
+  })
+
+  stopifnot(
+    all(is.finite(response_matrix)),
+    all(is.finite(solved_rates)),
+    is.finite(condition_number)
+  )
+
+  tibble(
+    segments = number_of_segments,
+    quadrature_points = nrow(line_elements$quadrature_points),
+    distance_values = length(response_operator$distances),
+    prepare_seconds,
+    distance_seconds,
+    response_seconds,
+    factor_and_solve_seconds,
+    line_elements_mib = object_mib(line_elements),
+    response_operator_mib = object_mib(response_operator),
+    response_matrix_mib = object_mib(response_matrix),
+    qr_factorization_mib = object_mib(response_qr),
+    matrix_condition_number = condition_number
+  )
+}
+```
+
+## Run the benchmark
+
+Each size is run once because the larger operations are deterministic and the
+purpose is to expose approximate scaling, not to compare small timing
+differences between competing implementations. Rerunning the article provides
+a fresh measurement on the current machine.
+
+```{r run-benchmark}
+benchmark_results <- bind_rows(lapply(
+  segment_counts,
+  benchmark_segment_count
+))
+```
+
+## Timing results
+
+```{r timing-table}
+benchmark_results |>
+  select(
+    segments,
+    quadrature_points,
+    prepare_seconds,
+    distance_seconds,
+    response_seconds,
+    factor_and_solve_seconds
+  ) |>
+  mutate(across(ends_with("seconds"), ~ signif(.x, 4))) |>
+  knitr::kable()
+```
+
+```{r timing-plot}
+timing_long <- benchmark_results |>
+  select(segments, ends_with("seconds")) |>
+  pivot_longer(
+    -segments,
+    names_to = "stage",
+    values_to = "seconds"
+  ) |>
+  mutate(
+    stage = recode(
+      stage,
+      prepare_seconds = "Prepare quadrature geometry",
+      distance_seconds = "Calculate distances",
+      response_seconds = "Evaluate response matrix",
+      factor_and_solve_seconds = "Factor and solve matrix"
+    )
+  )
+
+ggplot(
+  timing_long,
+  aes(
+    x = segments,
+    y = pmax(seconds, 1e-4),
+    color = stage
+  )
+) +
+  geom_line(linewidth = 0.7) +
+  geom_point(size = 2) +
+  scale_x_log10(breaks = segment_counts) +
+  scale_y_log10() +
+  labs(
+    x = "Stream segments",
+    y = "Elapsed time (seconds)",
+    color = "Stage"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+## Memory results
+
+The response-operator size includes the target-to-quadrature distance matrix
+and the vectors needed to aggregate quadrature points back to source segments.
+The objects in this table coexist during a constant-head solve, although R may
+temporarily allocate additional copies while calculating responses and matrix
+factorizations.
+
+```{r memory-table}
+benchmark_results |>
+  select(
+    segments,
+    distance_values,
+    line_elements_mib,
+    response_operator_mib,
+    response_matrix_mib,
+    qr_factorization_mib
+  ) |>
+  mutate(across(ends_with("mib"), ~ round(.x, 3))) |>
+  knitr::kable()
+```
+
+```{r memory-plot}
+memory_long <- benchmark_results |>
+  select(segments, ends_with("mib")) |>
+  pivot_longer(
+    -segments,
+    names_to = "object",
+    values_to = "mib"
+  ) |>
+  mutate(
+    object = recode(
+      object,
+      line_elements_mib = "Prepared line elements",
+      response_operator_mib = "Response operator",
+      response_matrix_mib = "Response matrix",
+      qr_factorization_mib = "QR factorization"
+    )
+  )
+
+ggplot(
+  memory_long,
+  aes(x = segments, y = mib, color = object)
+) +
+  geom_line(linewidth = 0.7) +
+  geom_point(size = 2) +
+  scale_x_log10(breaks = segment_counts) +
+  scale_y_log10() +
+  labs(
+    x = "Stream segments",
+    y = "Measured object size (MiB)",
+    color = "Object"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+## Conditioning observed during the benchmark
+
+Matrix conditioning is a property of the geometry, hydraulic parameters,
+elapsed time, and segment discretization. It is shown separately because a
+large condition number is a numerical-stability warning rather than a direct
+measure of computational cost.
+
+```{r condition-table}
+benchmark_results |>
+  transmute(
+    segments,
+    matrix_condition_number = signif(matrix_condition_number, 6)
+  ) |>
+  knitr::kable()
+```
+
+## Interpretation
+
+The distance operator and response evaluation grow quadratically for the
+constant-head geometry, while dense factorization eventually grows cubically.
+The measured tables show when those costs become material on the machine used
+for analysis. They can be used to decide whether the current implementation is
+adequate for expected networks, whether quadrature construction should be
+optimized, or whether a practical segment-count warning should be documented.
