@@ -246,7 +246,7 @@ ggplot(
 
 ## Focus on the default order
 
-`isw` currently uses order 16 by default. This final table isolates that order
+`isw` currently uses order 16 by default. This table isolates that order
 so its approximation error can be reviewed directly before deciding whether
 the default should change.
 
@@ -263,6 +263,117 @@ comparison |>
   ) |>
   knitr::kable()
 ```
+
+## Short-line convergence to a point well
+
+A finite line carrying a fixed total volumetric rate should approach a point
+well at the line midpoint as the line length approaches zero. This comparison
+is also sensitive to an incorrect linear-rate convention: multiplying by line
+length, rather than using total segment rate, would prevent convergence to the
+point-well response shown here.
+
+The point-well reference uses `well_diam = 1 m`, matching the line calculation's
+`stream_width = 1 m`. The off-line midpoint case isolates perpendicular
+distance, the off-center case includes both coordinate directions, and the
+on-line case exercises the common minimum-radius treatment.
+
+```{r short-line-cases}
+short_line_cases <- tribble(
+  ~location,              ~along_m, ~perpendicular_m,
+  "Midpoint off line",             0,             20,
+  "Off-center off line",          20,             20,
+  "Midpoint on line",              0,              0
+)
+
+line_lengths_m <- c(100, 30, 10, 3, 1, 0.3, 0.1)
+```
+
+```{r calculate-short-line-convergence}
+short_line_convergence <- tidyr::crossing(
+  case_index = seq_len(nrow(short_line_cases)),
+  line_length_m = line_lengths_m
+) |>
+  mutate(
+    location = short_line_cases$location[case_index],
+    along_m = short_line_cases$along_m[case_index],
+    perpendicular_m = short_line_cases$perpendicular_m[case_index],
+    point_distance_m = sqrt(along_m^2 + perpendicular_m^2),
+    point_response_day_per_m2 = vapply(
+      seq_len(n()),
+      function(result_index) {
+        as.numeric(isw:::.theis_aquifer_drawdown_ratio(
+          distance = set_units(point_distance_m[[result_index]], "m"),
+          K = hydraulics$K,
+          D = hydraulics$D,
+          V = hydraulics$V,
+          t = hydraulics$elapsed_time,
+          well_diam = hydraulics$stream_width
+        ))
+      },
+      numeric(1)
+    ),
+    line_response_day_per_m2 = vapply(
+      seq_len(n()),
+      function(result_index) {
+        as.numeric(isw:::.line_sink_aquifer_drawdown_ratio(
+          along_distance = set_units(along_m[[result_index]], "m"),
+          perpendicular_distance =
+            set_units(perpendicular_m[[result_index]], "m"),
+          line_length = set_units(line_length_m[[result_index]], "m"),
+          K = hydraulics$K,
+          D = hydraulics$D,
+          V = hydraulics$V,
+          t = hydraulics$elapsed_time,
+          stream_width = hydraulics$stream_width,
+          quadrature_order = 16L
+        ))
+      },
+      numeric(1)
+    ),
+    relative_difference_percent = 100 *
+      abs(line_response_day_per_m2 - point_response_day_per_m2) /
+      abs(point_response_day_per_m2)
+  ) |>
+  select(-case_index)
+```
+
+```{r short-line-table}
+short_line_convergence |>
+  transmute(
+    location,
+    line_length_m,
+    point_response_day_per_m2 = signif(point_response_day_per_m2, 7),
+    line_response_day_per_m2 = signif(line_response_day_per_m2, 7),
+    relative_difference_percent = signif(relative_difference_percent, 5)
+  ) |>
+  knitr::kable()
+```
+
+```{r short-line-plot}
+ggplot(
+  short_line_convergence,
+  aes(
+    x = line_length_m,
+    y = pmax(relative_difference_percent, 1e-12),
+    color = location
+  )
+) +
+  geom_line(linewidth = 0.7) +
+  geom_point(size = 2) +
+  scale_x_log10(breaks = rev(line_lengths_m)) +
+  scale_y_log10() +
+  labs(
+    x = "Line length (m)",
+    y = "Difference from point-well response (%)",
+    color = "Observation location"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+For each location, the relative difference should decrease toward zero as the
+line becomes short relative to the observation distance or the shared minimum
+radius.
 
 These results should be interpreted in the context of the model's intended
 accuracy and computational cost. In particular, the on-line and near-line
