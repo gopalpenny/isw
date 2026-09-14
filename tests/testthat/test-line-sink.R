@@ -86,6 +86,62 @@ test_that("prepared operator is rotation invariant", {
   )
 })
 
+test_that("line responses are invariant to reversed vertex order", {
+  targets <- sf::st_as_sf(
+    tibble::tibble(
+      target_id = c("target_1", "target_2", "target_3"),
+      x = c(-20, 25, 140),
+      y = c(15, 70, -35)
+    ),
+    coords = c("x", "y"),
+    crs = 32615
+  )
+  hydraulics <- list(
+    K = units::set_units(10, "m/day"),
+    D = units::set_units(20, "m"),
+    V = 0.15,
+    elapsed_time = units::set_units(10, "days")
+  )
+  coordinate_pairs <- list(
+    list(
+      forward = c(0, 0, 100, 30),
+      reversed = c(100, 30, 0, 0)
+    ),
+    list(
+      forward = c(0, 0, 30, 0, 30, 40, 80, 60),
+      reversed = c(80, 60, 30, 40, 30, 0, 0, 0)
+    )
+  )
+
+  for (coordinate_pair in coordinate_pairs) {
+    forward_segments <- make_line_sink_segments(coordinate_pair$forward)
+    reversed_segments <- make_line_sink_segments(coordinate_pair$reversed)
+
+    forward_operator <- isw:::.prepare_line_response_operator(
+      targets,
+      isw:::.prepare_line_elements(forward_segments)
+    )
+    reversed_operator <- isw:::.prepare_line_response_operator(
+      targets,
+      isw:::.prepare_line_elements(reversed_segments)
+    )
+    forward_response <- do.call(
+      isw:::.evaluate_line_response_operator,
+      c(list(forward_operator), hydraulics)
+    )
+    reversed_response <- do.call(
+      isw:::.evaluate_line_response_operator,
+      c(list(reversed_operator), hydraulics)
+    )
+
+    expect_equal(
+      unname(forward_response),
+      unname(reversed_response),
+      tolerance = 1e-12
+    )
+  }
+})
+
 test_that("prepared straight-line operator matches the local-coordinate kernel", {
   segments <- make_line_sink_segments(c(-50, 0, 50, 0))
   target <- sf::st_as_sf(
@@ -115,6 +171,103 @@ test_that("prepared straight-line operator matches the local-coordinate kernel",
   )
 
   expect_equal(operator_response[[1]], as.numeric(local_response))
+})
+
+test_that("finite-line responses are invariant to equivalent input units", {
+  convert_units <- function(x, new_units) {
+    units::set_units(x, new_units, mode = "standard")
+  }
+  metric_inputs <- list(
+    along_distance = units::set_units(20, "m"),
+    perpendicular_distance = units::set_units(3, "m"),
+    line_length = units::set_units(100, "m"),
+    K = units::set_units(10, "m/day"),
+    D = units::set_units(20, "m"),
+    V = 0.15,
+    t = units::set_units(10, "days"),
+    stream_width = units::set_units(5, "m"),
+    quadrature_order = 16L
+  )
+  mixed_unit_inputs <- metric_inputs
+  mixed_unit_inputs$along_distance <- convert_units(
+    metric_inputs$along_distance,
+    "ft"
+  )
+  mixed_unit_inputs$perpendicular_distance <- convert_units(
+    metric_inputs$perpendicular_distance,
+    "ft"
+  )
+  mixed_unit_inputs$line_length <- convert_units(
+    metric_inputs$line_length,
+    "ft"
+  )
+  mixed_unit_inputs$K <- convert_units(metric_inputs$K, "ft/hour")
+  mixed_unit_inputs$D <- convert_units(metric_inputs$D, "ft")
+  mixed_unit_inputs$t <- convert_units(metric_inputs$t, "hour")
+  mixed_unit_inputs$stream_width <- convert_units(
+    metric_inputs$stream_width,
+    "ft"
+  )
+
+  metric_kernel_response <- do.call(
+    isw:::.line_sink_aquifer_drawdown_ratio,
+    metric_inputs
+  )
+  mixed_unit_kernel_response <- do.call(
+    isw:::.line_sink_aquifer_drawdown_ratio,
+    mixed_unit_inputs
+  )
+  expect_equal(
+    convert_units(metric_kernel_response, "day/m^2"),
+    convert_units(mixed_unit_kernel_response, "day/m^2"),
+    tolerance = 1e-12
+  )
+
+  metric_segments <- make_line_sink_segments(
+    c(-50, 0, 50, 0),
+    stream_width = 5
+  )
+  mixed_unit_segments <- metric_segments
+  mixed_unit_segments$stream_width <- convert_units(
+    metric_segments$stream_width,
+    "ft"
+  )
+  targets <- sf::st_as_sf(
+    tibble::tibble(
+      target_id = c("target_1", "target_2"),
+      x = c(20, -35),
+      y = c(3, 70)
+    ),
+    coords = c("x", "y"),
+    crs = 32615
+  )
+  metric_operator <- isw:::.prepare_line_response_operator(
+    targets,
+    isw:::.prepare_line_elements(metric_segments)
+  )
+  mixed_unit_operator <- isw:::.prepare_line_response_operator(
+    targets,
+    isw:::.prepare_line_elements(mixed_unit_segments)
+  )
+  metric_operator_response <- isw:::.evaluate_line_response_operator(
+    metric_operator,
+    K = metric_inputs$K,
+    D = metric_inputs$D,
+    V = metric_inputs$V,
+    elapsed_time = metric_inputs$t
+  )
+  mixed_unit_operator_response <- isw:::.evaluate_line_response_operator(
+    mixed_unit_operator,
+    K = mixed_unit_inputs$K,
+    D = mixed_unit_inputs$D,
+    V = mixed_unit_inputs$V,
+    elapsed_time = mixed_unit_inputs$t
+  )
+  expect_equal(
+    metric_operator_response,
+    mixed_unit_operator_response,
+    tolerance = 1e-12
+  )
 })
 
 test_that("response matrix rows are targets and columns are source segments", {
