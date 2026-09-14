@@ -11,6 +11,7 @@ articles:
   contents:
   - articles/stream-injection-methods
   - articles/line-sink-numerical-validation
+  - articles/line-sink-performance
   - articles/stream-depletion-apportionment-internals
 
 redirects:
