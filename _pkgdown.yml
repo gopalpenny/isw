@@ -10,6 +10,7 @@ articles:
   navbar: Detailed methods
   contents:
   - articles/stream-injection-methods
+  - articles/line-sink-numerical-validation
   - articles/stream-depletion-apportionment-internals
 
 redirects:

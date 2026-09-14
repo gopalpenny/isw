@@ -1,0 +1,270 @@
+---
+title: "Finite Line-Sink Numerical Validation"
+output:
+  rmarkdown::html_document:
+    toc: true
+    toc_float: true
+    code_folding: show
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  warning = FALSE,
+  fig.width = 8,
+  fig.height = 4.5,
+  out.width = "90%",
+  fig.align = "center"
+)
+```
+
+```{r packages, message = FALSE}
+library(isw)
+library(units)
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+```
+
+## Purpose
+
+The finite line-sink calculation uses fixed Gauss--Legendre quadrature. This
+article compares that calculation with an independent adaptive numerical
+integration and makes the numerical results visible for review. It is a
+diagnostic article rather than a pass/fail unit test: the tables and figures
+show how the approximation changes with quadrature order and observation
+location.
+
+The comparison uses the package convention that a segment rate is a total
+volumetric rate. Both calculations therefore evaluate the normalized average
+response over the line. The stream width supplies an effective minimum radius
+of half the width.
+
+## Independent adaptive reference
+
+The reference function below evaluates
+
+\[
+R_{line} = \int_{-1/2}^{1/2}
+-\frac{E_1\!\left(r_{eff}^2/(4\alpha t)\right)}{4\pi K D}
+\,d\xi,
+\]
+
+where \(\alpha=KD/V\), \(r_{eff}=\max(r, w/2)\), and
+\(r^2=(x-L\xi)^2+y^2\). It uses `stats::integrate()` rather than the
+Gauss--Legendre implementation in `isw`.
+
+```{r reference-function}
+adaptive_line_response <- function(
+    along_distance,
+    perpendicular_distance,
+    line_length,
+    K,
+    D,
+    V,
+    elapsed_time,
+    stream_width) {
+
+  x <- drop_units(set_units(along_distance, "m"))
+  y <- drop_units(set_units(perpendicular_distance, "m"))
+  line_length <- drop_units(set_units(line_length, "m"))
+  K <- drop_units(set_units(K, "m/day"))
+  D <- drop_units(set_units(D, "m"))
+  elapsed_time <- drop_units(set_units(elapsed_time, "day"))
+  minimum_radius <- drop_units(set_units(stream_width, "m")) / 2
+  diffusivity <- K * D / V
+
+  integrand <- function(line_fraction) {
+    distance <- sqrt((x - line_length * line_fraction)^2 + y^2)
+    effective_distance <- pmax(distance, minimum_radius)
+    dimensionless_time <- effective_distance^2 /
+      (4 * diffusivity * elapsed_time)
+
+    -expint::expint_E1(dimensionless_time) / (4 * pi * K * D)
+  }
+
+  reference <- stats::integrate(
+    integrand,
+    lower = -0.5,
+    upper = 0.5,
+    subdivisions = 2000,
+    rel.tol = 1e-10,
+    stop.on.error = TRUE
+  )$value
+
+  set_units(reference, "day/m^2")
+}
+```
+
+## Evaluation cases
+
+The cases exercise the segment midpoint, an off-center point very near the
+line, an endpoint, an ordinary off-line location, and the far field. The
+default 1 m stream width is used throughout so its numerical consequences are
+visible. The line is 100 m long and centered at the local origin.
+
+```{r cases}
+hydraulics <- list(
+  line_length = set_units(100, "m"),
+  K = set_units(10, "m/day"),
+  D = set_units(20, "m"),
+  V = 0.15,
+  elapsed_time = set_units(10, "day"),
+  stream_width = set_units(1, "m")
+)
+
+cases <- tribble(
+  ~location,              ~along_m, ~perpendicular_m,
+  "Midpoint on line",             0,              0,
+  "Off-center near line",        20,            0.2,
+  "Segment endpoint",            50,              2,
+  "Ordinary off-line point",     20,             20,
+  "Far field",                    0,            500
+)
+
+quadrature_orders <- c(8L, 16L, 32L, 64L)
+cases
+```
+
+## Calculate responses and errors
+
+The following chunk is deliberately visible so parameters, cases, and
+quadrature orders can be changed and rerun during review.
+
+```{r calculate-comparison}
+reference_response <- vapply(
+  seq_len(nrow(cases)),
+  function(case_index) {
+    as.numeric(adaptive_line_response(
+      along_distance = set_units(cases$along_m[[case_index]], "m"),
+      perpendicular_distance =
+        set_units(cases$perpendicular_m[[case_index]], "m"),
+      line_length = hydraulics$line_length,
+      K = hydraulics$K,
+      D = hydraulics$D,
+      V = hydraulics$V,
+      elapsed_time = hydraulics$elapsed_time,
+      stream_width = hydraulics$stream_width
+    ))
+  },
+  numeric(1)
+)
+
+comparison <- tidyr::crossing(
+  case_index = seq_len(nrow(cases)),
+  quadrature_order = quadrature_orders
+) |>
+  mutate(
+    location = cases$location[case_index],
+    along_m = cases$along_m[case_index],
+    perpendicular_m = cases$perpendicular_m[case_index],
+    reference_day_per_m2 = reference_response[case_index],
+    quadrature_day_per_m2 = vapply(
+      seq_len(n()),
+      function(result_index) {
+        as.numeric(isw:::.line_sink_aquifer_drawdown_ratio(
+          along_distance = set_units(along_m[[result_index]], "m"),
+          perpendicular_distance =
+            set_units(perpendicular_m[[result_index]], "m"),
+          line_length = hydraulics$line_length,
+          K = hydraulics$K,
+          D = hydraulics$D,
+          V = hydraulics$V,
+          t = hydraulics$elapsed_time,
+          stream_width = hydraulics$stream_width,
+          quadrature_order = quadrature_order[[result_index]]
+        ))
+      },
+      numeric(1)
+    ),
+    absolute_error_day_per_m2 =
+      abs(quadrature_day_per_m2 - reference_day_per_m2),
+    relative_error_percent = 100 * absolute_error_day_per_m2 /
+      abs(reference_day_per_m2)
+  ) |>
+  select(-case_index)
+```
+
+## Review the values
+
+The full table retains the signed response values as well as absolute and
+relative errors.
+
+```{r full-results}
+comparison |>
+  mutate(across(
+    c(
+      reference_day_per_m2,
+      quadrature_day_per_m2,
+      absolute_error_day_per_m2,
+      relative_error_percent
+    ),
+    ~ signif(.x, 6)
+  )) |>
+  knitr::kable()
+```
+
+This compact table makes convergence by quadrature order easier to compare.
+
+```{r error-table}
+comparison |>
+  select(location, quadrature_order, relative_error_percent) |>
+  mutate(relative_error_percent = signif(relative_error_percent, 5)) |>
+  pivot_wider(
+    names_from = quadrature_order,
+    values_from = relative_error_percent,
+    names_prefix = "order_"
+  ) |>
+  knitr::kable(
+    caption = "Absolute relative error (%) compared with adaptive integration"
+  )
+```
+
+```{r error-plot}
+ggplot(
+  comparison,
+  aes(
+    x = quadrature_order,
+    y = pmax(relative_error_percent, 1e-12),
+    color = location
+  )
+) +
+  geom_line(linewidth = 0.7) +
+  geom_point(size = 2) +
+  scale_x_continuous(breaks = quadrature_orders) +
+  scale_y_log10() +
+  labs(
+    x = "Gauss-Legendre quadrature order",
+    y = "Absolute relative error (%)",
+    color = "Observation location"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+## Focus on the default order
+
+`isw` currently uses order 16 by default. This final table isolates that order
+so its approximation error can be reviewed directly before deciding whether
+the default should change.
+
+```{r default-order}
+comparison |>
+  filter(quadrature_order == 16L) |>
+  transmute(
+    location,
+    along_m,
+    perpendicular_m,
+    reference_day_per_m2 = signif(reference_day_per_m2, 7),
+    quadrature_day_per_m2 = signif(quadrature_day_per_m2, 7),
+    relative_error_percent = signif(relative_error_percent, 5)
+  ) |>
+  knitr::kable()
+```
+
+These results should be interpreted in the context of the model's intended
+accuracy and computational cost. In particular, the on-line and near-line
+cases are intentionally demanding because a fixed quadrature rule may not
+place a source point inside the narrow width-regularized region.
