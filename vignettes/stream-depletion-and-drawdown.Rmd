@@ -44,7 +44,7 @@ The focus here is how to prepare the inputs and connect the main functions.
 For more detail, see the website articles on the
 [comparison of the two methods](https://gopalpenny.github.io/isw/articles/stream-injection-methods.html)
 and the
-[internals of ADF apportionment](https://gopalpenny.github.io/isw/articles/stream-depletion-apportionment-internals.html).
+[ADF modeling internals](https://gopalpenny.github.io/isw/articles/adf-modeling-internals.html).
 
 ## Load the spatial inputs
 

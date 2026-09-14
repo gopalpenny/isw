@@ -1,5 +1,5 @@
 ---
-title: "Stream Depletion Apportionment: Detailed Walkthrough"
+title: "ADF modeling internals: Detailed walkthrough"
 output: rmarkdown::html_document
 ---
 
@@ -30,10 +30,12 @@ library(sf)
 
 ## Purpose and scope
 
-This vignette repeats the workflow in
-`vignette("stream-depletion-and-drawdown")` in the same order. After each
-top-level ADF function call, it opens that function to show the intermediate
-objects, calculations, and modeling choices involved.
+This vignette gives a detailed internal walkthrough of the full ADF modeling
+workflow: spatial preparation and apportionment, scheduled stream depletion,
+stream-injection schedules, and aquifer water-level response. It repeats the
+workflow in `vignette("stream-depletion-and-drawdown")` in the same order.
+After each top-level ADF function call, it opens that function to show the
+intermediate objects, calculations, and modeling choices involved.
 
 Functions called with `isw:::` are implementation details. They are useful for
 understanding and diagnosing a calculation, but they may change without the

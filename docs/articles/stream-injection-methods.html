@@ -61,7 +61,7 @@
       <a href="../articles/stream-injection-methods.html">Comparing ADF and Constant-Head Stream Injection</a>
     </li>
     <li>
-      <a href="../articles/stream-depletion-apportionment-internals.html">Stream Depletion Apportionment: Detailed Walkthrough</a>
+      <a href="../articles/adf-modeling-internals.html">ADF modeling internals: Detailed walkthrough</a>
     </li>
   </ul>
 </li>
@@ -155,9 +155,9 @@ to calculate the stream response, and
 <code><a href="../reference/model_aquifer_water_level_change.html">model_aquifer_water_level_change()</a></code> uses it to calculate
 drawdown from the pumping wells.</li>
 </ul>
-<p>See the <a href="stream-depletion-apportionment-internals.html#what-the-spatial-inputs-control">detailed
+<p>See the <a href="adf-modeling-internals.html#what-the-spatial-inputs-control">detailed
 spatial-input discussion</a> for the required stream and well columns.
-The <a href="stream-depletion-apportionment-internals.html#what-happens-to-the-temporal-inputs">temporal-input
+The <a href="adf-modeling-internals.html#what-happens-to-the-temporal-inputs">temporal-input
 discussion</a> describes the pumping-schedule format. The corresponding
 function references are also available with
 <code><a href="../reference/prep_stream_segments.html">?prep_stream_segments</a></code> and
@@ -448,8 +448,8 @@ constant injections.</p>
 <p>More intervals require more analytical response evaluations for ADF
 and more matrix solves for constant head. Note that the constant-head
 calculation reuses a matrix factorization when the interval duration and
-aquifer properties are the same. The <a href="stream-depletion-apportionment-internals.html#what-happens-to-the-temporal-inputs">temporal-input
-discussion</a> provides more detail about evaluation times, and the <a href="stream-depletion-apportionment-internals.html#what-happens-inside-generate_stream_injection_schedule">schedule-grid
+aquifer properties are the same. The <a href="adf-modeling-internals.html#what-happens-to-the-temporal-inputs">temporal-input
+discussion</a> provides more detail about evaluation times, and the <a href="adf-modeling-internals.html#what-happens-inside-generate_stream_injection_schedule">schedule-grid
 walkthrough</a> shows how optional injection times are merged with
 required boundaries.</p>
 <p>The ADF workflow first calculates pump-specific weights for the

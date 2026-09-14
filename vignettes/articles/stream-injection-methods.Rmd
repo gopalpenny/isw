@@ -67,9 +67,9 @@ Each input has a distinct role in the shared workflow:
   and `model_aquifer_water_level_change()` uses it to calculate drawdown from the
   pumping wells.
 
-See the [detailed spatial-input discussion](stream-depletion-apportionment-internals.html#what-the-spatial-inputs-control)
+See the [detailed spatial-input discussion](adf-modeling-internals.html#what-the-spatial-inputs-control)
 for the required stream and well columns. The
-[temporal-input discussion](stream-depletion-apportionment-internals.html#what-happens-to-the-temporal-inputs)
+[temporal-input discussion](adf-modeling-internals.html#what-happens-to-the-temporal-inputs)
 describes the pumping-schedule format. The corresponding function references
 are also available with `?prep_stream_segments` and
 `?generate_stream_injection_schedule`.
@@ -339,9 +339,9 @@ More intervals require more analytical response evaluations for ADF and more
 matrix solves for constant head. Note that the constant-head calculation reuses a
 matrix factorization when the interval duration and aquifer properties are the
 same. The
-[temporal-input discussion](stream-depletion-apportionment-internals.html#what-happens-to-the-temporal-inputs)
+[temporal-input discussion](adf-modeling-internals.html#what-happens-to-the-temporal-inputs)
 provides more detail about evaluation times, and the
-[schedule-grid walkthrough](stream-depletion-apportionment-internals.html#what-happens-inside-generate_stream_injection_schedule)
+[schedule-grid walkthrough](adf-modeling-internals.html#what-happens-inside-generate_stream_injection_schedule)
 shows how optional injection times are merged with required boundaries.
 
 The ADF workflow first calculates pump-specific weights for the stream

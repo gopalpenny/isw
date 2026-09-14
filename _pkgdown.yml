@@ -10,7 +10,7 @@ articles:
   navbar: Detailed methods
   contents:
   - articles/stream-injection-methods
-  - articles/stream-depletion-apportionment-internals
+  - articles/adf-modeling-internals
 
 reference:
 - title: Normal workflow
@@ -38,3 +38,4 @@ reference:
 
 redirects:
 - ["articles/stream-depletion-apportionment.html", "articles/stream-depletion-and-drawdown.html"]
+- ["articles/stream-depletion-apportionment-internals.html", "articles/adf-modeling-internals.html"]
