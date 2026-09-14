@@ -3,12 +3,17 @@
 <url><loc>https://gopalpenny.github.io/isw/LICENSE-text.html</loc></url>
 <url><loc>https://gopalpenny.github.io/isw/LICENSE.html</loc></url>
 <url><loc>https://gopalpenny.github.io/isw/articles/index.html</loc></url>
+<url><loc>https://gopalpenny.github.io/isw/articles/line-sink-numerical-validation.html</loc></url>
+<url><loc>https://gopalpenny.github.io/isw/articles/line-sink-performance.html</loc></url>
 <url><loc>https://gopalpenny.github.io/isw/articles/stream-depletion-and-drawdown.html</loc></url>
 <url><loc>https://gopalpenny.github.io/isw/articles/stream-depletion-apportionment-internals.html</loc></url>
 <url><loc>https://gopalpenny.github.io/isw/articles/stream-injection-methods.html</loc></url>
 <url><loc>https://gopalpenny.github.io/isw/authors.html</loc></url>
 <url><loc>https://gopalpenny.github.io/isw/index.html</loc></url>
 <url><loc>https://gopalpenny.github.io/isw/news/index.html</loc></url>
+<url><loc>https://gopalpenny.github.io/isw/reference/calc_infinite_aquifer_drawdown_ratio.html</loc></url>
+<url><loc>https://gopalpenny.github.io/isw/reference/calc_straight_stream_depletion_fraction.html</loc></url>
+<url><loc>https://gopalpenny.github.io/isw/reference/calc_straight_stream_drawdown_ratio.html</loc></url>
 <url><loc>https://gopalpenny.github.io/isw/reference/check_dimensionality.html</loc></url>
 <url><loc>https://gopalpenny.github.io/isw/reference/dot-discretize_stream_reaches.html</loc></url>
 <url><loc>https://gopalpenny.github.io/isw/reference/dot-fetch_3dhp_flowlines.html</loc></url>
@@ -35,7 +40,9 @@
 <url><loc>https://gopalpenny.github.io/isw/reference/example_observation_wells.html</loc></url>
 <url><loc>https://gopalpenny.github.io/isw/reference/example_pumping_wells.html</loc></url>
 <url><loc>https://gopalpenny.github.io/isw/reference/example_stream_reaches.html</loc></url>
+<url><loc>https://gopalpenny.github.io/isw/reference/fetch_usgs_stream_reaches.html</loc></url>
 <url><loc>https://gopalpenny.github.io/isw/reference/generate_segment_sample_points.html</loc></url>
+<url><loc>https://gopalpenny.github.io/isw/reference/generate_stream_injection_schedule.html</loc></url>
 <url><loc>https://gopalpenny.github.io/isw/reference/get_adf_stream_apportionment.html</loc></url>
 <url><loc>https://gopalpenny.github.io/isw/reference/get_adf_stream_depletion.html</loc></url>
 <url><loc>https://gopalpenny.github.io/isw/reference/get_apportioned_aquifer_drawdown.html</loc></url>
@@ -50,7 +57,11 @@
 <url><loc>https://gopalpenny.github.io/isw/reference/get_stream_segments.html</loc></url>
 <url><loc>https://gopalpenny.github.io/isw/reference/get_usgs_stream_reaches.html</loc></url>
 <url><loc>https://gopalpenny.github.io/isw/reference/index.html</loc></url>
+<url><loc>https://gopalpenny.github.io/isw/reference/model_adf_stream_depletion.html</loc></url>
+<url><loc>https://gopalpenny.github.io/isw/reference/model_aquifer_water_level_change.html</loc></url>
 <url><loc>https://gopalpenny.github.io/isw/reference/pipe.html</loc></url>
+<url><loc>https://gopalpenny.github.io/isw/reference/prep_adf_stream_apportionment.html</loc></url>
+<url><loc>https://gopalpenny.github.io/isw/reference/prep_stream_segments.html</loc></url>
 <url><loc>https://gopalpenny.github.io/isw/reference/prob_integral.html</loc></url>
 </urlset>
 

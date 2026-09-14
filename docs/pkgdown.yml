@@ -1,11 +1,13 @@
-pandoc: '2.5'
+pandoc: 3.8.3
 pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
+  articles/line-sink-numerical-validation: line-sink-numerical-validation.html
+  articles/line-sink-performance: line-sink-performance.html
   stream-depletion-and-drawdown: stream-depletion-and-drawdown.html
   articles/stream-depletion-apportionment-internals: stream-depletion-apportionment-internals.html
   articles/stream-injection-methods: stream-injection-methods.html
-last_built: 2026-08-27T16:16Z
+last_built: 2026-09-14T22:27Z
 urls:
   reference: https://gopalpenny.github.io/isw/reference
   article: https://gopalpenny.github.io/isw/articles

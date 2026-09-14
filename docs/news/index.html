@@ -42,6 +42,12 @@
       <a href="../articles/stream-injection-methods.html">Comparing ADF and Constant-Head Stream Injection</a>
     </li>
     <li>
+      <a href="../articles/line-sink-numerical-validation.html">Finite Line-Sink Numerical Validation</a>
+    </li>
+    <li>
+      <a href="../articles/line-sink-performance.html">Finite Line-Sink Performance and Memory Scaling</a>
+    </li>
+    <li>
       <a href="../articles/stream-depletion-apportionment-internals.html">Stream Depletion Apportionment: Detailed Walkthrough</a>
     </li>
   </ul></li>
@@ -65,10 +71,11 @@
 <h2 class="page-header" data-toc-text="0.1.0.9000" id="isw-0109000">isw 0.1.0.9000<a class="anchor" aria-label="anchor" href="#isw-0109000"></a></h2>
 <div class="section level3">
 <h3 id="stream-injection-and-water-level-response-0-1-0-9000">Stream injection and water-level response<a class="anchor" aria-label="anchor" href="#stream-injection-and-water-level-response-0-1-0-9000"></a></h3>
-<ul><li>Added <code><a href="../reference/get_stream_segments.html">get_stream_segments()</a></code> to separate projected stream discretization from ADF apportionment. Discrete stream wells default to an effective diameter equal to half their represented segment length.</li>
-<li>Added <code><a href="../reference/get_stream_injection_schedule.html">get_stream_injection_schedule()</a></code> with ADF and constant-head methods. It reports signed, piecewise-constant aquifer-injection rates. The constant-head method solves pump-specific discrete-well rates that enforce zero signed water-level change at stream model points at interval endpoints. Precomputed output from <code><a href="../reference/get_adf_stream_depletion.html">get_adf_stream_depletion()</a></code> can be reused when it includes every schedule boundary.</li>
+<ul><li>Added <code><a href="../reference/prep_stream_segments.html">prep_stream_segments()</a></code> to separate projected stream discretization from ADF apportionment. Stream width is stored once per segment and defaults to 1 m when it is not supplied at the reach level.</li>
+<li>Added <code><a href="../reference/generate_stream_injection_schedule.html">generate_stream_injection_schedule()</a></code> with ADF and constant-head methods. It reports signed, piecewise-constant aquifer-injection rates. The constant-head method solves pump-specific discrete-well rates that enforce zero signed water-level change at stream model points at interval endpoints. Precomputed output from <code><a href="../reference/model_adf_stream_depletion.html">model_adf_stream_depletion()</a></code> can be reused when it includes every schedule boundary.</li>
 <li>Added boundary-residual and response-matrix condition-number diagnostics for constant-head schedules. Condition numbers above <code>1e6</code> produce a warning.</li>
-<li>Added <code><a href="../reference/get_adf_stream_apportionment.html">get_adf_stream_apportionment()</a></code>, <code><a href="../reference/get_adf_stream_depletion.html">get_adf_stream_depletion()</a></code>, and <code><a href="../reference/get_aquifer_water_level_change.html">get_aquifer_water_level_change()</a></code> as preferred, method-specific or general interfaces. The existing <code><a href="../reference/get_stream_reach_apportionment.html">get_stream_reach_apportionment()</a></code>, <code><a href="../reference/get_apportioned_stream_depletion.html">get_apportioned_stream_depletion()</a></code>, and <code><a href="../reference/get_apportioned_aquifer_drawdown.html">get_apportioned_aquifer_drawdown()</a></code> functions remain available for compatibility and are planned for deprecation in a future release.</li>
+<li>Reorganized the public API around explicit verbs: <code>fetch_</code> retrieves external data, <code>prep_</code> constructs static model inputs, <code>generate_</code> constructs a stream- injection schedule, <code>model_</code> evaluates scheduled responses, and <code>calc_</code> exposes specialized single-pump analytical calculations.</li>
+<li>Removed the former combined apportionment, apportioned-depletion, apportioned-drawdown, and single-pump convenience interfaces. Stream geometry is now supplied through <code>stream_segments</code> rather than duplicated in or recovered from an apportionment object.</li>
 </ul></div>
 </div>
   </div>
@@ -81,7 +88,7 @@
 
 
       <footer><div class="copyright">
-  <p></p><p>Developed by The package maintainer.</p>
+  <p></p><p>Developed by Gopal Penny.</p>
 </div>
 
 <div class="pkgdown">

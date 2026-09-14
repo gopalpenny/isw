@@ -42,6 +42,12 @@
       <a href="../articles/stream-injection-methods.html">Comparing ADF and Constant-Head Stream Injection</a>
     </li>
     <li>
+      <a href="../articles/line-sink-numerical-validation.html">Finite Line-Sink Numerical Validation</a>
+    </li>
+    <li>
+      <a href="../articles/line-sink-performance.html">Finite Line-Sink Performance and Memory Scaling</a>
+    </li>
+    <li>
       <a href="../articles/stream-depletion-apportionment-internals.html">Stream Depletion Apportionment: Detailed Walkthrough</a>
     </li>
   </ul></li>
@@ -61,18 +67,54 @@
     </div>
 
     <table class="ref-index"><colgroup><col class="alias"><col class="title"></colgroup><tbody><tr><th colspan="2">
-          <h2 id="all-functions">All functions <a href="#all-functions" class="anchor" aria-hidden="true"></a></h2>
+          <h2 id="normal-workflow">Normal workflow <a href="#normal-workflow" class="anchor" aria-hidden="true"></a></h2>
+          <p class="section-desc"></p><p>Prepare inputs and model scheduled pumping, stream depletion, and aquifer response.</p>
+        </th>
+      </tr></tbody><tbody><tr><td>
+          <p><code><a href="fetch_usgs_stream_reaches.html">fetch_usgs_stream_reaches()</a></code> </p>
+        </td>
+        <td><p>Retrieve USGS stream reaches</p></td>
+      </tr><tr><td>
+          <p><code><a href="prep_stream_segments.html">prep_stream_segments()</a></code> </p>
+        </td>
+        <td><p>Create stream segments for analytical modeling</p></td>
+      </tr><tr><td>
+          <p><code><a href="prep_adf_stream_apportionment.html">prep_adf_stream_apportionment()</a></code> </p>
+        </td>
+        <td><p>Calculate ADF stream apportionment for existing stream segments</p></td>
+      </tr><tr><td>
+          <p><code><a href="model_adf_stream_depletion.html">model_adf_stream_depletion()</a></code> </p>
+        </td>
+        <td><p>Model ADF stream depletion</p></td>
+      </tr><tr><td>
+          <p><code><a href="generate_stream_injection_schedule.html">generate_stream_injection_schedule()</a></code> </p>
+        </td>
+        <td><p>Construct a stream-injection schedule</p></td>
+      </tr><tr><td>
+          <p><code><a href="model_aquifer_water_level_change.html">model_aquifer_water_level_change()</a></code> </p>
+        </td>
+        <td><p>Model aquifer water-level change</p></td>
+      </tr></tbody><tbody><tr><th colspan="2">
+          <h2 id="specialized-analytical-calculations">Specialized analytical calculations <a href="#specialized-analytical-calculations" class="anchor" aria-hidden="true"></a></h2>
+          <p class="section-desc"></p><p>Single-pump, single-elapsed-time analytical response calculations.</p>
+        </th>
+      </tr></tbody><tbody><tr><td>
+          <p><code><a href="calc_straight_stream_depletion_fraction.html">calc_straight_stream_depletion_fraction()</a></code> </p>
+        </td>
+        <td><p>Calculate straight-stream depletion fraction</p></td>
+      </tr><tr><td>
+          <p><code><a href="calc_infinite_aquifer_drawdown_ratio.html">calc_infinite_aquifer_drawdown_ratio()</a></code> </p>
+        </td>
+        <td><p>Calculate infinite-aquifer drawdown ratio</p></td>
+      </tr><tr><td>
+          <p><code><a href="calc_straight_stream_drawdown_ratio.html">calc_straight_stream_drawdown_ratio()</a></code> </p>
+        </td>
+        <td><p>Drawdown near a straight constant-head stream</p></td>
+      </tr></tbody><tbody><tr><th colspan="2">
+          <h2 id="example-data">Example data <a href="#example-data" class="anchor" aria-hidden="true"></a></h2>
           <p class="section-desc"></p>
         </th>
       </tr></tbody><tbody><tr><td>
-          <p><code><a href="check_dimensionality.html">check_dimensionality()</a></code> </p>
-        </td>
-        <td><p>Check dimensionality</p></td>
-      </tr><tr><td>
-          <p><code><a href="example_observation_wells.html">example_observation_wells</a></code> </p>
-        </td>
-        <td><p>Example observation wells</p></td>
-      </tr><tr><td>
           <p><code><a href="example_pumping_wells.html">example_pumping_wells</a></code> </p>
         </td>
         <td><p>Example pumping wells</p></td>
@@ -81,65 +123,9 @@
         </td>
         <td><p>Example stream network</p></td>
       </tr><tr><td>
-          <p><code><a href="generate_segment_sample_points.html">generate_segment_sample_points()</a></code> </p>
+          <p><code><a href="example_observation_wells.html">example_observation_wells</a></code> </p>
         </td>
-        <td><p>Generate sample points within stream-reach segments</p></td>
-      </tr><tr><td>
-          <p><code><a href="get_adf_stream_apportionment.html">get_adf_stream_apportionment()</a></code> </p>
-        </td>
-        <td><p>Calculate ADF stream apportionment for existing stream segments</p></td>
-      </tr><tr><td>
-          <p><code><a href="get_adf_stream_depletion.html">get_adf_stream_depletion()</a></code> </p>
-        </td>
-        <td><p>Calculate ADF stream depletion</p></td>
-      </tr><tr><td>
-          <p><code><a href="get_apportioned_aquifer_drawdown.html">get_apportioned_aquifer_drawdown()</a></code> </p>
-        </td>
-        <td><p>Estimate aquifer drawdown with apportioned stream recovery</p></td>
-      </tr><tr><td>
-          <p><code><a href="get_apportioned_stream_depletion.html">get_apportioned_stream_depletion()</a></code> </p>
-        </td>
-        <td><p>Estimate apportioned stream depletion from pumping schedules</p></td>
-      </tr><tr><td>
-          <p><code><a href="get_aquifer_drawdown_ratio.html">get_aquifer_drawdown_ratio()</a></code> </p>
-        </td>
-        <td><p>Drawdown from a single well without aquifer boundaries</p></td>
-      </tr><tr><td>
-          <p><code><a href="get_aquifer_water_level_change.html">get_aquifer_water_level_change()</a></code> </p>
-        </td>
-        <td><p>Calculate aquifer water-level change</p></td>
-      </tr><tr><td>
-          <p><code><a href="get_depletion_from_pumping.html">get_depletion_from_pumping()</a></code> </p>
-        </td>
-        <td><p>Get stream depletion and changes in water level from pumping</p></td>
-      </tr><tr><td>
-          <p><code><a href="get_straight_stream_drawdown_ratio.html">get_straight_stream_drawdown_ratio()</a></code> </p>
-        </td>
-        <td><p>Drawdown near a straight constant-head stream</p></td>
-      </tr><tr><td>
-          <p><code><a href="get_stream_depletion_fraction.html">get_stream_depletion_fraction()</a></code> </p>
-        </td>
-        <td><p>Glover model of stream depletion fraction</p></td>
-      </tr><tr><td>
-          <p><code><a href="get_stream_injection_schedule.html">get_stream_injection_schedule()</a></code> </p>
-        </td>
-        <td><p>Construct a stream-injection schedule</p></td>
-      </tr><tr><td>
-          <p><code><a href="get_stream_reach_apportionment.html">get_stream_reach_apportionment()</a></code> </p>
-        </td>
-        <td><p>Calculate stream-reach apportionment</p></td>
-      </tr><tr><td>
-          <p><code><a href="get_stream_segments.html">get_stream_segments()</a></code> </p>
-        </td>
-        <td><p>Create stream segments for analytical modeling</p></td>
-      </tr><tr><td>
-          <p><code><a href="get_usgs_stream_reaches.html">get_usgs_stream_reaches()</a></code> </p>
-        </td>
-        <td><p>Retrieve USGS stream reaches</p></td>
-      </tr><tr><td>
-          <p><code><a href="prob_integral.html">prob_integral()</a></code> </p>
-        </td>
-        <td><p>Probability integral</p></td>
+        <td><p>Example observation wells</p></td>
       </tr></tbody></table></div>
 
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
@@ -149,7 +135,7 @@
 
 
       <footer><div class="copyright">
-  <p></p><p>Developed by The package maintainer.</p>
+  <p></p><p>Developed by Gopal Penny.</p>
 </div>
 
 <div class="pkgdown">
