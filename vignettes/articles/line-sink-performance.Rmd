@@ -132,7 +132,7 @@ benchmark_segment_count <- function(number_of_segments) {
       crs = 32615
     )
   )
-  stream_segments <- get_stream_segments(
+  stream_segments <- prep_stream_segments(
     stream_reach,
     reach_spacing = set_units(segment_length_m, "m")
   )

@@ -311,8 +311,10 @@
 #' Transform a stream network to a projected analysis CRS and divide it into
 #' approximately equal-length model segments.
 #'
-#' @param stream_reaches An `sf` stream-reach object accepted by
-#'   [`.validate_stream_reaches()`].
+#' @param stream_reaches A nonempty `sf` object with one positive-length
+#'   `LINESTRING` or `MULTILINESTRING` feature per stream reach, a defined CRS,
+#'   and a unique, nonmissing character `reach_id` column. An optional
+#'   reach-level `stream_width` column must have length units.
 #' @param reach_spacing A scalar `units` length giving the maximum length of a
 #'   model segment.
 #' @param analysis_crs Either `NULL` or a projected coordinate reference
@@ -340,7 +342,7 @@
 #' stream-reach or stream-segment inputs.
 #'
 #' @examples
-#' stream_segments <- get_stream_segments(
+#' stream_segments <- prep_stream_segments(
 #'   example_stream_reaches,
 #'   reach_spacing = units::set_units(100, "m")
 #' )
@@ -349,7 +351,7 @@
 #' )]
 #'
 #' @export
-get_stream_segments <- function(
+prep_stream_segments <- function(
     stream_reaches,
     reach_spacing,
     analysis_crs = NULL,
@@ -894,8 +896,8 @@ get_stream_segments <- function(
 #' Create regularly distributed points within each discretized reach segment
 #' for web-based stream-depletion apportionment.
 #'
-#' @param reach_segments A projected `sf` object returned by
-#'   [`.discretize_stream_reaches()`]. It must contain `reach_id`,
+#' @param reach_segments A projected stream-segment `sf` object. It must
+#'   contain `reach_id`,
 #'   `reach_segment_id`, and `represented_length` columns and one `LINESTRING`
 #'   geometry per row.
 #' @param sample_spacing A scalar `units` object with length dimensions giving
@@ -916,25 +918,8 @@ get_stream_segments <- function(
 #' reach segment. `model_point` represents the segment in the model, while the
 #' finer sample points describe its geometry during web apportionment.
 #'
-#' @examples
-#' stream_reaches <- example_stream_reaches
-#'
-#' reach_segments <- isw:::.discretize_stream_reaches(
-#'   stream_reaches,
-#'   reach_spacing = units::set_units(150, "m")
-#' )
-#'
-#' sample_points <- generate_segment_sample_points(
-#'   reach_segments,
-#'   sample_spacing = units::set_units(40, "m")
-#' )
-#'
-#' sample_points[c(
-#'   "reach_id", "reach_segment_id", "sample_point_id", "sampled_length"
-#' )]
-#'
-#' @export
-generate_segment_sample_points <- function(reach_segments, sample_spacing) {
+#' @noRd
+.generate_segment_sample_points <- function(reach_segments, sample_spacing) {
 
   if (!inherits(reach_segments, "sf")) {
     stop("reach_segments must be an sf object.")

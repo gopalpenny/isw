@@ -46,7 +46,7 @@
 #' \dontrun{
 #' pumping_wells <- example_pumping_wells[1, ]
 #'
-#' stream_reaches <- get_usgs_stream_reaches(
+#' stream_reaches <- fetch_usgs_stream_reaches(
 #'   aoi = pumping_wells,
 #'   buffer_distance = units::set_units(10, "km")
 #' )
@@ -57,7 +57,7 @@
 #' }
 #'
 #' @export
-get_usgs_stream_reaches <- function(
+fetch_usgs_stream_reaches <- function(
     aoi,
     buffer_distance = NULL,
     source = "3dhp",
@@ -292,7 +292,7 @@ get_usgs_stream_reaches <- function(
     stop(
       "Package 'nhdplusTools' is required to retrieve USGS stream data. ",
       "Install it from CRAN before calling ",
-      "get_usgs_stream_reaches()."
+      "fetch_usgs_stream_reaches()."
     )
   }
 

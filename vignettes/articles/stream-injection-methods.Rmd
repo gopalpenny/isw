@@ -46,7 +46,7 @@ the analytical image-well solution.
 
 Distance calculations require a projected CRS. This example creates its
 inputs directly in UTM zone 15N. When `stream_reaches` uses a geographic CRS,
-`get_stream_segments()` selects a local UTM CRS unless the user supplies
+`prep_stream_segments()` selects a local UTM CRS unless the user supplies
 `analysis_crs`. Later functions transform pumping and observation wells to
 the CRS used by the stream segments.
 
@@ -57,22 +57,22 @@ origin while remaining in the projected CRS.
 
 Each input has a distinct role in the shared workflow:
 
-* `stream_reaches` defines the stream geometry. `get_stream_segments()` divides
+* `stream_reaches` defines the stream geometry. `prep_stream_segments()` divides
   this geometry into segments that can be used with either injection method.
 * `pumping_wells` identifies the pumping wells and provides their locations and
   aquifer properties. These data are needed for ADF apportionment, the stream
   depletion schedules, and the water-level calculation.
 * `pumping_schedules` gives the pumping rate through time for each well.
-  `get_stream_injection_schedule()` uses it to calculate the stream response,
-  and `get_aquifer_water_level_change()` uses it to calculate drawdown from the
+  `generate_stream_injection_schedule()` uses it to calculate the stream response,
+  and `model_aquifer_water_level_change()` uses it to calculate drawdown from the
   pumping wells.
 
 See the [detailed spatial-input discussion](stream-depletion-apportionment-internals.html#what-the-spatial-inputs-control)
 for the required stream and well columns. The
 [temporal-input discussion](stream-depletion-apportionment-internals.html#what-happens-to-the-temporal-inputs)
 describes the pumping-schedule format. The corresponding function references
-are also available with `?get_stream_segments` and
-`?get_stream_injection_schedule`.
+are also available with `?prep_stream_segments` and
+`?generate_stream_injection_schedule`.
 
 ```{r model-inputs}
 analysis_crs <- 32615
@@ -116,7 +116,7 @@ pumping_schedules <- tibble(
 
 ## Create neutral stream segments
 
-`get_stream_segments()` divides the stream before either injection method is
+`prep_stream_segments()` divides the stream before either injection method is
 applied. Its output contains no ADF weights or injection rates, so the same
 segments can be used by both methods.
 
@@ -131,7 +131,7 @@ collocation point does not act as an injection well. It is simply where the
 model enforces the constant-head boundary condition.
 
 ```{r stream-segments}
-stream_segments <- get_stream_segments(
+stream_segments <- prep_stream_segments(
   stream_reaches,
   reach_spacing = set_units(100, "m"),
   stream_width = set_units(10, "m")
@@ -341,23 +341,23 @@ matrix factorization when the interval duration and aquifer properties are the
 same. The
 [temporal-input discussion](stream-depletion-apportionment-internals.html#what-happens-to-the-temporal-inputs)
 provides more detail about evaluation times, and the
-[schedule-grid walkthrough](stream-depletion-apportionment-internals.html#what-happens-inside-get_stream_injection_schedule)
+[schedule-grid walkthrough](stream-depletion-apportionment-internals.html#what-happens-inside-generate_stream_injection_schedule)
 shows how optional injection times are merged with required boundaries.
 
 The ADF workflow first calculates pump-specific weights for the stream
-segments, then passes those weights to `get_stream_injection_schedule()`. The
+segments, then passes those weights to `generate_stream_injection_schedule()`. The
 constant-head workflow passes the stream segments directly to the same
 function. Both schedules use the interval grid defined above.
 
 ```{r injection-schedules}
-stream_apportionment <- get_adf_stream_apportionment(
+stream_apportionment <- prep_adf_stream_apportionment(
   pumping_wells,
   stream_segments,
   sample_spacing = set_units(25, "m"),
   method = "web_squared"
 )
 
-adf_schedule <- get_stream_injection_schedule(
+adf_schedule <- generate_stream_injection_schedule(
   pumping_wells,
   pumping_schedules,
   stream_segments,
@@ -367,7 +367,7 @@ adf_schedule <- get_stream_injection_schedule(
   stream_apportionment = stream_apportionment
 )
 
-constant_head_schedule <- get_stream_injection_schedule(
+constant_head_schedule <- generate_stream_injection_schedule(
   pumping_wells,
   pumping_schedules,
   stream_segments,
@@ -529,7 +529,7 @@ knitr::opts_chunk$set(
 
 ## Compare water levels at the stream
 
-`get_aquifer_water_level_change()` can use either completed schedule. For the
+`model_aquifer_water_level_change()` can use either completed schedule. For the
 constant-head schedule, net water-level change should be zero to numerical
 precision at every collocation point and interval end. The method does not
 enforce zero change between collocation points, so those values help reveal
@@ -539,7 +539,7 @@ ADF calculates depletion but does not directly enforce water level at the
 stream. Nonzero water-level changes are therefore expected for the ADF result.
 
 ```{r calculate-water-levels}
-adf_water_levels <- get_aquifer_water_level_change(
+adf_water_levels <- model_aquifer_water_level_change(
   pumping_wells,
   pumping_schedules,
   observation_wells,
@@ -549,7 +549,7 @@ adf_water_levels <- get_aquifer_water_level_change(
 ) |>
   mutate(method = "ADF")
 
-constant_head_water_levels <- get_aquifer_water_level_change(
+constant_head_water_levels <- model_aquifer_water_level_change(
   pumping_wells,
   pumping_schedules,
   observation_wells,
@@ -615,7 +615,7 @@ from the boundary. At day 90, the center transect can also be compared with
 the analytical image-well solution for a straight, constant-head stream.
 
 `isw` uses positive rates for pumping and negative rates for injection.
-`get_straight_stream_drawdown_ratio()` returns the signed ratio
+`calc_straight_stream_drawdown_ratio()` returns the signed ratio
 \(\Delta h / Q\), which is negative. Multiplying
 the positive pumping rate directly by this ratio gives the signed water-level
 change.
@@ -627,7 +627,7 @@ image_well_reference <- tibble(
   distance_from_stream = set_units(transect_distances, "m"),
   evaluation_time = set_units(90, "days"),
   water_level_change_m = as.numeric(set_units(
-    set_units(400, "m^3/day") * get_straight_stream_drawdown_ratio(
+    set_units(400, "m^3/day") * calc_straight_stream_drawdown_ratio(
       x1 = set_units(300, "m"),
       x2 = set_units(transect_distances, "m"),
       y_diff = set_units(0, "m"),

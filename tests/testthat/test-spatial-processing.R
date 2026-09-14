@@ -352,10 +352,10 @@ make_projected_stream_reach <- function(length = 250) {
   )
 }
 
-test_that("get_stream_segments projects streams and keeps width distinct", {
+test_that("prep_stream_segments projects streams and keeps width distinct", {
   inputs <- make_spatial_test_inputs()
 
-  stream_segments <- get_stream_segments(
+  stream_segments <- prep_stream_segments(
     inputs$stream_reaches,
     units::set_units(5000, "m")
   )
@@ -374,7 +374,7 @@ test_that("stream width is defined once per reach", {
   stream_reaches <- make_projected_stream_reach()
   stream_reaches$stream_width <- units::set_units(7, "m")
 
-  inherited_segments <- get_stream_segments(
+  inherited_segments <- prep_stream_segments(
     stream_reaches,
     units::set_units(100, "m")
   )
@@ -383,7 +383,7 @@ test_that("stream width is defined once per reach", {
     units::set_units(rep(7, nrow(inherited_segments)), "m")
   )
 
-  overridden_segments <- get_stream_segments(
+  overridden_segments <- prep_stream_segments(
     stream_reaches,
     units::set_units(100, "m"),
     stream_width = units::set_units(3, "m")
@@ -394,7 +394,7 @@ test_that("stream width is defined once per reach", {
   )
 
   expect_error(
-    get_stream_segments(
+    prep_stream_segments(
       stream_reaches,
       units::set_units(100, "m"),
       stream_width = units::set_units(c(1, 2, 3), "m")
@@ -414,11 +414,11 @@ test_that("stream and pumping radius fields cannot be interchanged", {
   stream_reaches <- make_projected_stream_reach()
   stream_reaches$well_diam <- units::set_units(3, "m")
   expect_error(
-    get_stream_segments(stream_reaches, units::set_units(100, "m")),
+    prep_stream_segments(stream_reaches, units::set_units(100, "m")),
     "cannot contain well_diam"
   )
 
-  stream_segments <- get_stream_segments(
+  stream_segments <- prep_stream_segments(
     make_projected_stream_reach(),
     units::set_units(100, "m")
   )
@@ -436,10 +436,10 @@ test_that("stream and pumping radius fields cannot be interchanged", {
   )
 })
 
-test_that("get_stream_segments retains a projected stream CRS", {
+test_that("prep_stream_segments retains a projected stream CRS", {
   stream_reaches <- make_projected_stream_reach()
 
-  stream_segments <- get_stream_segments(
+  stream_segments <- prep_stream_segments(
     stream_reaches,
     units::set_units(100, "m")
   )
@@ -447,10 +447,10 @@ test_that("get_stream_segments retains a projected stream CRS", {
   expect_identical(sf::st_crs(stream_segments), sf::st_crs(stream_reaches))
 })
 
-test_that("get_stream_segments honors a supplied projected CRS", {
+test_that("prep_stream_segments honors a supplied projected CRS", {
   inputs <- make_spatial_test_inputs()
 
-  stream_segments <- get_stream_segments(
+  stream_segments <- prep_stream_segments(
     inputs$stream_reaches,
     units::set_units(5000, "m"),
     analysis_crs = 26915
@@ -458,7 +458,7 @@ test_that("get_stream_segments honors a supplied projected CRS", {
 
   expect_identical(sf::st_crs(stream_segments), sf::st_crs(26915))
   expect_error(
-    get_stream_segments(
+    prep_stream_segments(
       inputs$stream_reaches,
       units::set_units(5000, "m"),
       analysis_crs = 4326
@@ -468,7 +468,7 @@ test_that("get_stream_segments honors a supplied projected CRS", {
 })
 
 test_that("stream-segment widths must be positive lengths", {
-  stream_segments <- get_stream_segments(
+  stream_segments <- prep_stream_segments(
     make_projected_stream_reach(),
     units::set_units(100, "m")
   )
@@ -481,7 +481,7 @@ test_that("stream-segment widths must be positive lengths", {
 })
 
 test_that("stream model points remain finite and on their segment", {
-  stream_segments <- get_stream_segments(
+  stream_segments <- prep_stream_segments(
     make_projected_stream_reach(),
     units::set_units(100, "m")
   )

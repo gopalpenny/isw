@@ -32,7 +32,7 @@ make_constant_head_inputs <- function(two_pumps = FALSE) {
       crs = 32615
     )
   )
-  stream_segments <- get_stream_segments(
+  stream_segments <- prep_stream_segments(
     stream_reaches,
     units::set_units(50, "m")
   )
@@ -60,7 +60,7 @@ make_constant_head_inputs <- function(two_pumps = FALSE) {
 test_that("constant-head schedule enforces endpoint boundary conditions", {
   inputs <- make_constant_head_inputs()
 
-  schedule <- get_stream_injection_schedule(
+  schedule <- generate_stream_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_segments,
@@ -94,7 +94,7 @@ test_that("constant-head schedule enforces endpoint boundary conditions", {
     ),
     geometry = inputs$stream_segments$model_point
   )
-  boundary_response <- get_aquifer_water_level_change(
+  boundary_response <- model_aquifer_water_level_change(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     stream_observations,
@@ -115,7 +115,7 @@ test_that("constant-head schedule enforces endpoint boundary conditions", {
 
 test_that("constant-head schedule metadata preserves quadrature order", {
   inputs <- make_constant_head_inputs()
-  schedule <- get_stream_injection_schedule(
+  schedule <- generate_stream_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_segments,
@@ -132,7 +132,7 @@ test_that("constant-head schedule metadata preserves quadrature order", {
     observation_id = "obs_1",
     geometry = sf::st_sfc(sf::st_point(c(50, 0)), crs = 32615)
   )
-  reused_order <- get_aquifer_water_level_change(
+  reused_order <- model_aquifer_water_level_change(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     observation_wells,
@@ -140,7 +140,7 @@ test_that("constant-head schedule metadata preserves quadrature order", {
     inputs$evaluation_times,
     stream_injection_schedule = schedule
   )
-  explicit_order <- get_aquifer_water_level_change(
+  explicit_order <- model_aquifer_water_level_change(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     observation_wells,
@@ -152,7 +152,7 @@ test_that("constant-head schedule metadata preserves quadrature order", {
 
   expect_equal(reused_order, explicit_order)
   expect_warning(
-    get_aquifer_water_level_change(
+    model_aquifer_water_level_change(
       inputs$pumping_wells,
       inputs$pumping_schedules,
       observation_wells,
@@ -168,7 +168,7 @@ test_that("constant-head schedule metadata preserves quadrature order", {
 test_that("shared aquifer factorization preserves pump-specific schedules", {
   inputs <- make_constant_head_inputs(two_pumps = TRUE)
 
-  combined_schedule <- get_stream_injection_schedule(
+  combined_schedule <- generate_stream_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_segments,
@@ -182,7 +182,7 @@ test_that("shared aquifer factorization preserves pump-specific schedules", {
     pump_row <- inputs$pumping_wells$pump_id == pump_id
     single_well <- inputs$pumping_wells[pump_row, , drop = FALSE]
     single_schedule_input <- inputs$pumping_schedules[c("t", pump_id)]
-    single_schedule <- get_stream_injection_schedule(
+    single_schedule <- generate_stream_injection_schedule(
       single_well,
       single_schedule_input,
       inputs$stream_segments,
@@ -243,20 +243,20 @@ test_that("multiple aquifer parameter sets warn and more than ten stop", {
 
 test_that("ADF remains the default injection method", {
   inputs <- make_constant_head_inputs()
-  stream_apportionment <- get_adf_stream_apportionment(
+  stream_apportionment <- prep_adf_stream_apportionment(
     inputs$pumping_wells,
     inputs$stream_segments,
     units::set_units(25, "m")
   )
 
-  default_schedule <- get_stream_injection_schedule(
+  default_schedule <- generate_stream_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_segments,
     inputs$evaluation_times,
     stream_apportionment = stream_apportionment
   )
-  explicit_schedule <- get_stream_injection_schedule(
+  explicit_schedule <- generate_stream_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_segments,
@@ -270,7 +270,7 @@ test_that("ADF remains the default injection method", {
   mismatched_apportionment <- stream_apportionment
   mismatched_apportionment$reach_segment_id[[1]] <- "different_segment"
   expect_error(
-    get_stream_injection_schedule(
+    generate_stream_injection_schedule(
       inputs$pumping_wells,
       inputs$pumping_schedules,
       inputs$stream_segments,
@@ -281,13 +281,13 @@ test_that("ADF remains the default injection method", {
     "must match stream_segments"
   )
 
-  direct_depletion <- get_adf_stream_depletion(
+  direct_depletion <- model_adf_stream_depletion(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     stream_apportionment,
     units::set_units(c(0, 10, 20, 25), "days")
   )
-  reused_schedule <- get_stream_injection_schedule(
+  reused_schedule <- generate_stream_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_segments,
@@ -300,7 +300,7 @@ test_that("ADF remains the default injection method", {
   expect_equal(reused_schedule, explicit_schedule)
 
   expect_error(
-    get_stream_injection_schedule(
+    generate_stream_injection_schedule(
       inputs$pumping_wells,
       inputs$pumping_schedules,
       inputs$stream_segments,
@@ -316,7 +316,7 @@ test_that("ADF remains the default injection method", {
   )
 
   expect_error(
-    get_stream_injection_schedule(
+    generate_stream_injection_schedule(
       inputs$pumping_wells,
       inputs$pumping_schedules,
       inputs$stream_segments,
@@ -332,7 +332,7 @@ test_that("ADF remains the default injection method", {
     geometry = sf::st_sfc(sf::st_point(c(50, 0)), crs = 32615)
   )
   expect_equal(
-    get_aquifer_water_level_change(
+    model_aquifer_water_level_change(
       inputs$pumping_wells,
       inputs$pumping_schedules,
       observation_wells,
@@ -340,14 +340,14 @@ test_that("ADF remains the default injection method", {
       inputs$evaluation_times,
       stream_injection_schedule = explicit_schedule
     )$water_level_change,
-    get_apportioned_aquifer_drawdown(
+    model_aquifer_water_level_change(
       inputs$pumping_wells,
       inputs$pumping_schedules,
       observation_wells,
-      stream_apportionment,
+      inputs$stream_segments,
       inputs$evaluation_times,
       stream_injection_schedule = explicit_schedule,
-      stream_segments = inputs$stream_segments
+      stream_apportionment = stream_apportionment
     )$water_level_change
   )
 })
@@ -355,7 +355,7 @@ test_that("ADF remains the default injection method", {
 test_that("injection schedules retain their signed output", {
   inputs <- make_constant_head_inputs()
 
-  schedule <- get_stream_injection_schedule(
+  schedule <- generate_stream_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_segments,
@@ -372,7 +372,7 @@ test_that("constant-head schedules retain Date interval boundaries", {
   inputs$pumping_schedules$t <- as.Date("2025-01-01") + c(0, 10)
   evaluation_dates <- as.Date("2025-01-01") + c(10, 20)
 
-  schedule <- get_stream_injection_schedule(
+  schedule <- generate_stream_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_segments,

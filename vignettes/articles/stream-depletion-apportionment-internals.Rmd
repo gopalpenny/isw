@@ -40,14 +40,13 @@ understanding and diagnosing a calculation, but they may change without the
 compatibility guarantees associated with exported functions. Application code
 should normally use the top-level functions shown at the start of each section.
 
-This detailed walkthrough still names the combined compatibility functions
-`get_stream_reach_apportionment()`, `get_apportioned_stream_depletion()`, and
-`get_apportioned_aquifer_drawdown()` while explaining their internals. They are
-planned for deprecation. New application code should use
-`get_stream_segments()`, `get_adf_stream_apportionment()`,
-`get_adf_stream_depletion()`, and `get_aquifer_water_level_change()`. The
-[method-comparison article](stream-injection-methods.html) presents the shared
-workflow and the constant-head alternative.
+The walkthrough follows the normalized public API:
+`prep_stream_segments()` stores physical stream geometry once,
+`prep_adf_stream_apportionment()` stores pump--segment relationships,
+`model_adf_stream_depletion()` applies pumping schedules, and
+`model_aquifer_water_level_change()` combines pumping drawdown with stream
+recovery. The [method-comparison article](stream-injection-methods.html)
+presents the constant-head alternative.
 
 ## Load the example spatial inputs
 
@@ -148,10 +147,15 @@ The first ADF modeling step assigns a static fraction of each pump's
 eventual stream depletion to every modeled reach segment.
 
 ```{r calculate-stream-apportionment}
-stream_apportionment <- get_stream_reach_apportionment(
-  pumping_wells,
+stream_segments <- prep_stream_segments(
   stream_reaches,
   reach_spacing = set_units(400, "m"),
+  stream_width = set_units(1, "m")
+)
+
+stream_apportionment <- prep_adf_stream_apportionment(
+  pumping_wells,
+  stream_segments,
   sample_spacing = set_units(100, "m"),
   method = "web_squared"
 )
@@ -165,14 +169,14 @@ stream_apportionment[c(
 )]
 ```
 
-### What happens inside `get_stream_reach_apportionment()`
+### What happens inside the preparation functions
 
 #### 1. Prepare a common analysis CRS
 
-The function validates the wells and reaches, selects a projected analysis
-CRS, transforms copies of the inputs, drops Z and M coordinates, and supplies
-a zero-meter diameter if `well_diam` is absent. By default, a local UTM CRS is
-selected from the combined spatial extent.
+`prep_stream_segments()` validates the reaches, selects a projected analysis
+CRS, transforms a copy of the input, and drops Z and M coordinates. By default,
+a local UTM CRS is selected from the stream extent. Pumping wells are
+transformed to that segment CRS inside `prep_adf_stream_apportionment()`.
 
 ```{r prepare-spatial-inputs}
 analysis_crs <- isw:::.select_analysis_crs(
@@ -212,10 +216,7 @@ This creates three distinct spatial units in the ADF workflow:
 | **Sample point** | A temporary weighting location created within a segment according to `sample_spacing`. Its distance and `sampled_length` determine a web or web-squared weight. These weights are summed to the segment before time-dependent depletion and drawdown are calculated. |
 
 ```{r discretize-stream-reaches}
-reach_segments <- isw:::.discretize_stream_reaches(
-  spatial_inputs$stream_reaches,
-  reach_spacing = set_units(400, "m")
-)
+reach_segments <- stream_segments
 
 reach_segments[c(
   "reach_id",
@@ -249,8 +250,8 @@ source line component is divided into equal parts.
 
 #### 3. Generate points for spatial weighting
 
-These points approximate the continuous distance-based weighting along each
-reach segment. `generate_segment_sample_points()` divides each segment into
+These internal points approximate the continuous distance-based weighting
+along each reach segment. `.generate_segment_sample_points()` divides each segment into
 equal-length intervals, places one point at each interval center, and records
 the length represented by that point as `sampled_length`. Point weights are
 later summed by reach segment to calculate static apportionment fractions.
@@ -258,7 +259,7 @@ These points are distinct from the segment's single `model_point`, which is
 used in the drawdown calculation.
 
 ```{r generate-segment-sample-points}
-sample_points <- generate_segment_sample_points(
+sample_points <- isw:::.generate_segment_sample_points(
   reach_segments,
   sample_spacing = set_units(100, "m")
 )
@@ -312,15 +313,15 @@ function stops instead of silently returning an invalid allocation.
 `pump_to_reach_distance` is calculated separately as the shortest distance
 from the pump to the segment line. It does not depend on `sample_spacing` and
 is used as the distance input to the Glover response in
-`get_apportioned_stream_depletion()`. It therefore controls the timing and
+`model_adf_stream_depletion()`. It therefore controls the timing and
 magnitude of the segment's time-dependent depletion response. It is not used
 to calculate the static `apportionment_fraction`, which instead uses distances
 from the pump to all sample points.
 
 The following code reproduces these calculations for `pump_1`. It exposes the
-point-level weights that `get_stream_reach_apportionment()` normally aggregates.
+point-level weights that `prep_adf_stream_apportionment()` normally aggregates.
 The example has no zero-distance points and does not apply `maximum_distance`;
-`get_stream_reach_apportionment()` handles both cases before normalizing the
+`prep_adf_stream_apportionment()` handles both cases before normalizing the
 weights.
 
 ```{r inspect-point-weights}
@@ -366,7 +367,13 @@ stream_apportionment |>
 ```
 
 ```{r plot-stream-apportionment}
-ggplot(stream_apportionment) +
+apportionment_map <- stream_segments |>
+  left_join(
+    stream_apportionment,
+    by = c("reach_id", "reach_segment_id")
+  )
+
+ggplot(apportionment_map) +
   geom_sf(aes(color = apportionment_fraction), linewidth = 2) +
   geom_sf(data = pumping_wells, color = "firebrick", size = 2.5) +
   facet_wrap(~pump_id) +
@@ -380,7 +387,7 @@ The next ADF modeling step combines the static spatial allocation with the
 time-dependent Glover response to the pumping schedule.
 
 ```{r calculate-apportioned-stream-depletion}
-stream_depletion <- get_apportioned_stream_depletion(
+stream_depletion <- model_adf_stream_depletion(
   pumping_wells,
   pumping_schedules,
   stream_apportionment,
@@ -390,7 +397,7 @@ stream_depletion <- get_apportioned_stream_depletion(
 stream_depletion
 ```
 
-### What happens inside `get_apportioned_stream_depletion()`
+### What happens inside `model_adf_stream_depletion()`
 
 #### 1. Convert scheduled rates to change events
 
@@ -519,16 +526,17 @@ patchwork::wrap_plots(
 In order to estimate aquifer drawdown, we represent stream depletion as
 uniform injection along finite line elements. Each reach segment receives a
 total-rate schedule derived from the depletion apportioned to that segment.
-`get_stream_injection_schedule()` returns one row per pump, segment, and time
+`generate_stream_injection_schedule()` returns one row per pump, segment, and time
 interval. Each row specifies the signed aquifer-injection rate represented
 during that interval; negative values indicate water entering the aquifer.
 
 ```{r construct-stream-depletion-schedule}
-stream_injection_schedule <- get_stream_injection_schedule(
+stream_injection_schedule <- generate_stream_injection_schedule(
   pumping_wells,
   pumping_schedules,
-  stream_apportionment,
-  evaluation_times
+  stream_segments,
+  evaluation_times,
+  stream_apportionment = stream_apportionment
 )
 
 head(stream_injection_schedule)
@@ -545,12 +553,12 @@ attr(stream_injection_schedule, "isw_schedule_metadata")
 For the ADF schedule above, the attribute records `injection_method = "adf"`;
 quadrature is not used to calculate ADF injection rates. A constant-head
 schedule additionally records the integer `quadrature_order` used to construct
-its response matrices. `get_stream_injection_schedule()` adds the attribute
+its response matrices. `generate_stream_injection_schedule()` adds the attribute
 after it has finished constructing and validating the interval table, so the
 metadata describes the completed schedule rather than any individual row.
 
 When a completed constant-head schedule is later supplied to
-`get_aquifer_water_level_change()` or `get_apportioned_aquifer_drawdown()`, the
+`model_aquifer_water_level_change()`, the
 drawdown calculation reads this attribute before preparing its finite-line
 response operator. If `quadrature_order` is omitted, it reuses the stored
 value. If a different order is supplied explicitly, the requested value is
@@ -559,7 +567,7 @@ constant-head solve. Schedules constructed outside `isw`, or schedules whose
 metadata was removed during reshaping, continue to use the explicitly supplied
 order or the default of 16.
 
-### What happens inside `get_stream_injection_schedule()`
+### What happens inside `generate_stream_injection_schedule()`
 
 #### 1. Construct the injection time grid
 
@@ -595,11 +603,11 @@ tail(injection_grid$injection_times)
 
 Depletion is evaluated at the start and end of each interval. The arithmetic
 mean of those two rates defines the depletion magnitude for that interval.
-`get_stream_injection_schedule()` reports its negative as the aquifer-injection
+`generate_stream_injection_schedule()` reports its negative as the aquifer-injection
 rate because stream water enters the aquifer.
 
 ```{r internal-injection-schedule}
-depletion_at_injection_times <- get_apportioned_stream_depletion(
+depletion_at_injection_times <- model_adf_stream_depletion(
   pumping_wells,
   pumping_schedules,
   stream_apportionment,
@@ -625,16 +633,16 @@ head(injection_rate_changes)
 `depletion_at_injection_times` contains the segment-level depletion rates at
 the start and end of each interval.
 `.get_interval_average_injection_schedule()` first converts them to the signed
-injection rates returned by `get_stream_injection_schedule()`.
+injection rates returned by `generate_stream_injection_schedule()`.
 `.get_injection_rate_changes()` then converts successive interval rates to
 change events for the superposition calculation in
-`get_apportioned_aquifer_drawdown()`.
+`model_aquifer_water_level_change()`.
 
 Optional `injection_times` add times at which new intervals start, creating a
 finer piecewise-constant approximation. They do not change `evaluation_times`.
 Extra times after the final evaluation time are ignored.
 
-Most users can let `get_apportioned_aquifer_drawdown()` create the schedule
+Most users can let `model_aquifer_water_level_change()` create the schedule
 internally. Creating it explicitly is useful when it needs to be inspected,
 reused, or held fixed while other drawdown inputs are varied.
 
@@ -644,24 +652,25 @@ The final ADF modeling step calculates direct pumping drawdown, recovery caused
 by the equivalent stream injections, and their net effect.
 
 ```{r calculate-apportioned-aquifer-drawdown}
-water_level_changes <- get_apportioned_aquifer_drawdown(
+water_level_changes <- model_aquifer_water_level_change(
   pumping_wells,
   pumping_schedules,
   observation_wells,
-  stream_apportionment,
+  stream_segments,
   evaluation_times,
-  stream_injection_schedule = stream_injection_schedule
+  stream_injection_schedule = stream_injection_schedule,
+  stream_apportionment = stream_apportionment
 )
 
 water_level_changes
 ```
 
-### What happens inside `get_apportioned_aquifer_drawdown()`
+### What happens inside `model_aquifer_water_level_change()`
 
 #### 1. Create physical and equivalent well geometries
 
 Pumping and observation wells are transformed to the projected CRS stored by
-`stream_apportionment`. Direct pumping distances are measured from each
+`stream_segments`. Direct pumping distances are measured from each
 physical pumping well to each observation well. Each reach segment's active
 line geometry becomes a finite injection element. Gauss--Legendre source
 points and weights are prepared once, then their distances to every observation
@@ -675,7 +684,7 @@ These intermediate geometries and distance matrices can be constructed and
 inspected directly:
 
 ```{r prepare-drawdown-geometries}
-drawdown_crs <- st_crs(stream_apportionment)
+drawdown_crs <- st_crs(stream_segments)
 prepared_pumping_wells <- pumping_wells |>
   st_zm(drop = TRUE, what = "ZM") |>
   st_transform(drawdown_crs)
@@ -688,12 +697,8 @@ pump_to_observation_distances <- st_distance(
   prepared_observation_wells
 )
 
-unique_segment_rows <- match(
-  unique(stream_apportionment$reach_segment_id),
-  stream_apportionment$reach_segment_id
-)
 line_elements <- isw:::.prepare_line_elements(
-  stream_apportionment[unique_segment_rows, ]
+  stream_segments
 )
 line_response_operator <- isw:::.prepare_line_response_operator(
   prepared_observation_wells,

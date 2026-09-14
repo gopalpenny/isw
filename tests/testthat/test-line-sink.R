@@ -4,7 +4,7 @@ make_line_sink_segments <- function(coordinates, stream_width = 10) {
     crs = 32615
   )
   line <- sf::st_sf(reach_id = "reach", geometry = geometry)
-  get_stream_segments(
+  prep_stream_segments(
     line,
     reach_spacing = units::set_units(1000, "m"),
     stream_width = units::set_units(stream_width, "m")
@@ -316,7 +316,7 @@ test_that("response matrix rows are targets and columns are source segments", {
       crs = 32615
     )
   )
-  stream_segments <- get_stream_segments(
+  stream_segments <- prep_stream_segments(
     stream_reaches,
     reach_spacing = units::set_units(1000, "m")
   )

@@ -1,19 +1,12 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
-
 # isw
 
-<!-- badges: start -->
-
-<!-- badges: end -->
-
-The goal of isw is to enable modeling of stream depletion and aquifer
-drawdown.
+`isw` prepares stream networks and models stream depletion and aquifer water-level change caused by groundwater pumping. Its main workflow separates physical stream segments from pump-specific apportionment and supports both analytical depletion-function (ADF) and constant-head stream injection.
 
 ## Installation
 
-You can install the development version of isw from
-[GitHub](https://github.com/) with:
+Install the development version from GitHub:
 
 ``` r
 # install.packages("remotes")
@@ -22,65 +15,89 @@ remotes::install_github("gopalpenny/isw")
 
 ## Example
 
-This is a basic example which shows you how to solve a common problem:
+This example uses the spatial data included with the package.
 
 ``` r
 library(isw)
-#> Loading required package: expint
-#> Loading required package: streamDepletr
-#> Loading required package: units
-#> udunits database from /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/units/share/udunits/udunits2.xml
-#> Loading required package: class
-```
-
-Consider the following configuration of stream, pumping well, and
-observation well.
-
-![Example pumping and observation well configuration](man/figures/pumping_observation_wells_sm.png)
-
-Stream depletion and aquifer drawdown in this scenario can be modeled
-using the function `get_depletion_from_pumping` in this package.
-
-``` r
 library(units)
-x1 <- set_units(c(1, 5, 10) * 1e3, "ft")
-x2 <- set_units(1e3, "ft")
-along_stream_distance <- set_units(1e3, "ft")
-D <- set_units(100, "ft")
-K <- set_units(0.001, "ft/sec")
-t <- set_units(5, "year")
-V <- 0.2 # unitless
-get_depletion_from_pumping(
-  x1 = x1, x2 = x2, along_stream_distance = along_stream_distance,
-  K = K, D = D, V = V, t = t
+
+stream_segments <- prep_stream_segments(
+  example_stream_reaches,
+  reach_spacing = set_units(200, "m")
 )
-#>   stream_depletion_fraction aquifer_drawdown_ratio
-#> 1                 0.9365474    -1.2707109 [s/ft^2]
-#> 2                 0.6905933    -0.5705381 [s/ft^2]
-#> 3                 0.4259739    -0.2299550 [s/ft^2]
+
+stream_apportionment <- prep_adf_stream_apportionment(
+  example_pumping_wells,
+  stream_segments,
+  sample_spacing = set_units(50, "m")
+)
+
+pumping_schedules <- tibble::tibble(
+  t = set_units(c(0, 30, 60), "days"),
+  pump_1 = set_units(c(400, 400, 0), "m^3/day"),
+  pump_2 = set_units(c(0, 250, 0), "m^3/day")
+)
+
+evaluation_times <- set_units(c(0, 30, 60, 90), "days")
+
+stream_depletion <- model_adf_stream_depletion(
+  example_pumping_wells,
+  pumping_schedules,
+  stream_apportionment,
+  evaluation_times
+)
+
+water_level_change <- model_aquifer_water_level_change(
+  example_pumping_wells,
+  pumping_schedules,
+  example_observation_wells,
+  stream_segments,
+  evaluation_times,
+  stream_apportionment = stream_apportionment
+)
 ```
 
-The variables can also be specified as named columns of a `data.frame`
-or `tibble`. While either can be used, `tibble` package is used below
-because it works more seamlessly with `units` objects.
+The map shows the total modeled stream-depletion rate at day 60. Pumping wells are red triangles and observation wells are black points.
 
 ``` r
-library(tibble)
-df <- tibble(
-  x1 = x1, x2 = x2, along_stream_distance = along_stream_distance,
-  K = K, D = D, V = V, t = t
+depletion_map <- stream_depletion |>
+  dplyr::filter(evaluation_time == set_units(60, "days")) |>
+  dplyr::group_by(reach_id, reach_segment_id) |>
+  dplyr::summarize(
+    depletion_m3_day = as.numeric(set_units(
+      sum(stream_depletion_rate),
+      "m^3/day"
+    )),
+    .groups = "drop"
+  )
+
+plot_segments <- dplyr::left_join(
+  stream_segments,
+  depletion_map,
+  by = c("reach_id", "reach_segment_id")
 )
-get_depletion_from_pumping(df)
-#>   stream_depletion_fraction aquifer_drawdown_ratio
-#> 1                 0.9365474    -1.2707109 [s/ft^2]
-#> 2                 0.6905933    -0.5705381 [s/ft^2]
-#> 3                 0.4259739    -0.2299550 [s/ft^2]
+
+ggplot2::ggplot() +
+  ggplot2::geom_sf(
+    data = plot_segments,
+    ggplot2::aes(color = depletion_m3_day),
+    linewidth = 2
+  ) +
+  ggplot2::geom_sf(
+    data = example_pumping_wells,
+    color = "firebrick",
+    shape = 17,
+    size = 3
+  ) +
+  ggplot2::geom_sf(
+    data = example_observation_wells,
+    color = "black",
+    size = 2.5
+  ) +
+  ggplot2::labs(color = "Stream depletion\n(m3/day)") +
+  ggplot2::theme_minimal()
 ```
 
-For details of this function, check `?get_depletion_from_pumping`.
+<img src="man/figures/README-example-figure-1.png" alt="" width="100%" />
 
-## Website
-
-You can find further information about this package, including function
-help files and tutorials on the [package
-website](https://gopalpenny.github.io/isw/).
+See the [package workflow](https://gopalpenny.github.io/isw/articles/stream-depletion-and-drawdown.html) for ADF and constant-head examples, and the [function reference](https://gopalpenny.github.io/isw/reference/) for complete input and output descriptions.

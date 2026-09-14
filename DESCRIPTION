@@ -1,11 +1,13 @@
 Package: isw
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Model Stream Depletion and Aquifer Drawdown
 Version: 0.1.0.9000
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+Authors@R: person("Gopal", "Penny", email = "gopalpenny@gmail.com",
+    role = c("aut", "cre"))
+Description: Prepares stream networks and models transient stream depletion,
+    stream injection, and aquifer water-level change caused by groundwater
+    pumping. Supports analytical depletion-function apportionment and a
+    finite-line constant-head stream representation.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
@@ -25,7 +27,6 @@ Depends:
     units
 Config/testthat/edition: 3
 Imports: 
-    magrittr,
     sf,
     stats,
     tibble

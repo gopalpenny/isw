@@ -47,6 +47,6 @@ Pumping a Well near a River. *Transactions, American Geophysical Union*,
 35(3), 468–470. \doi{10.1029/TR035i003p00468}
 }
 \seealso{
-[get_stream_depletion_fraction()]
+[calc_straight_stream_depletion_fraction()]
 }
 \keyword{internal}

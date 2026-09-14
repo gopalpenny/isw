@@ -50,6 +50,6 @@ Pumping a Well near a River. *Transactions, American Geophysical Union*,
 35(3), 468–470. \doi{10.1029/TR035i003p00468}
 }
 \seealso{
-[get_straight_stream_drawdown_ratio()]
+[calc_straight_stream_drawdown_ratio()]
 }
 \keyword{internal}

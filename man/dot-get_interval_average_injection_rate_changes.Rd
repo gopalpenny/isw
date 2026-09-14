@@ -11,7 +11,7 @@
 }
 \arguments{
 \item{stream_depletion}{Validated output from
-[get_apportioned_stream_depletion()].}
+[model_adf_stream_depletion()].}
 
 \item{pumping_schedules}{A validated pumping-schedule object.}
 }
