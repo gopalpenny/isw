@@ -1,8 +1,8 @@
 ---
-title: "Stream Depletion and Drawdown in the ISW package"
+title: "Stream depletion and drawdown in the isw package"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Stream Depletion and Drawdown in the ISW package}
+  %\VignetteIndexEntry{Stream depletion and drawdown in the isw package}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
