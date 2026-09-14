@@ -23,7 +23,8 @@ Each pumping well must have a unique identifier, nonempty point geometry,
 and a defined coordinate reference system. Hydraulic conductivity, aquifer
 thickness, and well diameter must retain their physical units. The identifier
 `t` is reserved for the pumping-schedule time column and cannot be used as a
-`pump_id`.
+`pump_id`. `stream_width` is reserved for stream segments and is rejected on
+pumping-well objects.
 
 This function validates inputs but does not transform geometry or add a
 default `well_diam` column.

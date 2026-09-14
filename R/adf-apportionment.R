@@ -217,7 +217,6 @@ get_stream_reach_apportionment <- function(
     "reach_segment_id",
     "represented_length",
     "stream_width",
-    "well_diam",
     "pump_to_reach_distance",
     "apportionment_fraction"
   )

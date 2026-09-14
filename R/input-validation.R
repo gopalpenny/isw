@@ -65,7 +65,8 @@
 #' and a defined coordinate reference system. Hydraulic conductivity, aquifer
 #' thickness, and well diameter must retain their physical units. The identifier
 #' `t` is reserved for the pumping-schedule time column and cannot be used as a
-#' `pump_id`.
+#' `pump_id`. `stream_width` is reserved for stream segments and is rejected on
+#' pumping-well objects.
 #'
 #' This function validates inputs but does not transform geometry or add a
 #' default `well_diam` column.
@@ -74,6 +75,13 @@
 .validate_pumping_wells <- function(pumping_wells) {
 
   .validate_point_sf(pumping_wells, "pumping_wells")
+
+  if ("stream_width" %in% names(pumping_wells)) {
+    stop(
+      "pumping_wells cannot contain stream_width; use well_diam for ",
+      "pumping-well radius regularization."
+    )
+  }
 
   required_columns <- c("pump_id", "K", "D", "V")
   missing_columns <- setdiff(required_columns, names(pumping_wells))
@@ -236,10 +244,11 @@
 #' and a defined coordinate reference system. Any defined CRS is accepted;
 #' projection into the model CRS occurs during later spatial preparation.
 #'
-#' Additional attribute columns are permitted but are not required. The
-#' user-supplied `reach_id` identifies the original line geometry. A later
-#' discretization function will divide these geometries into reach segments and
-#' assign a separate `reach_segment_id` to each one.
+#' Additional attribute columns are permitted but are not required, except
+#' `well_diam`, which is reserved for pumping wells. Stream geometry uses
+#' `stream_width`. The user-supplied `reach_id` identifies the original line
+#' geometry. A later discretization function will divide these geometries into
+#' reach segments and assign a separate `reach_segment_id` to each one.
 #'
 #' This function validates inputs but does not transform, split, or otherwise
 #' modify their geometry.
@@ -249,6 +258,13 @@
 
   if (!inherits(stream_reaches, "sf")) {
     stop("stream_reaches must be an sf object.")
+  }
+
+  if ("well_diam" %in% names(stream_reaches)) {
+    stop(
+      "stream_reaches cannot contain well_diam; use stream_width for ",
+      "stream geometry."
+    )
   }
 
   if (nrow(stream_reaches) == 0) {

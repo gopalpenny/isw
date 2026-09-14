@@ -352,7 +352,7 @@ make_projected_stream_reach <- function(length = 250) {
   )
 }
 
-test_that("get_stream_segments projects geographic streams and sets diameter", {
+test_that("get_stream_segments projects streams and keeps width distinct", {
   inputs <- make_spatial_test_inputs()
 
   stream_segments <- get_stream_segments(
@@ -363,10 +363,37 @@ test_that("get_stream_segments projects geographic streams and sets diameter", {
   expect_s3_class(stream_segments, "sf")
   expect_identical(sf::st_crs(stream_segments)$epsg, 32615L)
   expect_equal(
-    stream_segments$well_diam,
+    stream_segments$stream_width,
     stream_segments$represented_length / 2
   )
+  expect_false("well_diam" %in% names(stream_segments))
   expect_silent(isw:::.validate_stream_segments(stream_segments))
+})
+
+test_that("stream and pumping radius fields cannot be interchanged", {
+  stream_reaches <- make_projected_stream_reach()
+  stream_reaches$well_diam <- units::set_units(3, "m")
+  expect_error(
+    get_stream_segments(stream_reaches, units::set_units(100, "m")),
+    "cannot contain well_diam"
+  )
+
+  stream_segments <- get_stream_segments(
+    make_projected_stream_reach(),
+    units::set_units(100, "m")
+  )
+  stream_segments$well_diam <- stream_segments$stream_width
+  expect_error(
+    isw:::.validate_stream_segments(stream_segments),
+    "cannot contain well_diam"
+  )
+
+  inputs <- make_spatial_test_inputs()
+  inputs$pumping_wells$stream_width <- units::set_units(1, "m")
+  expect_error(
+    isw:::.validate_pumping_wells(inputs$pumping_wells),
+    "cannot contain stream_width"
+  )
 })
 
 test_that("get_stream_segments retains a projected stream CRS", {

@@ -32,8 +32,7 @@ width use half their represented length.}
 \value{
 A projected `sf` object with one line feature per stream segment.
   It contains `reach_id`, `reach_segment_id`, `represented_length`,
-  `stream_width`, `model_point`, and the segment line geometry. The retained
-  `well_diam` column is a backward-compatible alias for `stream_width`.
+  `stream_width`, `model_point`, and the segment line geometry.
 }
 \description{
 Transform a stream network to a projected analysis CRS and divide it into
@@ -45,6 +44,8 @@ collocation location. Injection is distributed uniformly along the active
 line geometry. Input objects are not modified.
 `stream_width` regularizes responses on and very near a line element using
 an effective minimum radius of half the width.
+`well_diam` is reserved for pumping-well objects and is not accepted on
+stream-reach or stream-segment inputs.
 }
 \examples{
 stream_segments <- get_stream_segments(

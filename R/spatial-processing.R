@@ -327,8 +327,7 @@
 #'
 #' @return A projected `sf` object with one line feature per stream segment.
 #'   It contains `reach_id`, `reach_segment_id`, `represented_length`,
-#'   `stream_width`, `model_point`, and the segment line geometry. The retained
-#'   `well_diam` column is a backward-compatible alias for `stream_width`.
+#'   `stream_width`, `model_point`, and the segment line geometry.
 #'
 #' @details
 #' `model_point` is the along-line midpoint used as the constant-head
@@ -336,6 +335,8 @@
 #' line geometry. Input objects are not modified.
 #' `stream_width` regularizes responses on and very near a line element using
 #' an effective minimum radius of half the width.
+#' `well_diam` is reserved for pumping-well objects and is not accepted on
+#' stream-reach or stream-segment inputs.
 #'
 #' @examples
 #' stream_segments <- get_stream_segments(
@@ -371,8 +372,7 @@ get_stream_segments <- function(
     "reach_id",
     "reach_segment_id",
     "represented_length",
-    "stream_width",
-    "well_diam"
+    "stream_width"
   )
   additional_columns <- setdiff(
     names(stream_segments),
@@ -388,6 +388,13 @@ get_stream_segments <- function(
 
 # Attach and validate the physical width used by line-element responses.
 .set_stream_width <- function(stream_segments, stream_width = NULL) {
+  if ("well_diam" %in% names(stream_segments)) {
+    stop(
+      "stream segments cannot contain well_diam; use stream_width for ",
+      "finite-line radius regularization."
+    )
+  }
+
   if (!is.null(stream_width)) {
     check_dimensionality(stream_width, "m", "stream_width")
 
@@ -414,9 +421,6 @@ get_stream_segments <- function(
     stop("stream_width must contain finite, positive values.")
   }
 
-  # Preserve the old column for callers that inspect it; numerical line
-  # responses use stream_width directly.
-  stream_segments$well_diam <- stream_segments$stream_width
   stream_segments
 }
 
@@ -424,6 +428,13 @@ get_stream_segments <- function(
 .validate_stream_segments <- function(stream_segments) {
   if (!inherits(stream_segments, "sf") || nrow(stream_segments) == 0) {
     stop("stream_segments must be a nonempty sf object.")
+  }
+
+  if ("well_diam" %in% names(stream_segments)) {
+    stop(
+      "stream_segments cannot contain well_diam; use stream_width for ",
+      "finite-line radius regularization."
+    )
   }
 
   required_columns <- c(
