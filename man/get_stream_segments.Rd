@@ -23,11 +23,10 @@ system accepted by [sf::st_crs()]. When `NULL`, an existing projected
 stream CRS is retained; geographic streams are transformed to a local UTM
 CRS selected from their extent.}
 
-\item{stream_width}{Either `NULL` or a positive `units` length. A scalar is
-applied to every segment; one value per generated segment may also be
-supplied. When `NULL`, an existing `stream_width` stream attribute is
-retained. For backward compatibility only, segments without a supplied
-width use half their represented length.}
+\item{stream_width}{Either `NULL` or a positive scalar `units` length. A
+supplied value is applied to every reach. When `NULL`, an existing
+reach-level `stream_width` attribute is retained; if that attribute is
+absent, every reach uses a default width of 1 m.}
 }
 \value{
 A projected `sf` object with one line feature per stream segment.

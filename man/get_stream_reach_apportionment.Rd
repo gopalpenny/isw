@@ -41,8 +41,10 @@ points farther than this distance from a pump receive zero weight. When
 accepted by [sf::st_crs()]. When `NULL`, a local UTM CRS is selected
 automatically.}
 
-\item{stream_width}{Optional positive `units` length used to regularize
-line-element responses. A scalar applies to every generated segment.}
+\item{stream_width}{Optional positive scalar `units` length used to
+regularize line-element responses. A supplied value applies to every
+reach; otherwise an existing reach-level attribute is retained, or all
+reaches default to 1 m when that attribute is absent.}
 }
 \value{
 An `sf` object with one row per pump--reach-segment pair. It contains

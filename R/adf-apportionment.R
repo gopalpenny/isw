@@ -21,8 +21,10 @@
 #' @param analysis_crs Either `NULL` or a projected coordinate reference system
 #'   accepted by [sf::st_crs()]. When `NULL`, a local UTM CRS is selected
 #'   automatically.
-#' @param stream_width Optional positive `units` length used to regularize
-#'   line-element responses. A scalar applies to every generated segment.
+#' @param stream_width Optional positive scalar `units` length used to
+#'   regularize line-element responses. A supplied value applies to every
+#'   reach; otherwise an existing reach-level attribute is retained, or all
+#'   reaches default to 1 m when that attribute is absent.
 #'
 #' @return An `sf` object with one row per pump--reach-segment pair. It contains
 #'   `pump_id`, `reach_id`, `reach_segment_id`, `represented_length`,

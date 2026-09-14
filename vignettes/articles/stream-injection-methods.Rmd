@@ -123,8 +123,8 @@ segments can be used by both methods.
 Each segment's line geometry is a finite injection element. Its `model_point`
 is only the collocation location where the constant-head method enforces zero
 change. `stream_width` sets the minimum response radius at half the physical
-width. Here it is supplied explicitly; when omitted, the backward-compatible
-default is half the represented segment length.
+width. Here it is supplied explicitly; when omitted, a reach-level value is
+retained or a conservative default of 1 m is used.
 
 In other words, injection is distributed along the line element; the
 collocation point does not act as an injection well. It is simply where the

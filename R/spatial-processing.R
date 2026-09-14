@@ -319,11 +319,10 @@
 #'   system accepted by [sf::st_crs()]. When `NULL`, an existing projected
 #'   stream CRS is retained; geographic streams are transformed to a local UTM
 #'   CRS selected from their extent.
-#' @param stream_width Either `NULL` or a positive `units` length. A scalar is
-#'   applied to every segment; one value per generated segment may also be
-#'   supplied. When `NULL`, an existing `stream_width` stream attribute is
-#'   retained. For backward compatibility only, segments without a supplied
-#'   width use half their represented length.
+#' @param stream_width Either `NULL` or a positive scalar `units` length. A
+#'   supplied value is applied to every reach. When `NULL`, an existing
+#'   reach-level `stream_width` attribute is retained; if that attribute is
+#'   absent, every reach uses a default width of 1 m.
 #'
 #' @return A projected `sf` object with one line feature per stream segment.
 #'   It contains `reach_id`, `reach_segment_id`, `represented_length`,
@@ -400,8 +399,8 @@ get_stream_segments <- function(
   if (!is.null(stream_width)) {
     check_dimensionality(stream_width, "m", "stream_width")
 
-    if (!(length(stream_width) %in% c(1L, nrow(stream_segments)))) {
-      stop("stream_width must have length one or one value per segment.")
+    if (length(stream_width) != 1L) {
+      stop("stream_width must be a scalar length.")
     }
 
     stream_segments$stream_width <- rep(
@@ -409,7 +408,10 @@ get_stream_segments <- function(
       length.out = nrow(stream_segments)
     )
   } else if (!("stream_width" %in% names(stream_segments))) {
-    stream_segments$stream_width <- stream_segments$represented_length / 2
+    stream_segments$stream_width <- units::set_units(
+      rep(1, nrow(stream_segments)),
+      "m"
+    )
   }
 
   check_dimensionality(
@@ -421,6 +423,15 @@ get_stream_segments <- function(
   width_values <- as.numeric(stream_segments$stream_width)
   if (any(!is.finite(width_values)) || any(width_values <= 0)) {
     stop("stream_width must contain finite, positive values.")
+  }
+
+  widths_by_reach <- split(width_values, stream_segments$reach_id)
+  if (any(vapply(
+    widths_by_reach,
+    function(reach_widths) any(reach_widths != reach_widths[[1]]),
+    logical(1)
+  ))) {
+    stop("stream_width must be constant within each reach_id.")
   }
 
   stream_segments
@@ -499,6 +510,16 @@ get_stream_segments <- function(
       "stream_segments represented_length and stream_width must contain ",
       "finite, positive values."
     )
+  }
+
+  width_values <- as.numeric(stream_segments$stream_width)
+  widths_by_reach <- split(width_values, stream_segments$reach_id)
+  if (any(vapply(
+    widths_by_reach,
+    function(reach_widths) any(reach_widths != reach_widths[[1]]),
+    logical(1)
+  ))) {
+    stop("stream_segments$stream_width must be constant within each reach_id.")
   }
 
   if (!inherits(stream_segments$model_point, "sfc") ||

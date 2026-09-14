@@ -364,10 +364,50 @@ test_that("get_stream_segments projects streams and keeps width distinct", {
   expect_identical(sf::st_crs(stream_segments)$epsg, 32615L)
   expect_equal(
     stream_segments$stream_width,
-    stream_segments$represented_length / 2
+    units::set_units(rep(1, nrow(stream_segments)), "m")
   )
   expect_false("well_diam" %in% names(stream_segments))
   expect_silent(isw:::.validate_stream_segments(stream_segments))
+})
+
+test_that("stream width is defined once per reach", {
+  stream_reaches <- make_projected_stream_reach()
+  stream_reaches$stream_width <- units::set_units(7, "m")
+
+  inherited_segments <- get_stream_segments(
+    stream_reaches,
+    units::set_units(100, "m")
+  )
+  expect_equal(
+    inherited_segments$stream_width,
+    units::set_units(rep(7, nrow(inherited_segments)), "m")
+  )
+
+  overridden_segments <- get_stream_segments(
+    stream_reaches,
+    units::set_units(100, "m"),
+    stream_width = units::set_units(3, "m")
+  )
+  expect_equal(
+    overridden_segments$stream_width,
+    units::set_units(rep(3, nrow(overridden_segments)), "m")
+  )
+
+  expect_error(
+    get_stream_segments(
+      stream_reaches,
+      units::set_units(100, "m"),
+      stream_width = units::set_units(c(1, 2, 3), "m")
+    ),
+    "must be a scalar length"
+  )
+
+  inconsistent_segments <- inherited_segments
+  inconsistent_segments$stream_width[[1]] <- units::set_units(8, "m")
+  expect_error(
+    isw:::.validate_stream_segments(inconsistent_segments),
+    "must be constant within each reach_id"
+  )
 })
 
 test_that("stream and pumping radius fields cannot be interchanged", {
