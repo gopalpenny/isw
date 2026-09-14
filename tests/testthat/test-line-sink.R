@@ -117,6 +117,84 @@ test_that("prepared straight-line operator matches the local-coordinate kernel",
   expect_equal(operator_response[[1]], as.numeric(local_response))
 })
 
+test_that("response matrix rows are targets and columns are source segments", {
+  stream_reaches <- sf::st_sf(
+    reach_id = c("horizontal", "diagonal"),
+    stream_width = units::set_units(c(2, 20), "m"),
+    geometry = sf::st_sfc(
+      sf::st_linestring(matrix(
+        c(0, 0, 80, 0),
+        ncol = 2,
+        byrow = TRUE
+      )),
+      sf::st_linestring(matrix(
+        c(180, 40, 240, 160),
+        ncol = 2,
+        byrow = TRUE
+      )),
+      crs = 32615
+    )
+  )
+  stream_segments <- get_stream_segments(
+    stream_reaches,
+    reach_spacing = units::set_units(1000, "m")
+  )
+  targets <- sf::st_as_sf(
+    tibble::tibble(
+      target_id = c("target_1", "target_2"),
+      x = c(15, 260),
+      y = c(30, 110)
+    ),
+    coords = c("x", "y"),
+    crs = 32615
+  )
+  hydraulics <- list(
+    K = units::set_units(10, "m/day"),
+    D = units::set_units(20, "m"),
+    V = 0.15,
+    elapsed_time = units::set_units(10, "days")
+  )
+
+  combined_operator <- isw:::.prepare_line_response_operator(
+    targets,
+    isw:::.prepare_line_elements(stream_segments)
+  )
+  combined_response <- do.call(
+    isw:::.evaluate_line_response_operator,
+    c(list(combined_operator), hydraulics)
+  )
+
+  expect_identical(
+    colnames(combined_response),
+    stream_segments$reach_segment_id
+  )
+  expect_false(isTRUE(all.equal(
+    unname(combined_response),
+    unname(t(combined_response))
+  )))
+
+  for (target_index in seq_len(nrow(targets))) {
+    for (source_index in seq_len(nrow(stream_segments))) {
+      single_operator <- isw:::.prepare_line_response_operator(
+        targets[target_index, , drop = FALSE],
+        isw:::.prepare_line_elements(
+          stream_segments[source_index, , drop = FALSE]
+        )
+      )
+      single_response <- do.call(
+        isw:::.evaluate_line_response_operator,
+        c(list(single_operator), hydraulics)
+      )
+
+      expect_equal(
+        unname(combined_response[target_index, source_index]),
+        single_response[[1]],
+        tolerance = 1e-12
+      )
+    }
+  }
+})
+
 test_that("prepared geometry and distances are reusable across evaluations", {
   segments <- make_line_sink_segments(c(-50, 0, 50, 0))
   targets <- sf::st_as_sf(
