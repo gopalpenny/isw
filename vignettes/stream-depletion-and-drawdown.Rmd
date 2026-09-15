@@ -7,6 +7,18 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const heading = document.querySelector(".page-header h1, h1.title");
+  if (heading) {
+    heading.innerHTML = heading.innerHTML.replace(
+      /\bisw\b/,
+      "<code>isw</code>"
+    );
+  }
+});
+</script>
+
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
