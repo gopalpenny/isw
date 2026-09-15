@@ -48,8 +48,7 @@ and its image across a straight, fully penetrating constant-head stream.
 }
 \details{
 This function subtracts the response of an equal-magnitude image injection
-well from the pumping-well response. It is a specialized single-pump
-calculation: vector inputs represent independent cases rather than
+well from the pumping-well response. Vector inputs represent independent cases rather than
 interacting wells or pumping schedules. Multiply the returned ratio by a
 positive pumping rate to obtain the negative water-level change caused by
 pumping.
