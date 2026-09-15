@@ -1,23 +1,11 @@
 ---
-title: "Stream depletion and drawdown in the isw package"
+title: "Stream depletion and aquifer drawdown"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Stream depletion and drawdown in the isw package}
+  %\VignetteIndexEntry{Stream depletion and aquifer drawdown}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
-
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-  const heading = document.querySelector(".page-header h1, h1.title");
-  if (heading) {
-    heading.innerHTML = heading.innerHTML.replace(
-      /\bisw\b/,
-      "<code>isw</code>"
-    );
-  }
-});
-</script>
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
