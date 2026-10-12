@@ -98,15 +98,16 @@ at greater spatial resolution but increase the number of injection rates that
 must be calculated.
 
 Each returned line is a finite injection element. Its `model_point` is the
-constant-head collocation location, not an injection well. `stream_width`
-sets the near-line minimum response radius and should normally be supplied as
-a physical stream width.
+reach midpoint, to which the constant-head model is calibrated. `stream_width`
+can be supplied as a physical stream width or kept as the
+default of 1 m. `stream_width` fixes the near-stream response to that of
+`stream_width/2`, and is only used when estimating changes in water level
+on or near the stream.
 
 ```{r stream-segments}
 stream_segments <- prep_stream_segments(
   stream_reaches,
-  reach_spacing = set_units(400, "m"),
-  stream_width = set_units(20, "m")
+  reach_spacing = set_units(400, "m")
 )
 
 stream_segments[c(
@@ -117,15 +118,13 @@ stream_segments[c(
 )]
 ```
 
-The same reference describes the returned columns in more detail.
-
 ## Define pumping and model times
 
-`pumping_schedules` is a wide tibble, with pumping provided in units. 
+`pumping_schedules` is a wide tibble, with pumping provided as `units` objects. 
 Its first column, `t`, gives the start of
 each pumping period; every other column is named for a `pump_id` and contains
 that well's rate. Rates continue until the next schedule row, so a shutdown
-must be represented by a row that sets the rate to zero.
+at the end must be represented by a row that sets the rate to zero.
 
 ```{r pumping-schedule}
 pumping_schedules <- tibble(
@@ -137,10 +136,14 @@ pumping_schedules <- tibble(
 pumping_schedules
 ```
 
-`evaluation_times` specifies when stream depletion and water-level results are
-returned. Pumping-schedule times and evaluation times are always included as
-boundaries of the piecewise-constant stream-injection schedule.
+The `isw` functions generally use `pumping_schedule$t` as default values at
+which to generate outputs. But if other times are desired,
+`evaluation_times` specifies when stream depletion and 
+water-level results are
+returned. 
 
+Pumping-schedule times and evaluation times are always included as
+boundaries of the piecewise-constant stream-injection schedule.
 The optional `injection_times` argument can add schedule boundaries without
 requesting additional water-level output. This can improve the interval-average
 approximation to continuously changing ADF depletion, but it increases
@@ -168,11 +171,13 @@ for the complete input requirements and interval construction rules.
 
 ## Construct both stream-injection schedules
 
-ADF requires one additional step because its total analytical depletion must
-be apportioned spatially. `prep_adf_stream_apportionment()` calculates a set of
+Before the ADF model can be used to estimate stream depletion, 
+the total analytical depletion for each pumping well must
+be apportioned spatially over the stream network. 
+`prep_adf_stream_apportionment()` calculates a set of
 segment weights independently for each pumping well. `sample_spacing`
-controls how finely curved stream geometry is sampled when those weights are
-calculated; it does not change the number of modeled stream segments.
+controls how finely curved stream geometries are sampled when 
+the segment weights are calculated.
 
 ```{r adf-apportionment}
 stream_apportionment <- prep_adf_stream_apportionment(
@@ -181,7 +186,12 @@ stream_apportionment <- prep_adf_stream_apportionment(
   sample_spacing = set_units(100, "m"),
   method = "web_squared"
 )
+```
 
+To confirm the weights, we can sum the weights, or `apportionment_fraction`, 
+over all stream segments for each pumping well.
+
+```{r adf-apportionment}
 stream_apportionment |>
   st_drop_geometry() |>
   group_by(pump_id) |>
@@ -191,7 +201,7 @@ stream_apportionment |>
   )
 ```
 
-We can first calculate ADF stream depletion directly at the requested times.
+Now we can calculate ADF stream depletion directly at the requested times.
 This is the simplest route when only ADF depletion, rather than its effect on
 aquifer water levels, is needed.
 
@@ -204,7 +214,6 @@ adf_depletion <- model_adf_stream_depletion(
 )
 
 adf_depletion_totals <- adf_depletion |>
-  st_drop_geometry() |>
   group_by(pump_id, evaluation_time) |>
   summarize(
     adf_depletion_at_time = sum(stream_depletion_rate),
@@ -214,23 +223,25 @@ adf_depletion_totals <- adf_depletion |>
 adf_depletion_totals
 ```
 
-The two interval schedules can now be constructed with the same function and
-time grid. `"adf"` is the default method, but it is written explicitly here to
-make the comparison clear.
+These stream depletion values are specific to the requested evaluation times.
+In order to model changes in aquifer water levels, we need a schedule of
+stream depletion, to be used as stream injection over the entire time range.
+This interval schedule is calculated as an additional step for the `"adf"` 
+model, whereas stream depletion in the `"constand-head"` model is equivalent
+to the stream injection schedule. 
 
-With `method = "adf"`, `generate_stream_injection_schedule()` calls
+We can now be construct these two interval schedules, using the same function and
+time grid. With `method = "adf"`, `generate_stream_injection_schedule()` calls
 `model_adf_stream_depletion()` at every schedule boundary and averages depletion
 at adjacent boundaries. It reports the resulting aquifer injection as a signed
-`injection_rate`, which is negative when water enters the aquifer. Its magnitude
-is the average stream-depletion rate applied over the interval. By contrast,
+`injection_rate`, which is negative when water enters the aquifer, keeping the
+sign convention for pumping wells. Its magnitude
+is the stream-depletion rate applied over the interval. By contrast,
 `model_adf_stream_depletion()` returns positive depletion at each requested time.
 If ADF depletion has already been calculated at every schedule boundary, it can
-be supplied through `adf_stream_depletion` to avoid recalculation. The supplied
-result must include all pumping, evaluation, and optional refinement boundaries
-used by the schedule.
-
-With `method = "constant_head"`, each returned interval rate is the rate
-solved to satisfy the constant-head boundary condition at the interval end.
+be supplied through the `adf_stream_depletion` argument to avoid recalculation. 
+The supplied result must include all pumping, evaluation, and optional 
+refinement boundaries used by the schedule.
 
 ```{r injection-schedules}
 adf_schedule <- generate_stream_injection_schedule(
@@ -243,7 +254,13 @@ adf_schedule <- generate_stream_injection_schedule(
   stream_apportionment = stream_apportionment,
   adf_stream_depletion = adf_depletion
 )
+```
 
+With `method = "constant_head"`, each interval rate is
+solved to satisfy the constant-head boundary condition on the `model_point` 
+for each stream segment at the end of each time interval.
+
+```{r injection-schedules}
 constant_head_schedule <- generate_stream_injection_schedule(
   pumping_wells = pumping_wells,
   pumping_schedules = pumping_schedules,
@@ -257,12 +274,11 @@ constant_head_schedule <- generate_stream_injection_schedule(
 The constant-head result includes two diagnostics. `boundary_residual` is the
 signed water-level change remaining at a segment model point after the solve.
 `matrix_condition_number` indicates the numerical sensitivity of the system;
-`isw` warns when it exceeds \(10^6\).
-
-An aquifer factorization is the decomposition of the stream-response matrix
-used to solve for the constant-head depletion rates. Wells with the same
-aquifer properties share this matrix, so `isw` factorizes it once for that
-aquifer-property combination and reuses the result for each associated pumping
+`isw` warns when it exceeds \(10^6\). The resulting calculations match
+injection for each stream segment to each pumping well. But injection
+for each segment must account for injection of all stream segments. `isw` 
+factorizes once for every aquifer-property combination and reuses 
+the result for each associated pumping
 well. This reduces computation while preserving the depletion response
 attributed to each pump.
 
