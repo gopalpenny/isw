@@ -12,7 +12,7 @@ generate_stream_injection_schedule(
   injection_times = NULL,
   method = c("adf", "constant_head"),
   stream_apportionment = NULL,
-  allow_many_aquifer_parameter_sets = FALSE,
+  allow_n_aquifer_parameter_sets = 5,
   adf_stream_depletion = NULL,
   quadrature_order = 16L
 )
@@ -43,9 +43,10 @@ injection interval grid.}
 \item{stream_apportionment}{An ADF apportionment returned by
 [prep_adf_stream_apportionment()]. Required for the ADF method.}
 
-\item{allow_many_aquifer_parameter_sets}{Logical. Constant-head calculations
-stop when more than ten unique aquifer parameter sets are found unless
-this is `TRUE`.}
+\item{allow_n_aquifer_parameter_sets}{Positive whole-number scalar giving
+the maximum number of unique aquifer parameter sets allowed in a
+constant-head calculation. The default is 5. Use `Inf` to impose no
+limit.}
 
 \item{adf_stream_depletion}{Optional output from
 [model_adf_stream_depletion()] that includes every schedule boundary. When

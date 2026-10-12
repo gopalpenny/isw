@@ -13,6 +13,10 @@
   includes every schedule boundary.
 * Added boundary-residual and response-matrix condition-number diagnostics for
   constant-head schedules. Condition numbers above `1e6` produce a warning.
+* Replaced the Boolean `allow_many_aquifer_parameter_sets` argument with the
+  numeric `allow_n_aquifer_parameter_sets`. Constant-head calculations allow
+  up to five unique aquifer parameter sets by default; callers can set a
+  different positive whole-number limit or use `Inf`.
 * Reorganized the public API around explicit verbs: `fetch_` retrieves external
   data, `prep_` constructs static model inputs, `generate_` constructs a stream-
   injection schedule, `model_` evaluates scheduled responses, and `calc_`

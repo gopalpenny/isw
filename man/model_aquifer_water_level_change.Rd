@@ -14,7 +14,7 @@ model_aquifer_water_level_change(
   stream_injection_schedule = NULL,
   injection_method = c("adf", "constant_head"),
   stream_apportionment = NULL,
-  allow_many_aquifer_parameter_sets = FALSE,
+  allow_n_aquifer_parameter_sets = 5,
   quadrature_order = 16L
 )
 }
@@ -52,8 +52,10 @@ default.}
 [prep_adf_stream_apportionment()]. It is required when an ADF schedule is
 generated internally.}
 
-\item{allow_many_aquifer_parameter_sets}{Passed to
-[generate_stream_injection_schedule()] for constant-head calculations.}
+\item{allow_n_aquifer_parameter_sets}{Positive whole-number scalar giving
+the maximum number of unique aquifer parameter sets allowed when a
+constant-head schedule is generated internally. The default is 5. Use
+`Inf` to impose no limit.}
 
 \item{quadrature_order}{Positive integer number of Gauss--Legendre points
 used per straight edge of each finite line element. The default is 16.

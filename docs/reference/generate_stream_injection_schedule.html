@@ -77,7 +77,7 @@ endpoint-collocated constant-head boundary.</p>
 <span>  injection_times <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"adf"</span>, <span class="st">"constant_head"</span><span class="op">)</span>,</span>
 <span>  stream_apportionment <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  allow_many_aquifer_parameter_sets <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  allow_n_aquifer_parameter_sets <span class="op">=</span> <span class="fl">5</span>,</span>
 <span>  adf_stream_depletion <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  quadrature_order <span class="op">=</span> <span class="fl">16L</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -126,10 +126,11 @@ injection interval grid.</p></dd>
 [prep_adf_stream_apportionment()]. Required for the ADF method.</p></dd>
 
 
-<dt id="arg-allow-many-aquifer-parameter-sets">allow_many_aquifer_parameter_sets<a class="anchor" aria-label="anchor" href="#arg-allow-many-aquifer-parameter-sets"></a></dt>
-<dd><p>Logical. Constant-head calculations
-stop when more than ten unique aquifer parameter sets are found unless
-this is `TRUE`.</p></dd>
+<dt id="arg-allow-n-aquifer-parameter-sets">allow_n_aquifer_parameter_sets<a class="anchor" aria-label="anchor" href="#arg-allow-n-aquifer-parameter-sets"></a></dt>
+<dd><p>Positive whole-number scalar giving
+the maximum number of unique aquifer parameter sets allowed in a
+constant-head calculation. The default is 5. Use `Inf` to impose no
+limit.</p></dd>
 
 
 <dt id="arg-adf-stream-depletion">adf_stream_depletion<a class="anchor" aria-label="anchor" href="#arg-adf-stream-depletion"></a></dt>

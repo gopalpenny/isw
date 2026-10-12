@@ -647,9 +647,10 @@
 #'   `"adf"` is the default.
 #' @param stream_apportionment An ADF apportionment returned by
 #'   [prep_adf_stream_apportionment()]. Required for the ADF method.
-#' @param allow_many_aquifer_parameter_sets Logical. Constant-head calculations
-#'   stop when more than ten unique aquifer parameter sets are found unless
-#'   this is `TRUE`.
+#' @param allow_n_aquifer_parameter_sets Positive whole-number scalar giving
+#'   the maximum number of unique aquifer parameter sets allowed in a
+#'   constant-head calculation. The default is 5. Use `Inf` to impose no
+#'   limit.
 #' @param adf_stream_depletion Optional output from
 #'   [model_adf_stream_depletion()] that includes every schedule boundary. When
 #'   supplied with `method = "adf"`, these rates are reused instead of being
@@ -717,7 +718,7 @@ generate_stream_injection_schedule <- function(
     injection_times = NULL,
     method = c("adf", "constant_head"),
     stream_apportionment = NULL,
-    allow_many_aquifer_parameter_sets = FALSE,
+    allow_n_aquifer_parameter_sets = 5,
     adf_stream_depletion = NULL,
     quadrature_order = 16L) {
 
@@ -813,8 +814,8 @@ generate_stream_injection_schedule <- function(
       pumping_schedules,
       stream_segments,
       time_grid,
-      allow_many_aquifer_parameter_sets,
-      quadrature_order
+      allow_n_aquifer_parameter_sets = allow_n_aquifer_parameter_sets,
+      quadrature_order = quadrature_order
     )
   }
 
@@ -1162,8 +1163,10 @@ generate_stream_injection_schedule <- function(
 #' @param stream_apportionment An object returned by
 #'   [prep_adf_stream_apportionment()]. It is required when an ADF schedule is
 #'   generated internally.
-#' @param allow_many_aquifer_parameter_sets Passed to
-#'   [generate_stream_injection_schedule()] for constant-head calculations.
+#' @param allow_n_aquifer_parameter_sets Positive whole-number scalar giving
+#'   the maximum number of unique aquifer parameter sets allowed when a
+#'   constant-head schedule is generated internally. The default is 5. Use
+#'   `Inf` to impose no limit.
 #' @param quadrature_order Positive integer number of Gauss--Legendre points
 #'   used per straight edge of each finite line element. The default is 16.
 #'   When a completed constant-head schedule is supplied and this argument is
@@ -1227,7 +1230,7 @@ model_aquifer_water_level_change <- function(
     stream_injection_schedule = NULL,
     injection_method = c("adf", "constant_head"),
     stream_apportionment = NULL,
-    allow_many_aquifer_parameter_sets = FALSE,
+    allow_n_aquifer_parameter_sets = 5,
     quadrature_order = 16L) {
 
   injection_method <- match.arg(injection_method)
@@ -1252,8 +1255,8 @@ model_aquifer_water_level_change <- function(
       injection_times,
       method = injection_method,
       stream_apportionment = stream_apportionment,
-      allow_many_aquifer_parameter_sets =
-        allow_many_aquifer_parameter_sets,
+      allow_n_aquifer_parameter_sets =
+        allow_n_aquifer_parameter_sets,
       quadrature_order = quadrature_order
     )
   }

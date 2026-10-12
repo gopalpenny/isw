@@ -1,9 +1,23 @@
 # Group pumping wells by aquifer-response parameters.
 .get_aquifer_groups <- function(
     pumping_wells,
-    allow_many_aquifer_parameter_sets = FALSE) {
+    allow_n_aquifer_parameter_sets = 5) {
 
   .validate_pumping_wells(pumping_wells)
+
+  if (!is.numeric(allow_n_aquifer_parameter_sets) ||
+      length(allow_n_aquifer_parameter_sets) != 1L ||
+      is.na(allow_n_aquifer_parameter_sets) ||
+      allow_n_aquifer_parameter_sets < 1 ||
+      (!is.infinite(allow_n_aquifer_parameter_sets) &&
+       allow_n_aquifer_parameter_sets !=
+         floor(allow_n_aquifer_parameter_sets))) {
+    stop(
+      "allow_n_aquifer_parameter_sets must be a positive whole-number ",
+      "scalar or Inf."
+    )
+  }
+
   normalized_K <- as.numeric(units::set_units(
     pumping_wells$K,
     "m/day",
@@ -53,12 +67,13 @@
 
   number_of_parameter_sets <- length(unique(aquifer_id))
 
-  if (number_of_parameter_sets > 10 &&
-      !isTRUE(allow_many_aquifer_parameter_sets)) {
+  if (number_of_parameter_sets > allow_n_aquifer_parameter_sets) {
     stop(
       "Constant-head injection found ", number_of_parameter_sets,
-      " aquifer parameter sets. More than 10 requires ",
-      "allow_many_aquifer_parameter_sets = TRUE."
+      " aquifer parameter sets, exceeding ",
+      "allow_n_aquifer_parameter_sets = ",
+      allow_n_aquifer_parameter_sets, ". Increase the allowed number to ",
+      "run this calculation."
     )
   }
 
@@ -143,13 +158,13 @@
     pumping_schedules,
     stream_segments,
     time_grid,
-    allow_many_aquifer_parameter_sets = FALSE,
+    allow_n_aquifer_parameter_sets = 5,
     quadrature_order = 16L) {
 
   .validate_stream_segments(stream_segments)
   aquifer_groups <- .get_aquifer_groups(
     pumping_wells,
-    allow_many_aquifer_parameter_sets
+    allow_n_aquifer_parameter_sets = allow_n_aquifer_parameter_sets
   )
   analysis_crs <- sf::st_crs(stream_segments)
   prepared_pumping_wells <- sf::st_transform(

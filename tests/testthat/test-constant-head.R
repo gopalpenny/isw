@@ -213,7 +213,7 @@ test_that("explicit aquifer identifiers must match hydraulic properties", {
   )
 })
 
-test_that("multiple aquifer parameter sets warn and more than ten stop", {
+test_that("the aquifer parameter-set limit is configurable", {
   inputs <- make_constant_head_inputs(two_pumps = TRUE)
   inputs$pumping_wells$K[[2]] <- units::set_units(12, "m/day")
 
@@ -223,22 +223,56 @@ test_that("multiple aquifer parameter sets warn and more than ten stop", {
   )
   expect_identical(length(unique(groups$aquifer_id)), 2L)
 
-  many_wells <- inputs$pumping_wells[rep(1, 11), , drop = FALSE]
-  many_wells$pump_id <- paste0("pump_", seq_len(11))
-  many_wells$K <- units::set_units(seq_len(11), "m/day")
+  many_wells <- inputs$pumping_wells[rep(1, 6), , drop = FALSE]
+  many_wells$pump_id <- paste0("pump_", seq_len(6))
+  many_wells$K <- units::set_units(seq_len(6), "m/day")
 
   expect_error(
     suppressWarnings(isw:::.get_aquifer_groups(many_wells)),
-    "More than 10"
+    "allow_n_aquifer_parameter_sets = 5"
   )
   expect_warning(
     allowed_groups <- isw:::.get_aquifer_groups(
       many_wells,
-      allow_many_aquifer_parameter_sets = TRUE
+      allow_n_aquifer_parameter_sets = 6
     ),
-    "11 pump-specific aquifer parameter sets"
+    "6 pump-specific aquifer parameter sets"
   )
-  expect_identical(length(unique(allowed_groups$aquifer_id)), 11L)
+  expect_identical(length(unique(allowed_groups$aquifer_id)), 6L)
+
+  expect_warning(
+    unlimited_groups <- isw:::.get_aquifer_groups(
+      many_wells,
+      allow_n_aquifer_parameter_sets = Inf
+    ),
+    "6 pump-specific aquifer parameter sets"
+  )
+  expect_identical(length(unique(unlimited_groups$aquifer_id)), 6L)
+
+  expect_identical(
+    formals(generate_stream_injection_schedule)$allow_n_aquifer_parameter_sets,
+    5
+  )
+  expect_identical(
+    formals(model_aquifer_water_level_change)$allow_n_aquifer_parameter_sets,
+    5
+  )
+})
+
+test_that("the aquifer parameter-set limit is validated", {
+  inputs <- make_constant_head_inputs()
+
+  invalid_limits <- list(0, -1, 1.5, NA_real_, NaN, c(1, 2), "5")
+
+  for (invalid_limit in invalid_limits) {
+    expect_error(
+      isw:::.get_aquifer_groups(
+        inputs$pumping_wells,
+        allow_n_aquifer_parameter_sets = invalid_limit
+      ),
+      "positive whole-number scalar or Inf"
+    )
+  }
 })
 
 test_that("ADF remains the default injection method", {
