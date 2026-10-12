@@ -235,8 +235,7 @@ time grid. With `method = "adf"`, `generate_stream_injection_schedule()` calls
 `model_adf_stream_depletion()` at every schedule boundary and averages depletion
 at adjacent boundaries. It reports the resulting `injection_rate` as positive
 when water moves from the stream to the aquifer. This rate is the stream-
-depletion rate applied over the interval. By contrast,
-`model_adf_stream_depletion()` returns positive depletion at each requested time.
+depletion rate applied over the interval. 
 If ADF depletion has already been calculated at every schedule boundary, it can
 be supplied through the `adf_stream_depletion` argument to avoid recalculation. 
 The supplied result must include all pumping, evaluation, and optional 
@@ -299,7 +298,7 @@ constant_head_schedule |>
 aquifer. For each pumping well, total stream depletion is therefore the
 injection rate summed across all stream segments.
 
-For ADF, the schedule contains interval-average analytical depletion. For
+For ADF, the injection schedule contains interval-average analytical depletion. For
 constant head, it contains the depletion required to impose the stream
 boundary condition at the interval end.
 
@@ -315,35 +314,12 @@ stream_depletion <- bind_rows(
     .groups = "drop"
   )
 
-stream_depletion |>
-  filter(interval_end %in% evaluation_times)
+stream_depletion
 ```
 
-The direct ADF result at an interval end generally differs from the average
-rate applied during that interval. The following comparison makes that
-distinction explicit.
-
-```{r compare-adf-endpoint-and-average}
-adf_interval_comparison <- adf_schedule |>
-  st_drop_geometry() |>
-  group_by(pump_id, interval_start, interval_end) |>
-  summarize(
-    adf_interval_average = sum(injection_rate),
-    .groups = "drop"
-  ) |>
-  left_join(
-    rename(
-      adf_depletion_totals,
-      adf_depletion_at_interval_end = adf_depletion_at_time
-    ),
-    by = c(
-      "pump_id",
-      "interval_end" = "evaluation_time"
-    )
-  )
-
-adf_interval_comparison
-```
+In addition to differences between the ADF and constant-head approaches,
+the direct ADF result at an interval end can differ from the average
+rate applied during that interval.
 
 ```{r plot-stream-depletion}
 adf_depletion_plot <- adf_depletion_totals |>
@@ -383,7 +359,7 @@ ggplot() +
 The following map compares the spatial distribution of the two injection
 schedules during May 2025. The positive mapped values represent water moving
 from the stream to the aquifer. Each panel shows the rates attributed to one
-pumping well and one method.
+pumping well and one method. 
 
 ```{r map-may-injection-rates, fig.height = 9}
 may_date <- as.Date("2025-05-15")
