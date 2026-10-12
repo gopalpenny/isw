@@ -381,7 +381,7 @@
             number_of_segments
           ),
           injection_rate = units::set_units(
-            solved_rate_units,
+            -solved_rate_units,
             output_rate_unit,
             mode = "standard"
           ),

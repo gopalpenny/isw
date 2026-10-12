@@ -59,8 +59,9 @@ used per straight edge of each finite line element. The default is 16.}
 \value{
 A tibble with one row per `pump_id`, `reach_segment_id`, and
   injection interval. `interval_start` and `interval_end` retain the time
-  representation used by `pumping_schedules$t`. `injection_rate` is negative
-  when water enters the aquifer. Constant-head schedules additionally
+  representation used by `pumping_schedules$t`. `injection_rate` is positive
+  when water moves from the stream to the aquifer. Constant-head schedules
+  additionally
   contain `aquifer_id`, `boundary_residual`, and
   `matrix_condition_number`.
   Generated schedules carry an `isw_schedule_metadata` attribute recording

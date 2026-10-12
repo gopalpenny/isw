@@ -76,7 +76,7 @@ test_that("constant-head schedule enforces endpoint boundary conditions", {
       "boundary_residual", "matrix_condition_number"
     )
   )
-  expect_true(all(as.numeric(schedule$injection_rate[1:2]) < 0))
+  expect_true(all(as.numeric(schedule$injection_rate[1:2]) > 0))
   expect_lt(
     max(abs(as.numeric(units::set_units(
       schedule$boundary_residual,
@@ -386,7 +386,7 @@ test_that("ADF remains the default injection method", {
   )
 })
 
-test_that("injection schedules retain their signed output", {
+test_that("injection schedules report stream-to-aquifer flow as positive", {
   inputs <- make_constant_head_inputs()
 
   schedule <- generate_stream_injection_schedule(
@@ -398,7 +398,7 @@ test_that("injection schedules retain their signed output", {
   )
 
   expect_true("injection_rate" %in% names(schedule))
-  expect_true(all(as.numeric(schedule$injection_rate[1:2]) < 0))
+  expect_true(all(as.numeric(schedule$injection_rate[1:2]) > 0))
 })
 
 test_that("constant-head schedules retain Date interval boundaries", {

@@ -605,8 +605,8 @@ tail(injection_grid$injection_times)
 
 Depletion is evaluated at the start and end of each interval. The arithmetic
 mean of those two rates defines the depletion magnitude for that interval.
-`generate_stream_injection_schedule()` reports its negative as the aquifer-injection
-rate because stream water enters the aquifer.
+`generate_stream_injection_schedule()` reports that mean as a positive
+`injection_rate` because stream water enters the aquifer.
 
 ```{r internal-injection-schedule}
 depletion_at_injection_times <- model_adf_stream_depletion(
@@ -634,10 +634,10 @@ head(injection_rate_changes)
 
 `depletion_at_injection_times` contains the segment-level depletion rates at
 the start and end of each interval.
-`.get_interval_average_injection_schedule()` first converts them to the signed
-injection rates returned by `generate_stream_injection_schedule()`.
+`.get_interval_average_injection_schedule()` first converts them to the
+positive injection rates returned by `generate_stream_injection_schedule()`.
 `.get_injection_rate_changes()` then converts successive interval rates to
-change events for the superposition calculation in
+negative, signed change events for the superposition calculation in
 `model_aquifer_water_level_change()`.
 
 Optional `injection_times` add times at which new intervals start, creating a

@@ -493,7 +493,7 @@
       next
     }
 
-    interval_rates <- -(
+    interval_rates <- (
       endpoint_rates[-length(endpoint_rates)] + endpoint_rates[-1]
     ) / 2
     number_of_intervals <- length(interval_rates)
@@ -550,7 +550,10 @@
     pair_rows <- pair_rows[order(as.numeric(
       injection_schedule$interval_start[pair_rows]
     ))]
-    interval_rates <- injection_schedule$injection_rate[pair_rows]
+    # Public schedules use positive rates for water moving from the stream to
+    # the aquifer. Response kernels use the pumping convention, so aquifer
+    # injection enters the superposition calculation with the opposite sign.
+    interval_rates <- -injection_schedule$injection_rate[pair_rows]
     previous_rates <- c(
       interval_rates[[1]] * 0,
       interval_rates[-length(interval_rates)]
@@ -601,15 +604,16 @@
 #'   days and rates retain the stream-depletion rate units.
 #'
 #' @details
-#' Stream depletion is positive when water enters the aquifer from a stream.
-#' Injection rates therefore use the opposite sign so the same well-response
-#' kernel can be used for pumping and injection.
+#' Stream depletion and public injection schedules are positive when water
+#' enters the aquifer from a stream. This helper converts schedule rates to the
+#' opposite sign so the same response kernel can be used for pumping and
+#' injection.
 #'
 #' The first pumping-schedule time defines the initial time boundary. When the
 #' first evaluation occurs later, stream depletion at that initial boundary is
 #' assumed to be zero. The injection rate in each interval is the negative
 #' arithmetic mean of stream depletion at the beginning and end of that
-#' interval. Consecutive interval rates are converted to signed rate changes;
+#' interval. Consecutive rates are converted to signed aquifer-response events;
 #' exact zero changes are omitted.
 #'
 #' @noRd
@@ -660,8 +664,9 @@
 #'
 #' @return A tibble with one row per `pump_id`, `reach_segment_id`, and
 #'   injection interval. `interval_start` and `interval_end` retain the time
-#'   representation used by `pumping_schedules$t`. `injection_rate` is negative
-#'   when water enters the aquifer. Constant-head schedules additionally
+#'   representation used by `pumping_schedules$t`. `injection_rate` is positive
+#'   when water moves from the stream to the aquifer. Constant-head schedules
+#'   additionally
 #'   contain `aquifer_id`, `boundary_residual`, and
 #'   `matrix_condition_number`.
 #'   Generated schedules carry an `isw_schedule_metadata` attribute recording

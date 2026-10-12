@@ -149,8 +149,9 @@ used per straight edge of each finite line element. The default is 16.</p></dd>
     <h2>Value</h2>
     <p>A tibble with one row per `pump_id`, `reach_segment_id`, and
   injection interval. `interval_start` and `interval_end` retain the time
-  representation used by `pumping_schedules$t`. `injection_rate` is negative
-  when water enters the aquifer. Constant-head schedules additionally
+  representation used by `pumping_schedules$t`. `injection_rate` is positive
+  when water moves from the stream to the aquifer. Constant-head schedules
+  additionally
   contain `aquifer_id`, `boundary_residual`, and
   `matrix_condition_number`.
   Generated schedules carry an `isw_schedule_metadata` attribute recording
@@ -201,16 +202,16 @@ each interval endpoint after accounting for all preceding injection.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 168 × 6</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    pump_id reach_id  reach_segment_id interval_start interval_end injection_rate</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                       <span style="color: #949494;">[d]</span>          <span style="color: #949494;">[d]</span>        <span style="color: #949494;">[m^3/d]</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> pump_1  upstream… upstream_1_segm…              0           10      -<span style="color: #BB0000;">1.26</span><span style="color: #949494;">e</span><span style="color: #BB0000;">-13</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> pump_1  upstream… upstream_1_segm…             10           20      -<span style="color: #BB0000;">2.85</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 7</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> pump_1  upstream… upstream_1_segm…             20           30      -<span style="color: #BB0000;">4.06</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 5</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> pump_1  upstream… upstream_1_segm…              0           10      -<span style="color: #BB0000;">8.10</span><span style="color: #949494;">e</span><span style="color: #BB0000;">-14</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> pump_1  upstream… upstream_1_segm…             10           20      -<span style="color: #BB0000;">2.24</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 7</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> pump_1  upstream… upstream_1_segm…             20           30      -<span style="color: #BB0000;">3.42</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 5</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> pump_1  upstream… upstream_1_segm…              0           10      -<span style="color: #BB0000;">2.01</span><span style="color: #949494;">e</span><span style="color: #BB0000;">-14</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> pump_1  upstream… upstream_1_segm…             10           20      -<span style="color: #BB0000;">1.07</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 7</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> pump_1  upstream… upstream_1_segm…             20           30      -<span style="color: #BB0000;">2.04</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 5</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> pump_1  upstream… upstream_1_segm…              0           10      -<span style="color: #BB0000;">1.79</span><span style="color: #949494;">e</span><span style="color: #BB0000;">-15</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 1</span> pump_1  upstream… upstream_1_segm…              0           10       1.26<span style="color: #949494;">e</span><span style="color: #BB0000;">-13</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 2</span> pump_1  upstream… upstream_1_segm…             10           20       2.85<span style="color: #949494;">e</span><span style="color: #BB0000;">- 7</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 3</span> pump_1  upstream… upstream_1_segm…             20           30       4.06<span style="color: #949494;">e</span><span style="color: #BB0000;">- 5</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 4</span> pump_1  upstream… upstream_1_segm…              0           10       8.10<span style="color: #949494;">e</span><span style="color: #BB0000;">-14</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 5</span> pump_1  upstream… upstream_1_segm…             10           20       2.24<span style="color: #949494;">e</span><span style="color: #BB0000;">- 7</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 6</span> pump_1  upstream… upstream_1_segm…             20           30       3.42<span style="color: #949494;">e</span><span style="color: #BB0000;">- 5</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 7</span> pump_1  upstream… upstream_1_segm…              0           10       2.01<span style="color: #949494;">e</span><span style="color: #BB0000;">-14</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 8</span> pump_1  upstream… upstream_1_segm…             10           20       1.07<span style="color: #949494;">e</span><span style="color: #BB0000;">- 7</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;"> 9</span> pump_1  upstream… upstream_1_segm…             20           30       2.04<span style="color: #949494;">e</span><span style="color: #BB0000;">- 5</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BCBCBC;">10</span> pump_1  upstream… upstream_1_segm…              0           10       1.79<span style="color: #949494;">e</span><span style="color: #BB0000;">-15</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># ℹ 158 more rows</span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>

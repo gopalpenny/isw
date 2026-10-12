@@ -400,8 +400,7 @@ constant_head_diagnostics
 ### Compare total stream depletion
 
 Water lost from the stream enters the aquifer. The schedule reports this as a
-negative total `injection_rate` for each finite line element. Its negative is
-the corresponding positive stream-depletion rate.
+positive total `injection_rate` for each finite line element.
 
 For ADF, this quantity is the interval-average analytical depletion distributed
 among the segments. For constant head, it is the total injection needed to
@@ -414,7 +413,7 @@ stream_depletion_comparison <- bind_rows(
 ) |>
   group_by(method, interval_end) |>
   summarize(
-    stream_depletion_rate = -sum(injection_rate),
+    stream_depletion_rate = sum(injection_rate),
     .groups = "drop"
   )
 
@@ -426,10 +425,7 @@ ggplot(
   labs(
     x = "Interval end",
     y = "Total stream-depletion rate",
-    subtitle = paste(
-      "Positive stream depletion is represented internally as negative",
-      "aquifer injection"
-    ),
+    subtitle = "Positive rates represent flow from the stream to the aquifer",
     color = "Method"
   ) +
   theme_minimal()
@@ -465,7 +461,7 @@ segment_injection_snapshots <- bind_rows(lapply(
           paste("Day", as.numeric(snapshot)),
           levels = paste("Day", as.numeric(injection_snapshots))
         ),
-        injection_rate_m3_day = -as.numeric(set_units(
+        injection_rate_m3_day = as.numeric(set_units(
           injection_rate,
           "m^3/day"
         ))

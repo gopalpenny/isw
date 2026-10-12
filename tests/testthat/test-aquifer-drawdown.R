@@ -121,9 +121,15 @@ test_that("interval injection rates average depletion endpoints", {
     stream_depletion_rate = units::set_units(c(0, 20, 40), "m^3/day")
   )
 
-  events <- isw:::.get_interval_average_injection_rate_changes(
+  schedule <- isw:::.get_interval_average_injection_schedule(
     stream_depletion,
     pumping_schedules
+  )
+  events <- isw:::.get_injection_rate_changes(schedule)
+
+  expect_equal(
+    schedule$injection_rate,
+    units::set_units(c(10, 30), "m^3/day")
   )
 
   expect_equal(

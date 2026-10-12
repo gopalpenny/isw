@@ -512,9 +512,8 @@ warns when the condition number exceeds
 <h3 id="compare-total-stream-depletion">Compare total stream depletion<a class="anchor" aria-label="anchor" href="#compare-total-stream-depletion"></a>
 </h3>
 <p>Water lost from the stream enters the aquifer. The schedule reports
-this as a negative total <code>injection_rate</code> for each finite
-line element. Its negative is the corresponding positive
-stream-depletion rate.</p>
+this as a positive total <code>injection_rate</code> for each finite
+line element.</p>
 <p>For ADF, this quantity is the interval-average analytical depletion
 distributed among the segments. For constant head, it is the total
 injection needed to maintain the boundary condition.</p>
@@ -525,7 +524,7 @@ injection needed to maintain the boundary condition.</p>
 <span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">method</span>, <span class="va">interval_end</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
-<span>    stream_depletion_rate <span class="op">=</span> <span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">injection_rate</span><span class="op">)</span>,</span>
+<span>    stream_depletion_rate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">injection_rate</span><span class="op">)</span>,</span>
 <span>    .groups <span class="op">=</span> <span class="st">"drop"</span></span>
 <span>  <span class="op">)</span></span>
 <span></span>
@@ -537,10 +536,7 @@ injection needed to maintain the boundary condition.</p>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
 <span>    x <span class="op">=</span> <span class="st">"Interval end"</span>,</span>
 <span>    y <span class="op">=</span> <span class="st">"Total stream-depletion rate"</span>,</span>
-<span>    subtitle <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span></span>
-<span>      <span class="st">"Positive stream depletion is represented internally as negative"</span>,</span>
-<span>      <span class="st">"aquifer injection"</span></span>
-<span>    <span class="op">)</span>,</span>
+<span>    subtitle <span class="op">=</span> <span class="st">"Positive rates represent flow from the stream to the aquifer"</span>,</span>
 <span>    color <span class="op">=</span> <span class="st">"Method"</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
@@ -577,7 +573,7 @@ can be compared directly.</p>
 <span>          <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Day"</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">snapshot</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>          levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Day"</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">injection_snapshots</span><span class="op">)</span><span class="op">)</span></span>
 <span>        <span class="op">)</span>,</span>
-<span>        injection_rate_m3_day <span class="op">=</span> <span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span></span>
+<span>        injection_rate_m3_day <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span></span>
 <span>          <span class="va">injection_rate</span>,</span>
 <span>          <span class="st">"m^3/day"</span></span>
 <span>        <span class="op">)</span><span class="op">)</span></span>

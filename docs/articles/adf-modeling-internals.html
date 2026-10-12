@@ -913,8 +913,8 @@ below.</p>
 <p>Depletion is evaluated at the start and end of each interval. The
 arithmetic mean of those two rates defines the depletion magnitude for
 that interval. <code><a href="../reference/generate_stream_injection_schedule.html">generate_stream_injection_schedule()</a></code> reports
-its negative as the aquifer-injection rate because stream water enters
-the aquifer.</p>
+that mean as a positive <code>injection_rate</code> because stream water
+enters the aquifer.</p>
 <div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">depletion_at_injection_times</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/model_adf_stream_depletion.html">model_adf_stream_depletion</a></span><span class="op">(</span></span>
 <span>  <span class="va">pumping_wells</span>,</span>
@@ -967,11 +967,11 @@ the aquifer.</p>
 <p><code>depletion_at_injection_times</code> contains the segment-level
 depletion rates at the start and end of each interval.
 <code>.get_interval_average_injection_schedule()</code> first converts
-them to the signed injection rates returned by
+them to the positive injection rates returned by
 <code><a href="../reference/generate_stream_injection_schedule.html">generate_stream_injection_schedule()</a></code>.
 <code>.get_injection_rate_changes()</code> then converts successive
-interval rates to change events for the superposition calculation in
-<code><a href="../reference/model_aquifer_water_level_change.html">model_aquifer_water_level_change()</a></code>.</p>
+interval rates to negative, signed change events for the superposition
+calculation in <code><a href="../reference/model_aquifer_water_level_change.html">model_aquifer_water_level_change()</a></code>.</p>
 <p>Optional <code>injection_times</code> add times at which new
 intervals start, creating a finer piecewise-constant approximation. They
 do not change <code>evaluation_times</code>. Extra times after the final

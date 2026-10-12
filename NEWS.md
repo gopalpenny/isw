@@ -6,7 +6,8 @@
   from ADF apportionment. Stream width is stored once per segment and defaults
   to 1 m when it is not supplied at the reach level.
 * Added `generate_stream_injection_schedule()` with ADF and constant-head methods.
-  It reports signed, piecewise-constant aquifer-injection rates. The
+  It reports piecewise-constant injection rates that are positive when water
+  moves from a stream to the aquifer. The
   constant-head method solves pump-specific discrete-well rates that enforce
   zero signed water-level change at stream model points at interval endpoints.
   Precomputed output from `model_adf_stream_depletion()` can be reused when it
