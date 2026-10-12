@@ -233,10 +233,9 @@ to the stream injection schedule.
 We can now be construct these two interval schedules, using the same function and
 time grid. With `method = "adf"`, `generate_stream_injection_schedule()` calls
 `model_adf_stream_depletion()` at every schedule boundary and averages depletion
-at adjacent boundaries. It reports the resulting aquifer injection as a signed
-`injection_rate`, which is negative when water enters the aquifer, keeping the
-sign convention for pumping wells. Its magnitude
-is the stream-depletion rate applied over the interval. By contrast,
+at adjacent boundaries. It reports the resulting `injection_rate` as positive
+when water moves from the stream to the aquifer. This rate is the stream-
+depletion rate applied over the interval. By contrast,
 `model_adf_stream_depletion()` returns positive depletion at each requested time.
 If ADF depletion has already been calculated at every schedule boundary, it can
 be supplied through the `adf_stream_depletion` argument to avoid recalculation. 
@@ -296,9 +295,9 @@ constant_head_schedule |>
 
 ## Compare stream depletion
 
-`injection_rate` is negative when water leaves the stream and enters the
+`injection_rate` is positive when water leaves the stream and enters the
 aquifer. For each pumping well, total stream depletion is therefore the
-negative of the injection rate summed across all stream segments.
+injection rate summed across all stream segments.
 
 For ADF, the schedule contains interval-average analytical depletion. For
 constant head, it contains the depletion required to impose the stream
@@ -312,7 +311,7 @@ stream_depletion <- bind_rows(
   st_drop_geometry() |>
   group_by(method, pump_id, interval_start, interval_end) |>
   summarize(
-    stream_depletion_rate = -sum(injection_rate),
+    stream_depletion_rate = sum(injection_rate),
     .groups = "drop"
   )
 
@@ -329,7 +328,7 @@ adf_interval_comparison <- adf_schedule |>
   st_drop_geometry() |>
   group_by(pump_id, interval_start, interval_end) |>
   summarize(
-    adf_interval_average = -sum(injection_rate),
+    adf_interval_average = sum(injection_rate),
     .groups = "drop"
   ) |>
   left_join(
@@ -382,9 +381,9 @@ ggplot() +
 ```
 
 The following map compares the spatial distribution of the two injection
-schedules during May 2025. Because package injection rates are negative when
-water enters the aquifer, the mapped values are their positive magnitudes.
-Each panel shows the rates attributed to one pumping well and one method.
+schedules during May 2025. The positive mapped values represent water moving
+from the stream to the aquifer. Each panel shows the rates attributed to one
+pumping well and one method.
 
 ```{r map-may-injection-rates, fig.height = 9}
 may_date <- as.Date("2025-05-15")
@@ -400,7 +399,7 @@ may_injection_rates <- bind_rows(
     .groups = "drop"
   ) |>
   mutate(
-    injection_rate_m3_day = -as.numeric(set_units(
+    injection_rate_m3_day = as.numeric(set_units(
       injection_rate,
       "m^3/day"
     ))
