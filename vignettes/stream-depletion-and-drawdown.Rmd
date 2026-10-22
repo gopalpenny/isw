@@ -179,7 +179,7 @@ segment weights independently for each pumping well. `sample_spacing`
 controls how finely curved stream geometries are sampled when 
 the segment weights are calculated.
 
-```{r adf-apportionment}
+```{r prep-adf-apportionment}
 stream_apportionment <- prep_adf_stream_apportionment(
   pumping_wells,
   stream_segments,
@@ -191,7 +191,7 @@ stream_apportionment <- prep_adf_stream_apportionment(
 To confirm the weights, we can sum the weights, or `apportionment_fraction`, 
 over all stream segments for each pumping well.
 
-```{r adf-apportionment}
+```{r summarize-adf-apportionment}
 stream_apportionment |>
   st_drop_geometry() |>
   group_by(pump_id) |>
@@ -241,7 +241,7 @@ be supplied through the `adf_stream_depletion` argument to avoid recalculation.
 The supplied result must include all pumping, evaluation, and optional 
 refinement boundaries used by the schedule.
 
-```{r injection-schedules}
+```{r adf-injection-schedule}
 adf_schedule <- generate_stream_injection_schedule(
   pumping_wells = pumping_wells,
   pumping_schedules = pumping_schedules,
@@ -258,7 +258,7 @@ With `method = "constant_head"`, each interval rate is
 solved to satisfy the constant-head boundary condition on the `model_point` 
 for each stream segment at the end of each time interval.
 
-```{r injection-schedules}
+```{r constant-head-injection-schedule}
 constant_head_schedule <- generate_stream_injection_schedule(
   pumping_wells = pumping_wells,
   pumping_schedules = pumping_schedules,
@@ -358,8 +358,8 @@ ggplot() +
 
 The following map compares the spatial distribution of the two injection
 schedules during May 2025. The positive mapped values represent water moving
-from the stream to the aquifer. Each panel shows the rates attributed to one
-pumping well and one method. 
+from the stream to the aquifer. Each stream segment is colored by its total
+injection rate for one pumping well and one method.
 
 ```{r map-may-injection-rates, fig.height = 9}
 may_date <- as.Date("2025-05-15")
@@ -381,29 +381,23 @@ may_injection_rates <- bind_rows(
     ))
   )
 
-injection_points <- st_sf(
-  reach_segment_id = stream_segments$reach_segment_id,
-  geometry = stream_segments$model_point
-) |>
+injection_segments <- stream_segments |>
+  select(reach_segment_id) |>
   left_join(may_injection_rates, by = "reach_segment_id")
 
 ggplot() +
   geom_sf(data = stream_segments, color = "grey75", linewidth = 1) +
   geom_sf(
-    data = injection_points,
-    aes(
-      size = injection_rate_m3_day,
-      color = injection_rate_m3_day
-    ),
-    alpha = 0.85
+    data = injection_segments,
+    aes(color = injection_rate_m3_day),
+    linewidth = 5,
+    lineend = "round"
   ) +
   facet_grid(method ~ pump_id) +
-  scale_size_continuous(range = c(2, 10)) +
   scale_color_viridis_c(option = "C") +
   labs(
     x = NULL,
     y = NULL,
-    size = "Injection rate\n(m³/day)",
     color = "Injection rate\n(m³/day)"
   ) +
   theme_minimal()
@@ -413,8 +407,11 @@ ggplot() +
 
 `model_aquifer_water_level_change()` combines the effects of the physical
 pumping wells and stream injection at each observation well and evaluation
-time. Supplying a previously calculated schedule ensures that the water-level
-calculation uses exactly the injection rates inspected above.
+time. Supplying a previously calculated injection schedule avoids
+recalculating the injection rates. Internally, the function checks
+to make sure that the timing of the provided schedule match the
+timing that would have otherwise been required if the schedule were calculated
+here.
 
 ```{r calculate-water-levels}
 adf_water_levels <- model_aquifer_water_level_change(
@@ -452,9 +449,11 @@ water_levels |>
   )
 ```
 
-`pumping_drawdown` and `stream_recovery` are reported as positive magnitudes.
-`water_level_change` is their signed net effect: negative values indicate a
-decline and positive values indicate a rise.
+`pumping_drawdown` and `stream_recovery` are reported as positive magnitudes,
+while `water_level_change` is their signed net effect: negative values indicate a
+decline and positive values indicate a rise in the water table.
+
+We can obtain the water-level change associated with each pump, over time, as follows.
 
 ```{r plot-water-levels, fig.height = 8}
 water_level_totals <- water_levels |>
@@ -487,8 +486,8 @@ The
 [`model_aquifer_water_level_change()` reference](https://gopalpenny.github.io/isw/reference/model_aquifer_water_level_change.html)
 documents the returned pumping, recovery, and net water-level components. The
 [method-comparison article](https://gopalpenny.github.io/isw/articles/stream-injection-methods.html)
-extends this workflow with observations along the stream and on transects,
-and compares the discrete constant-head result with the analytical image-well
+extends this workflow with observations along the stream and on perpedicilar transects,
+and compares the constant-head results with the ADF
 solution.
 
 ## Map water-level change along the stream
