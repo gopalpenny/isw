@@ -891,17 +891,20 @@ prep_stream_segments <- function(
   )
 }
 
-#' Generate sample points within stream-reach segments
+#' Prepare sample points along stream segments
 #'
 #' Create regularly distributed points within each discretized reach segment
-#' for web-based stream-depletion apportionment.
+#' for web-based stream-depletion apportionment, spatial inspection, or
+#' water-level evaluation between segment model points.
 #'
-#' @param reach_segments A projected stream-segment `sf` object. It must
+#' @param stream_segments A projected stream-segment `sf` object, normally
+#'   returned by [prep_stream_segments()]. It must
 #'   contain `reach_id`,
 #'   `reach_segment_id`, and `represented_length` columns and one `LINESTRING`
 #'   geometry per row.
 #' @param sample_spacing A scalar `units` object with length dimensions giving
-#'   the maximum stream length represented by an apportionment sample point.
+#'   the maximum stream length represented by each sample point. Must be
+#'   finite and positive.
 #'
 #' @return An `sf` point object with columns `reach_id`, `reach_segment_id`,
 #'   `sample_point_id`, and `sampled_length`. Every reach segment receives at
@@ -917,12 +920,31 @@ prep_stream_segments <- function(
 #' These points are distinct from the single `model_point` stored with each
 #' reach segment. `model_point` represents the segment in the model, while the
 #' finer sample points describe its geometry during web apportionment.
+#' This is the same sampling calculation used by [prep_adf_stream_apportionment()].
+#' Sample points are also distinct from finite-line quadrature points.
 #'
-#' @noRd
-.generate_segment_sample_points <- function(reach_segments, sample_spacing) {
+#' Generating points does not change the stream discretization or injection
+#' schedules. The constant-head condition is imposed only at `model_point`
+#' locations, so water-level changes at sample points need not be zero.
+#' To use sample points as observation wells, create an `observation_id`
+#' column from `sample_point_id`.
+#'
+#' @examples
+#' stream_segments <- prep_stream_segments(
+#'   example_stream_reaches,
+#'   reach_spacing = units::set_units(400, "m")
+#' )
+#' sample_points <- prep_stream_sample_points(
+#'   stream_segments,
+#'   sample_spacing = units::set_units(100, "m")
+#' )
+#' sample_points$observation_id <- sample_points$sample_point_id
+#'
+#' @export
+prep_stream_sample_points <- function(stream_segments, sample_spacing) {
 
-  if (!inherits(reach_segments, "sf")) {
-    stop("reach_segments must be an sf object.")
+  if (!inherits(stream_segments, "sf")) {
+    stop("stream_segments must be an sf object.")
   }
 
   required_columns <- c(
@@ -930,53 +952,53 @@ prep_stream_segments <- function(
     "reach_segment_id",
     "represented_length"
   )
-  missing_columns <- setdiff(required_columns, names(reach_segments))
+  missing_columns <- setdiff(required_columns, names(stream_segments))
 
   if (length(missing_columns) > 0) {
     stop(
-      "reach_segments is missing required columns: ",
+      "stream_segments is missing required columns: ",
       paste(missing_columns, collapse = ", "),
       "."
     )
   }
 
-  if (nrow(reach_segments) == 0) {
-    stop("reach_segments must contain at least one feature.")
+  if (nrow(stream_segments) == 0) {
+    stop("stream_segments must contain at least one feature.")
   }
 
-  if (is.na(sf::st_crs(reach_segments)) ||
-      !grepl("^PROJCRS\\[", sf::st_crs(reach_segments)$wkt)) {
-    stop("reach_segments must use a projected CRS.")
+  if (is.na(sf::st_crs(stream_segments)) ||
+      !grepl("^PROJCRS\\[", sf::st_crs(stream_segments)$wkt)) {
+    stop("stream_segments must use a projected CRS.")
   }
 
   geometry_types <- as.character(
-    sf::st_geometry_type(reach_segments, by_geometry = TRUE)
+    sf::st_geometry_type(stream_segments, by_geometry = TRUE)
   )
 
   if (!all(geometry_types == "LINESTRING")) {
-    stop("Every reach_segments geometry must be a LINESTRING.")
+    stop("Every stream_segments geometry must be a LINESTRING.")
   }
 
-  if (!is.character(reach_segments$reach_id) ||
-      !is.character(reach_segments$reach_segment_id) ||
-      anyNA(reach_segments$reach_id) ||
-      anyNA(reach_segments$reach_segment_id) ||
-      any(trimws(reach_segments$reach_id) == "") ||
-      any(trimws(reach_segments$reach_segment_id) == "")) {
+  if (!is.character(stream_segments$reach_id) ||
+      !is.character(stream_segments$reach_segment_id) ||
+      anyNA(stream_segments$reach_id) ||
+      anyNA(stream_segments$reach_segment_id) ||
+      any(trimws(stream_segments$reach_id) == "") ||
+      any(trimws(stream_segments$reach_segment_id) == "")) {
     stop(
-      "reach_segments$reach_id and reach_segments$reach_segment_id must be ",
+      "stream_segments$reach_id and stream_segments$reach_segment_id must be ",
       "nonmissing, nonempty character vectors."
     )
   }
 
-  if (anyDuplicated(reach_segments$reach_segment_id) > 0) {
-    stop("reach_segments$reach_segment_id values must be unique.")
+  if (anyDuplicated(stream_segments$reach_segment_id) > 0) {
+    stop("stream_segments$reach_segment_id values must be unique.")
   }
 
   check_dimensionality(
-    reach_segments$represented_length,
+    stream_segments$represented_length,
     desired_units = "m",
-    variable_name = "reach_segments$represented_length"
+    variable_name = "stream_segments$represented_length"
   )
   check_dimensionality(
     sample_spacing,
@@ -990,18 +1012,18 @@ prep_stream_segments <- function(
     stop("sample_spacing must be a finite, positive scalar length.")
   }
 
-  segment_lengths <- sf::st_length(reach_segments)
+  segment_lengths <- sf::st_length(stream_segments)
 
   if (!isTRUE(all.equal(
     segment_lengths,
     units::set_units(
-      reach_segments$represented_length,
+      stream_segments$represented_length,
       units::deparse_unit(segment_lengths),
       mode = "standard"
     )
   ))) {
     stop(
-      "reach_segments$represented_length must equal the active geometry ",
+      "stream_segments$represented_length must equal the active geometry ",
       "length."
     )
   }
@@ -1021,9 +1043,9 @@ prep_stream_segments <- function(
   sampled_lengths <- numeric(total_points)
   output_index <- 0L
 
-  for (segment_index in seq_len(nrow(reach_segments))) {
+  for (segment_index in seq_len(nrow(stream_segments))) {
     coordinates <- sf::st_coordinates(
-      sf::st_geometry(reach_segments)[[segment_index]]
+      sf::st_geometry(stream_segments)[[segment_index]]
     )[, 1:2, drop = FALSE]
     coordinate_differences <- coordinates[-1, , drop = FALSE] -
       coordinates[-nrow(coordinates), , drop = FALSE]
@@ -1054,11 +1076,11 @@ prep_stream_segments <- function(
   length_units <- units::deparse_unit(segment_lengths)
 
   sf::st_sf(
-    reach_id = reach_segments$reach_id[source_segment_rows],
+    reach_id = stream_segments$reach_id[source_segment_rows],
     reach_segment_id =
-      reach_segments$reach_segment_id[source_segment_rows],
+      stream_segments$reach_segment_id[source_segment_rows],
     sample_point_id = paste0(
-      reach_segments$reach_segment_id[source_segment_rows],
+      stream_segments$reach_segment_id[source_segment_rows],
       "_point_",
       point_numbers
     ),
@@ -1069,7 +1091,7 @@ prep_stream_segments <- function(
     ),
     geometry = sf::st_sfc(
       point_geometries,
-      crs = sf::st_crs(reach_segments)
+      crs = sf::st_crs(stream_segments)
     )
   )
 }

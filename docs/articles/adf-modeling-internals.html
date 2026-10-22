@@ -446,7 +446,7 @@ drawdown are calculated.</td>
 workflow.</p>
 <p>Internal sample points approximate the continuous distance-based
 weighting along each reach segment.
-<code>.generate_segment_sample_points()</code> divides each segment into
+<code><a href="../reference/prep_stream_sample_points.html">prep_stream_sample_points()</a></code> divides each segment into
 equal-length intervals, places one point at each interval center, and
 records the length represented by that point as
 <code>sampled_length</code>. Point weights are later summed by reach
@@ -454,7 +454,7 @@ segment to calculate static apportionment fractions. These points are
 distinct from the segment’s single <code>model_point</code>, which is
 used only in the <code>"constant-head"</code> drawdown calculation.</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">sample_points</span> <span class="op">&lt;-</span> <span class="fu">isw</span><span class="fu">:::</span><span class="fu">.generate_segment_sample_points</span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">sample_points</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_stream_sample_points.html">prep_stream_sample_points</a></span><span class="op">(</span></span>
 <span>  <span class="va">reach_segments</span>,</span>
 <span>  sample_spacing <span class="op">=</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">100</span>, <span class="st">"m"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>

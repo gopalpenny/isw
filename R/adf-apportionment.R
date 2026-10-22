@@ -77,7 +77,7 @@ prep_adf_stream_apportionment <- function(
     sf::st_zm(pumping_wells, drop = TRUE, what = "ZM"),
     sf::st_crs(stream_segments)
   )
-  sample_points <- .generate_segment_sample_points(
+  sample_points <- prep_stream_sample_points(
     stream_segments,
     sample_spacing
   )

@@ -2,6 +2,8 @@
 
 ## Stream injection and water-level response
 
+* Exported the existing stream-sampling helper as `prep_stream_sample_points()`
+  for spatial inspection and water-level evaluation along stream segments.
 * Added `prep_stream_segments()` to separate projected stream discretization
   from ADF apportionment. Stream width is stored once per segment and defaults
   to 1 m when it is not supplied at the reach level.

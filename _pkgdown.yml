@@ -17,6 +17,7 @@ reference:
   contents:
   - fetch_usgs_stream_reaches
   - prep_stream_segments
+  - prep_stream_sample_points
   - prep_adf_stream_apportionment
   - model_adf_stream_depletion
   - generate_stream_injection_schedule

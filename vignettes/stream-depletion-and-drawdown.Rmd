@@ -488,8 +488,11 @@ documents the returned pumping, recovery, and net water-level components.
 
 The stream boundary can also be evaluated directly by treating segment
 `model_point` locations as observation wells. These are the locations where
-the constant-head condition is imposed and are retained in the public stream-
-segment object for inspection and visualization.
+the constant-head condition is imposed and are retained in the stream-
+segment object returned by `prep_stream_segments()`. To inspect the response
+between model points, `prep_stream_sample_points()` creates additional points
+along each segment. The constant-head condition is imposed only at model points, so
+water-level changes at the sample points are more likely to deviate.
 
 ```{r stream-observation-points}
 stream_model_points <- st_sf(
@@ -501,7 +504,19 @@ stream_model_points <- st_sf(
   geometry = stream_segments$model_point
 )
 
-stream_observation_wells <- stream_model_points
+stream_sample_points <- prep_stream_sample_points(
+  stream_segments,
+  sample_spacing = set_units(100, "m")
+) |>
+  transmute(
+    observation_id = paste0("sample_", sample_point_id),
+    point_type = "Sample point"
+  )
+
+stream_observation_wells <- bind_rows(
+  stream_sample_points,
+  stream_model_points
+)
 ```
 
 In the figure below, negative values indicate a decline from
@@ -590,7 +605,8 @@ ggplot() +
 ```
 
 Finally, we can summarize the distribution of hydraulic-head change by method
-and observation type to confirm that the constant-head method is working at the segment model points.
+and observation type to compare the residuals between model points with those
+at the segment model points, where the constant-head condition is imposed.
 
 ```{r summarize-stream-water-levels}
 stream_water_level_summary <- stream_water_level_map |>

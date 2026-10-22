@@ -253,7 +253,7 @@ Three distinct spatial units are used in the ADF workflow:
 Note that `model_point` is not used for the ADF workflow.
 
 Internal sample points approximate the continuous distance-based weighting
-along each reach segment. `.generate_segment_sample_points()` divides each segment into
+along each reach segment. `prep_stream_sample_points()` divides each segment into
 equal-length intervals, places one point at each interval center, and records
 the length represented by that point as `sampled_length`. Point weights are
 later summed by reach segment to calculate static apportionment fractions.
@@ -261,7 +261,7 @@ These points are distinct from the segment's single `model_point`, which is
 used only in the `"constant-head"` drawdown calculation.
 
 ```{r generate-segment-sample-points}
-sample_points <- isw:::.generate_segment_sample_points(
+sample_points <- prep_stream_sample_points(
   reach_segments,
   sample_spacing = set_units(100, "m")
 )
