@@ -615,29 +615,17 @@ internal_injection_schedule <-
     pumping_schedules
   )
 
-injection_rate_changes <- isw:::.get_injection_rate_changes(
-  internal_injection_schedule
-)
-
 head(internal_injection_schedule)
-head(injection_rate_changes)
 ```
 
 `depletion_at_injection_times` contains the segment-level depletion rates at
 the start and end of each interval.
-`.get_interval_average_injection_schedule()` converts depletion to the
-positive injection rates returned by `generate_stream_injection_schedule()`.
-`.get_injection_rate_changes()` then converts successive interval rates to
-negative, signed change events for the superposition calculation in
-`model_aquifer_water_level_change()`.
+`.get_interval_average_injection_schedule()` converts depletion at precise times to the
+average, positive injection rates returned by `generate_stream_injection_schedule()`.
 
 Optional `injection_times` add times at which new intervals start, creating a
 finer piecewise-constant approximation. They do not change `evaluation_times`.
 Extra times after the final evaluation time are ignored.
-
-Most users can let `model_aquifer_water_level_change()` create the schedule
-internally. Creating it explicitly may be useful when it needs to be inspected, 
-reused, or held fixed while other drawdown inputs are varied.
 
 ## Estimate aquifer drawdown and stream recovery
 
@@ -665,13 +653,15 @@ water_level_changes
 Pumping and observation wells are transformed to the projected CRS stored by
 `stream_segments`. Direct pumping distances are measured from each
 physical pumping well to each observation well. Each reach segment's active
-line geometry becomes a finite injection element. Gauss--Legendre source
-points and weights are prepared once, then their distances to every observation
-well are reused for all elapsed times.
+line geometry becomes a finite-line injection element, which requires
+numerical integration, implemented as Gauss--Legendre quadrature in `isw`.
+Gauss-Legendre source points and weights are prepared once, then their 
+distances to every observation
+well are reused for all elapsed times. The default quadrature order is `16L`.
 
 The physical pumping response uses the user-supplied pumping-well diameter.
-The line response uses `stream_width`, holding the integrand constant inside
-half that width and preventing a singular response on the stream.
+The line response uses `stream_width`, holding the water level response constant inside
+`stream_width/2` to prevent a singular response on the stream.
 
 These intermediate geometries and distance matrices can be constructed and
 inspected directly:
@@ -679,10 +669,8 @@ inspected directly:
 ```{r prepare-drawdown-geometries}
 drawdown_crs <- st_crs(stream_segments)
 prepared_pumping_wells <- pumping_wells |>
-  st_zm(drop = TRUE, what = "ZM") |>
   st_transform(drawdown_crs)
 prepared_observation_wells <- observation_wells |>
-  st_zm(drop = TRUE, what = "ZM") |>
   st_transform(drawdown_crs)
 
 pump_to_observation_distances <- st_distance(
@@ -717,7 +705,11 @@ The two helper functions return different forms of event data.
 `.get_pumping_response_times()` converts the pumping schedule to rate changes,
 pairs each change with every later evaluation time, and calculates the elapsed
 response time for each pair. `.get_injection_rate_changes()` only converts the
-interval injection schedule to changes in injection rate. Injection events are
+interval injection schedule to signed rate changes for superposition. It
+negates the positive stream-to-aquifer interval rates to use the analytical
+response's pumping convention: injection is negative pumping. A rise in
+injection therefore produces a negative change event, while a fall produces a
+positive change event. Injection events are
 kept in this compact form because there is one event series for every pump and
 reach segment. During the drawdown calculation, each evaluation time is paired
 with its earlier injection events and their elapsed times are calculated then.
