@@ -31,28 +31,32 @@ library(sf)
 ## Purpose and scope
 
 This vignette gives a detailed internal walkthrough of the full ADF modeling
-workflow: spatial preparation and apportionment, scheduled stream depletion,
+workflow: spatial preparation and stream apportionment, scheduled stream depletion,
 stream-injection schedules, and aquifer water-level response. It repeats the
-workflow in `vignette("stream-depletion-and-drawdown")` in the same order.
-After each top-level ADF function call, it opens that function to show the
-intermediate objects, calculations, and modeling choices involved.
+workflow in `vignette("stream-depletion-and-drawdown")` while providing additional
+details about the
+intermediate objects, calculations, and modeling choices.
 
-Functions called with `isw:::` are implementation details. They are useful for
-understanding and diagnosing a calculation, but they may change without the
-compatibility guarantees associated with exported functions. Application code
-should normally use the top-level functions shown at the start of each section.
+Functions called with `isw:::` are internal to the package and represent
+implementation details. While they are useful for
+understanding and diagnosing a calculation, they may change without the
+compatibility guarantees. Application code
+should, therefore, normally use the top-level functions shown at the start of each section.
 
-The walkthrough follows the normalized public API:
-`prep_stream_segments()` stores physical stream geometry once,
-`prep_adf_stream_apportionment()` stores pump--segment relationships,
-`model_adf_stream_depletion()` applies pumping schedules, and
-`model_aquifer_water_level_change()` combines pumping drawdown with stream
-recovery. The [method-comparison article](stream-injection-methods.html)
+The walkthrough includes:
+
+* `prep_stream_segments()` stores physical stream geometry once,
+* `prep_adf_stream_apportionment()` stores pump--segment relationships,
+* `model_adf_stream_depletion()` applies pumping schedules, and
+* `model_aquifer_water_level_change()` combines pumping drawdown with stream
+recovery. 
+
+The [method-comparison article](stream-injection-methods.html)
 presents the constant-head alternative.
 
 ## Load the example spatial inputs
 
-The walkthrough uses the same two pumping wells, three connected stream
+This walkthrough uses the same two pumping wells, three connected stream
 reaches, and two observation wells as the main vignette.
 
 ```{r spatial-inputs}
