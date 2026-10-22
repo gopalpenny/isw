@@ -565,13 +565,10 @@ in these calculations when constant-head injection is requested.
 
 #### 1. Construct the injection time grid
 
-The internal grid combines every requested evaluation time with all
-pumping-schedule times through the final evaluation. Each time starts a new
-injection interval, except the final time, which closes the last interval.
-Including pumping-schedule times ensures that a change in pumping begins a new
-interval even when results are requested less frequently. If the first
-evaluation occurs after pumping begins, the first pumping-schedule time is also
-included and depletion is assumed to be zero at that initial time.
+`generate_stream_injection_schedule()` first prepares an internal 
+time grid, using `.get_stream_injection_times()`, combining all
+pumping-schedule times, requested evaluation times (optional), and injection times
+(optional) through the final evaluation.
 
 `.get_stream_injection_times()` returns `injection_grid`, a list containing the
 requested evaluation times, the combined injection times, and those injection
@@ -595,17 +592,19 @@ tail(injection_grid$injection_times)
 
 #### 2. Approximate continuously changing depletion by intervals
 
-Depletion is evaluated at the start and end of each interval. The arithmetic
-mean of those two rates defines the depletion magnitude for that interval.
+For the ADF approach, depletion is evaluated at the start and end of each interval. 
+The arithmetic mean of those two rates defines the depletion magnitude for that interval.
 `generate_stream_injection_schedule()` reports that mean as a positive
-`injection_rate` because stream water enters the aquifer.
+`injection_rate`, representing stream water entering the aquifer.
+
+The internal process to calculate these rates uses the following process:
 
 ```{r internal-injection-schedule}
 depletion_at_injection_times <- model_adf_stream_depletion(
   pumping_wells,
   pumping_schedules,
   stream_apportionment,
-  injection_grid$injection_times
+  evaluation_times = injection_grid$injection_times
 )
 
 head(depletion_at_injection_times)
@@ -626,7 +625,7 @@ head(injection_rate_changes)
 
 `depletion_at_injection_times` contains the segment-level depletion rates at
 the start and end of each interval.
-`.get_interval_average_injection_schedule()` first converts them to the
+`.get_interval_average_injection_schedule()` converts depletion to the
 positive injection rates returned by `generate_stream_injection_schedule()`.
 `.get_injection_rate_changes()` then converts successive interval rates to
 negative, signed change events for the superposition calculation in
@@ -637,7 +636,7 @@ finer piecewise-constant approximation. They do not change `evaluation_times`.
 Extra times after the final evaluation time are ignored.
 
 Most users can let `model_aquifer_water_level_change()` create the schedule
-internally. Creating it explicitly is useful when it needs to be inspected,
+internally. Creating it explicitly may be useful when it needs to be inspected, 
 reused, or held fixed while other drawdown inputs are varied.
 
 ## Estimate aquifer drawdown and stream recovery
