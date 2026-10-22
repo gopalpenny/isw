@@ -20,13 +20,13 @@ time.}
 \item{t}{Positive elapsed time since pumping began. Must have units of time.}
 
 \item{well_diam}{Optional pumping-well diameter with units of length.
-Drawdown is evaluated at one well radius when `distance` is smaller. The
+Drawdown is evaluated at one well radius when \code{distance} is smaller. The
 default is zero.}
 }
 \value{
-A `units` vector giving signed water-level change divided by pumping
-  rate, with dimensions of time per length squared. Values are negative for
-  positive pumping rates.
+A \code{units} vector giving signed water-level change divided by pumping
+rate, with dimensions of time per length squared. Values are negative for
+positive pumping rates.
 }
 \description{
 Evaluate the Theis drawdown response to one pumping well in an infinite
@@ -36,7 +36,7 @@ aquifer without stream or other boundary effects.
 This is a specialized single-well calculation. Vector inputs represent
 independent cases and are not superimposed. Multiply the ratio by a positive
 pumping rate to obtain the negative water-level change caused by pumping. Use
-[model_aquifer_water_level_change()] for scheduled pumping, multiple wells,
+\code{\link[=model_aquifer_water_level_change]{model_aquifer_water_level_change()}} for scheduled pumping, multiple wells,
 and stream recovery.
 }
 \examples{
@@ -53,9 +53,9 @@ calc_infinite_aquifer_drawdown_ratio(
 \references{
 Theis, C. V. (1935). The relation between the lowering of the piezometric
 surface and the rate and duration of discharge of a well using groundwater
-storage. *Transactions, American Geophysical Union*, 16, 519--524.
+storage. \emph{Transactions, American Geophysical Union}, 16, 519--524.
 }
 \seealso{
-[calc_straight_stream_depletion_fraction()],
-  [calc_straight_stream_drawdown_ratio()]
+\code{\link[=calc_straight_stream_depletion_fraction]{calc_straight_stream_depletion_fraction()}},
+\code{\link[=calc_straight_stream_drawdown_ratio]{calc_straight_stream_drawdown_ratio()}}
 }

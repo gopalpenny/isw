@@ -610,7 +610,9 @@ The transect plots show how the finite-line stream representation behaves away
 from the boundary. At day 90, the center transect can also be compared with
 the analytical image-well solution for a straight, constant-head stream.
 
-`isw` uses positive rates for pumping and negative rates for injection.
+The analytical response functions use positive rates for pumping and negative
+rates for injection. Public stream-injection schedules instead report positive
+`injection_rate` values for water entering the aquifer.
 `calc_straight_stream_drawdown_ratio()` returns the signed ratio
 \(\Delta h / Q\), which is negative. Multiplying
 the positive pumping rate directly by this ratio gives the signed water-level

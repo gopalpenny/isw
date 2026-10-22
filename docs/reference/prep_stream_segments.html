@@ -82,47 +82,47 @@ approximately equal-length model segments.</p>
 
 
 <dl><dt id="arg-stream-reaches">stream_reaches<a class="anchor" aria-label="anchor" href="#arg-stream-reaches"></a></dt>
-<dd><p>A nonempty `sf` object with one positive-length
-`LINESTRING` or `MULTILINESTRING` feature per stream reach, a defined CRS,
-and a unique, nonmissing character `reach_id` column. An optional
-reach-level `stream_width` column must have length units.</p></dd>
+<dd><p>A nonempty <code>sf</code> object with one positive-length
+<code>LINESTRING</code> or <code>MULTILINESTRING</code> feature per stream reach, a defined CRS,
+and a unique, nonmissing character <code>reach_id</code> column. An optional
+reach-level <code>stream_width</code> column must have length units.</p></dd>
 
 
 <dt id="arg-reach-spacing">reach_spacing<a class="anchor" aria-label="anchor" href="#arg-reach-spacing"></a></dt>
-<dd><p>A scalar `units` length giving the maximum length of a
+<dd><p>A scalar <code>units</code> length giving the maximum length of a
 model segment.</p></dd>
 
 
 <dt id="arg-analysis-crs">analysis_crs<a class="anchor" aria-label="anchor" href="#arg-analysis-crs"></a></dt>
-<dd><p>Either `NULL` or a projected coordinate reference
-system accepted by [sf::st_crs()]. When `NULL`, an existing projected
+<dd><p>Either <code>NULL</code> or a projected coordinate reference
+system accepted by <code><a href="https://r-spatial.github.io/sf/reference/st_crs.html" class="external-link">sf::st_crs()</a></code>. When <code>NULL</code>, an existing projected
 stream CRS is retained; geographic streams are transformed to a local UTM
 CRS selected from their extent.</p></dd>
 
 
 <dt id="arg-stream-width">stream_width<a class="anchor" aria-label="anchor" href="#arg-stream-width"></a></dt>
-<dd><p>Either `NULL` or a positive scalar `units` length. A
-supplied value is applied to every reach. When `NULL`, an existing
-reach-level `stream_width` attribute is retained; if that attribute is
+<dd><p>Either <code>NULL</code> or a positive scalar <code>units</code> length. A
+supplied value is applied to every reach. When <code>NULL</code>, an existing
+reach-level <code>stream_width</code> attribute is retained; if that attribute is
 absent, every reach uses a default width of 1 m.</p></dd>
 
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A projected `sf` object with one line feature per stream segment.
-  It contains `reach_id`, `reach_segment_id`, `represented_length`,
-  `stream_width`, `model_point`, and the segment line geometry.</p>
+    <p>A projected <code>sf</code> object with one line feature per stream segment.
+It contains <code>reach_id</code>, <code>reach_segment_id</code>, <code>represented_length</code>,
+<code>stream_width</code>, <code>model_point</code>, and the segment line geometry.</p>
     </div>
     <div id="details">
     <h2>Details</h2>
-    <p>`model_point` is the along-line midpoint used as the constant-head
+    <p><code>model_point</code> is the along-line midpoint used as the constant-head
 collocation location. Injection is distributed uniformly along the active
 line geometry. Stream validation requires it to be a finite point in the
 segment CRS and on the active line, and warns if it differs from the
 along-line midpoint. Input objects are not modified.
-`stream_width` regularizes responses on and very near a line element using
+<code>stream_width</code> regularizes responses on and very near a line element using
 an effective minimum radius of half the width.
-`well_diam` is reserved for pumping-well objects and is not accepted on
+<code>well_diam</code> is reserved for pumping-well objects and is not accepted on
 stream-reach or stream-segment inputs.</p>
     </div>
 

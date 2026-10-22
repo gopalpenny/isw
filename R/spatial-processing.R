@@ -4,11 +4,11 @@
 #' the model inputs, or validate a projected CRS supplied by the user.
 #'
 #' @param pumping_wells A pumping-well object accepted by
-#'   [`.validate_pumping_wells()`].
+#'   `.validate_pumping_wells()`.
 #' @param stream_reaches A stream-reach object accepted by
-#'   [`.validate_stream_reaches()`].
+#'   `.validate_stream_reaches()`.
 #' @param observation_wells Either `NULL` or an observation-well object
-#'   accepted by [`.validate_observation_wells()`].
+#'   accepted by `.validate_observation_wells()`.
 #' @param analysis_crs Either `NULL` or a coordinate reference system accepted
 #'   by [sf::st_crs()]. The supplied CRS must be projected. When `NULL`, a UTM
 #'   CRS is selected automatically.
@@ -147,13 +147,13 @@
 #' one projected coordinate reference system for distance-based modeling.
 #'
 #' @param pumping_wells A pumping-well object accepted by
-#'   [`.validate_pumping_wells()`].
+#'   `.validate_pumping_wells()`.
 #' @param stream_reaches A stream-reach object accepted by
-#'   [`.validate_stream_reaches()`].
+#'   `.validate_stream_reaches()`.
 #' @param observation_wells Either `NULL` or an observation-well object
-#'   accepted by [`.validate_observation_wells()`].
+#'   accepted by `.validate_observation_wells()`.
 #' @param analysis_crs Either `NULL` or a projected coordinate reference system
-#'   accepted by [sf::st_crs()]. When `NULL`, [`.select_analysis_crs()`] selects
+#'   accepted by [sf::st_crs()]. When `NULL`, `.select_analysis_crs()` selects
 #'   a local UTM CRS automatically.
 #'
 #' @return A list containing:
@@ -627,8 +627,8 @@ prep_stream_segments <- function(
 #' segments while retaining their line geometry and parent identifiers.
 #'
 #' @param stream_reaches A projected stream-reach object accepted by
-#'   [`.validate_stream_reaches()`], typically the `stream_reaches` element
-#'   returned by [`.prepare_spatial_inputs()`].
+#'   `.validate_stream_reaches()`, typically the `stream_reaches` element
+#'   returned by `.prepare_spatial_inputs()`.
 #' @param reach_spacing A scalar `units` object with length dimensions giving
 #'   the maximum target length of a reach segment.
 #'

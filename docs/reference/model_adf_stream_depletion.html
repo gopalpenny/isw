@@ -82,49 +82,49 @@ Glover response fractions and superposition.</p>
 
 
 <dl><dt id="arg-pumping-wells">pumping_wells<a class="anchor" aria-label="anchor" href="#arg-pumping-wells"></a></dt>
-<dd><p>A nonempty `sf` object with one point per pumping well.
-It must contain unique character `pump_id` values, hydraulic conductivity
-`K` with length-per-time units, aquifer thickness `D` with length units,
-and dimensionless drainable porosity or specific yield `V`.</p></dd>
+<dd><p>A nonempty <code>sf</code> object with one point per pumping well.
+It must contain unique character <code>pump_id</code> values, hydraulic conductivity
+<code>K</code> with length-per-time units, aquifer thickness <code>D</code> with length units,
+and dimensionless drainable porosity or specific yield <code>V</code>.</p></dd>
 
 
 <dt id="arg-pumping-schedules">pumping_schedules<a class="anchor" aria-label="anchor" href="#arg-pumping-schedules"></a></dt>
-<dd><p>A wide data frame with a strictly increasing `t`
-column and one pumping-rate column for every `pump_id`. Times must be all
-`Date` values or all `units` time values. Pumping rates must have consistent
+<dd><p>A wide data frame with a strictly increasing <code>t</code>
+column and one pumping-rate column for every <code>pump_id</code>. Times must be all
+<code>Date</code> values or all <code>units</code> time values. Pumping rates must have consistent
 volume-per-time units.</p></dd>
 
 
 <dt id="arg-stream-apportionment">stream_apportionment<a class="anchor" aria-label="anchor" href="#arg-stream-apportionment"></a></dt>
 <dd><p>A normalized relationship table returned by
-[prep_adf_stream_apportionment()].</p></dd>
+<code><a href="prep_adf_stream_apportionment.html">prep_adf_stream_apportionment()</a></code>.</p></dd>
 
 
 <dt id="arg-evaluation-times">evaluation_times<a class="anchor" aria-label="anchor" href="#arg-evaluation-times"></a></dt>
-<dd><p>Either `NULL`, a `Date` vector, or a `units` time
-vector. When `NULL`, `pumping_schedules$t` is used.</p></dd>
+<dd><p>Either <code>NULL</code>, a <code>Date</code> vector, or a <code>units</code> time
+vector. When <code>NULL</code>, <code>pumping_schedules$t</code> is used.</p></dd>
 
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A tibble with one row for every requested `pump_id`,
-  `evaluation_time`, and `reach_segment_id` combination. Columns are
-  `pump_id`, `evaluation_time`, `reach_id`, `reach_segment_id`, and
-  `stream_depletion_rate`. The rate is positive for depletion and retains
-  the pumping-rate units.</p>
+    <p>A tibble with one row for every requested <code>pump_id</code>,
+<code>evaluation_time</code>, and <code>reach_segment_id</code> combination. Columns are
+<code>pump_id</code>, <code>evaluation_time</code>, <code>reach_id</code>, <code>reach_segment_id</code>, and
+<code>stream_depletion_rate</code>. The rate is positive for depletion and retains
+the pumping-rate units.</p>
     </div>
     <div id="details">
     <h2>Details</h2>
     <p>Each pumping-rate change is evaluated with the Glover–Balmer response and
-assigned to segments using `apportionment_fraction`. Responses are summed by
+assigned to segments using <code>apportionment_fraction</code>. Responses are summed by
 superposition. A change beginning exactly at an evaluation time does not
 contribute until a later time. Every requested pump, time, and segment is
 returned, including zero-response combinations.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>
-    <div class="dont-index"><p>[prep_adf_stream_apportionment()],
-  [generate_stream_injection_schedule()]</p></div>
+    <div class="dont-index"><p><code><a href="prep_adf_stream_apportionment.html">prep_adf_stream_apportionment()</a></code>,
+<code><a href="generate_stream_injection_schedule.html">generate_stream_injection_schedule()</a></code></p></div>
     </div>
 
     <div id="ref-examples">

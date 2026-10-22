@@ -83,54 +83,54 @@ Hydrography Program (3DHP) for a user-supplied area of interest.</p>
 
 
 <dl><dt id="arg-aoi">aoi<a class="anchor" aria-label="anchor" href="#arg-aoi"></a></dt>
-<dd><p>An `sf` object with a defined coordinate reference system.
+<dd><p>An <code>sf</code> object with a defined coordinate reference system.
 Polygon geometries define the query area directly. Point geometries may
-also be supplied when `buffer_distance` is specified.</p></dd>
+also be supplied when <code>buffer_distance</code> is specified.</p></dd>
 
 
 <dt id="arg-buffer-distance">buffer_distance<a class="anchor" aria-label="anchor" href="#arg-buffer-distance"></a></dt>
-<dd><p>Either `NULL` or a scalar `units` object with length
-dimensions. A positive buffer distance is required when `aoi` contains
-point geometry. It must be `NULL` when `aoi` contains polygon geometry.</p></dd>
+<dd><p>Either <code>NULL</code> or a scalar <code>units</code> object with length
+dimensions. A positive buffer distance is required when <code>aoi</code> contains
+point geometry. It must be <code>NULL</code> when <code>aoi</code> contains polygon geometry.</p></dd>
 
 
 <dt id="arg-source">source<a class="anchor" aria-label="anchor" href="#arg-source"></a></dt>
 <dd><p>Character string specifying the USGS hydrography source.
-Currently, only `"3dhp"` is supported.</p></dd>
+Currently, only <code>"3dhp"</code> is supported.</p></dd>
 
 
 <dt id="arg-clip">clip<a class="anchor" aria-label="anchor" href="#arg-clip"></a></dt>
-<dd><p>Logical. If `TRUE`, the default, returned flowlines are clipped
-to the query area. If `FALSE`, complete USGS flowline features that
+<dd><p>Logical. If <code>TRUE</code>, the default, returned flowlines are clipped
+to the query area. If <code>FALSE</code>, complete USGS flowline features that
 intersect the query area are returned.</p></dd>
 
 
 <dt id="arg-keep-attributes">keep_attributes<a class="anchor" aria-label="anchor" href="#arg-keep-attributes"></a></dt>
-<dd><p>Logical. If `TRUE`, the default, all attributes
-returned by the USGS service are retained. If `FALSE`, only `reach_id` and
+<dd><p>Logical. If <code>TRUE</code>, the default, all attributes
+returned by the USGS service are retained. If <code>FALSE</code>, only <code>reach_id</code> and
 geometry are returned.</p></dd>
 
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>An `sf` object in the coordinate reference system of `aoi`. The
-  first column, `reach_id`, contains the character 3DHP identifier for each
-  flowline. Remaining USGS attributes are retained when `keep_attributes`
-  is `TRUE`.</p>
+    <p>An <code>sf</code> object in the coordinate reference system of <code>aoi</code>. The
+first column, <code>reach_id</code>, contains the character 3DHP identifier for each
+flowline. Remaining USGS attributes are retained when <code>keep_attributes</code>
+is <code>TRUE</code>.</p>
     </div>
     <div id="details">
     <h2>Details</h2>
-    <p>This function uses [nhdplusTools::get_3dhp()] to query the 3DHP web service.
-USGS is transitioning `nhdplusTools` to its new name, `hydrogeofetch`, while
+    <p>This function uses <code><a href="https://rdrr.io/pkg/nhdplusTools/man/get_3dhp.html" class="external-link">nhdplusTools::get_3dhp()</a></code> to query the 3DHP web service.
+USGS is transitioning <code>nhdplusTools</code> to its new name, <code>hydrogeofetch</code>, while
 retaining the same function interface. An internet connection is required.</p>
 <p>Point areas of interest are buffered before the web-service request. Buffer
 construction is performed in a local UTM coordinate reference system and
 the resulting polygon is transformed back to the input CRS. The downloaded
 stream reaches remain in the input CRS; conversion to the projected model
-CRS occurs later in the `isw` spatial-preparation workflow.</p>
+CRS occurs later in the <code>isw</code> spatial-preparation workflow.</p>
 <p>Clipping may shorten flowlines at the query boundary. Features that only
 touch the boundary at a point, along with empty or zero-length results, are
-removed. The original 3DHP identifier is retained as `reach_id` for each
+removed. The original 3DHP identifier is retained as <code>reach_id</code> for each
 remaining feature.</p>
     </div>
 

@@ -125,8 +125,8 @@ one well radius. Must have units of length and defaults to zero.</p></dd>
     <div id="value">
     <h2>Value</h2>
     <p>A units vector containing the ratio of water-level change to pumping
-  rate, with dimensions of time divided by length squared. Values are
-  negative for positive pumping rates.</p>
+rate, with dimensions of time divided by length squared. Values are
+negative for positive pumping rates.</p>
     </div>
     <div id="details">
     <h2>Details</h2>
@@ -135,9 +135,9 @@ well from the pumping-well response. Vector inputs represent independent cases r
 interacting wells or pumping schedules. Multiply the returned ratio by a
 positive pumping rate to obtain the negative water-level change caused by
 pumping.</p>
-<p>Use [calc_infinite_aquifer_drawdown_ratio()] when the stream is represented
+<p>Use <code><a href="calc_infinite_aquifer_drawdown_ratio.html">calc_infinite_aquifer_drawdown_ratio()</a></code> when the stream is represented
 explicitly by distributed injection wells; using both approaches would
-count the stream boundary twice. Use [model_aquifer_water_level_change()]
+count the stream boundary twice. Use <code><a href="model_aquifer_water_level_change.html">model_aquifer_water_level_change()</a></code>
 for the normal scheduled, multi-well workflow.</p>
     </div>
 

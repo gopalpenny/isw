@@ -89,53 +89,53 @@ wells using a general stream-segment representation.</p>
 
 
 <dl><dt id="arg-pumping-wells">pumping_wells<a class="anchor" aria-label="anchor" href="#arg-pumping-wells"></a></dt>
-<dd><p>A nonempty `sf` object with one point per pumping well.
-It must contain unique character `pump_id` values, `K` and `D` with
-physical units, dimensionless `V`, and optionally `well_diam` with length
+<dd><p>A nonempty <code>sf</code> object with one point per pumping well.
+It must contain unique character <code>pump_id</code> values, <code>K</code> and <code>D</code> with
+physical units, dimensionless <code>V</code>, and optionally <code>well_diam</code> with length
 units.</p></dd>
 
 
 <dt id="arg-pumping-schedules">pumping_schedules<a class="anchor" aria-label="anchor" href="#arg-pumping-schedules"></a></dt>
-<dd><p>A wide data frame with a strictly increasing `t`
+<dd><p>A wide data frame with a strictly increasing <code>t</code>
 column and one consistently unit-bearing pumping-rate column for every
-`pump_id`.</p></dd>
+<code>pump_id</code>.</p></dd>
 
 
 <dt id="arg-observation-wells">observation_wells<a class="anchor" aria-label="anchor" href="#arg-observation-wells"></a></dt>
-<dd><p>A nonempty `sf` object with point geometry and a
-unique, nonmissing character `observation_id` column.</p></dd>
+<dd><p>A nonempty <code>sf</code> object with point geometry and a
+unique, nonmissing character <code>observation_id</code> column.</p></dd>
 
 
 <dt id="arg-stream-segments">stream_segments<a class="anchor" aria-label="anchor" href="#arg-stream-segments"></a></dt>
 <dd><p>A projected stream-segment object returned by
-[prep_stream_segments()].</p></dd>
+<code><a href="prep_stream_segments.html">prep_stream_segments()</a></code>.</p></dd>
 
 
 <dt id="arg-evaluation-times">evaluation_times<a class="anchor" aria-label="anchor" href="#arg-evaluation-times"></a></dt>
-<dd><p>Either `NULL`, a `Date` vector, or a `units` time
-vector giving the requested response times. When `NULL`, pumping-schedule
+<dd><p>Either <code>NULL</code>, a <code>Date</code> vector, or a <code>units</code> time
+vector giving the requested response times. When <code>NULL</code>, pumping-schedule
 times are used.</p></dd>
 
 
 <dt id="arg-injection-times">injection_times<a class="anchor" aria-label="anchor" href="#arg-injection-times"></a></dt>
-<dd><p>Optional `Date` or `units` time values refining the
+<dd><p>Optional <code>Date</code> or <code>units</code> time values refining the
 internally generated injection grid.</p></dd>
 
 
 <dt id="arg-stream-injection-schedule">stream_injection_schedule<a class="anchor" aria-label="anchor" href="#arg-stream-injection-schedule"></a></dt>
-<dd><p>Either `NULL` or a completed schedule from
-[generate_stream_injection_schedule()].</p></dd>
+<dd><p>Either <code>NULL</code> or a completed schedule from
+<code><a href="generate_stream_injection_schedule.html">generate_stream_injection_schedule()</a></code>.</p></dd>
 
 
 <dt id="arg-injection-method">injection_method<a class="anchor" aria-label="anchor" href="#arg-injection-method"></a></dt>
-<dd><p>Character string selecting `"adf"` or
-`"constant_head"` when a schedule is not supplied. `"adf"` is the
+<dd><p>Character string selecting <code>"adf"</code> or
+<code>"constant_head"</code> when a schedule is not supplied. <code>"adf"</code> is the
 default.</p></dd>
 
 
 <dt id="arg-stream-apportionment">stream_apportionment<a class="anchor" aria-label="anchor" href="#arg-stream-apportionment"></a></dt>
 <dd><p>An object returned by
-[prep_adf_stream_apportionment()]. It is required when an ADF schedule is
+<code><a href="prep_adf_stream_apportionment.html">prep_adf_stream_apportionment()</a></code>. It is required when an ADF schedule is
 generated internally.</p></dd>
 
 
@@ -143,7 +143,7 @@ generated internally.</p></dd>
 <dd><p>Positive whole-number scalar giving
 the maximum number of unique aquifer parameter sets allowed when a
 constant-head schedule is generated internally. The default is 5. Use
-`Inf` to impose no limit.</p></dd>
+<code>Inf</code> to impose no limit.</p></dd>
 
 
 <dt id="arg-quadrature-order">quadrature_order<a class="anchor" aria-label="anchor" href="#arg-quadrature-order"></a></dt>
@@ -156,30 +156,29 @@ a different order raises a warning and uses the supplied value.</p></dd>
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A tibble with one row for every `pump_id`, `observation_id`, and
-  requested `evaluation_time`. `pumping_drawdown` is the positive decline
-  caused by pumping, `stream_recovery` is the positive recovery caused by
-  stream injection, and `water_level_change` is `-pumping_drawdown +
-  stream_recovery`. All three response columns retain length units.</p>
+    <p>A tibble with one row for every <code>pump_id</code>, <code>observation_id</code>, and
+requested <code>evaluation_time</code>. <code>pumping_drawdown</code> is the positive decline
+caused by pumping, <code>stream_recovery</code> is the positive recovery caused by
+stream injection, and <code>water_level_change</code> is <code>-pumping_drawdown + stream_recovery</code>. All three response columns retain length units.</p>
     </div>
     <div id="details">
     <h2>Details</h2>
     <p>Results remain pump-specific so contributions can be inspected individually
 or summed by observation and evaluation time. When no schedule is supplied,
-[generate_stream_injection_schedule()] generates one using
-`injection_method`. A supplied schedule reuses its stored method and
-quadrature metadata; `injection_times` must then be `NULL`.</p>
+<code><a href="generate_stream_injection_schedule.html">generate_stream_injection_schedule()</a></code> generates one using
+<code>injection_method</code>. A supplied schedule reuses its stored method and
+quadrature metadata; <code>injection_times</code> must then be <code>NULL</code>.</p>
 <p>The ADF path apportions each pump's analytical stream depletion among stream
-segments and therefore requires `stream_apportionment`. The constant-head
+segments and therefore requires <code>stream_apportionment</code>. The constant-head
 path solves segment injection rates that keep segment model points as close
 as practical to zero head change. Pumping and stream responses are then
 superimposed at each observation well. Positive pumping rates produce
-positive `pumping_drawdown`; injection produces positive `stream_recovery`.</p>
+positive <code>pumping_drawdown</code>; injection produces positive <code>stream_recovery</code>.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>
-    <div class="dont-index"><p>[generate_stream_injection_schedule()],
-  [model_adf_stream_depletion()]</p></div>
+    <div class="dont-index"><p><code><a href="generate_stream_injection_schedule.html">generate_stream_injection_schedule()</a></code>,
+<code><a href="model_adf_stream_depletion.html">model_adf_stream_depletion()</a></code></p></div>
     </div>
 
     <div id="ref-examples">

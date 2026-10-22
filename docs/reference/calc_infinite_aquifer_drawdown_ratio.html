@@ -100,34 +100,34 @@ time.</p></dd>
 
 <dt id="arg-well-diam">well_diam<a class="anchor" aria-label="anchor" href="#arg-well-diam"></a></dt>
 <dd><p>Optional pumping-well diameter with units of length.
-Drawdown is evaluated at one well radius when `distance` is smaller. The
+Drawdown is evaluated at one well radius when <code>distance</code> is smaller. The
 default is zero.</p></dd>
 
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A `units` vector giving signed water-level change divided by pumping
-  rate, with dimensions of time per length squared. Values are negative for
-  positive pumping rates.</p>
+    <p>A <code>units</code> vector giving signed water-level change divided by pumping
+rate, with dimensions of time per length squared. Values are negative for
+positive pumping rates.</p>
     </div>
     <div id="details">
     <h2>Details</h2>
     <p>This is a specialized single-well calculation. Vector inputs represent
 independent cases and are not superimposed. Multiply the ratio by a positive
 pumping rate to obtain the negative water-level change caused by pumping. Use
-[model_aquifer_water_level_change()] for scheduled pumping, multiple wells,
+<code><a href="model_aquifer_water_level_change.html">model_aquifer_water_level_change()</a></code> for scheduled pumping, multiple wells,
 and stream recovery.</p>
     </div>
     <div id="references">
     <h2>References</h2>
     <p>Theis, C. V. (1935). The relation between the lowering of the piezometric
 surface and the rate and duration of discharge of a well using groundwater
-storage. *Transactions, American Geophysical Union*, 16, 519–524.</p>
+storage. <em>Transactions, American Geophysical Union</em>, 16, 519–524.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>
-    <div class="dont-index"><p>[calc_straight_stream_depletion_fraction()],
-  [calc_straight_stream_drawdown_ratio()]</p></div>
+    <div class="dont-index"><p><code><a href="calc_straight_stream_depletion_fraction.html">calc_straight_stream_depletion_fraction()</a></code>,
+<code><a href="calc_straight_stream_drawdown_ratio.html">calc_straight_stream_drawdown_ratio()</a></code></p></div>
     </div>
 
     <div id="ref-examples">

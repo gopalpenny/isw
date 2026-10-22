@@ -19,43 +19,43 @@ model_aquifer_water_level_change(
 )
 }
 \arguments{
-\item{pumping_wells}{A nonempty `sf` object with one point per pumping well.
-It must contain unique character `pump_id` values, `K` and `D` with
-physical units, dimensionless `V`, and optionally `well_diam` with length
+\item{pumping_wells}{A nonempty \code{sf} object with one point per pumping well.
+It must contain unique character \code{pump_id} values, \code{K} and \code{D} with
+physical units, dimensionless \code{V}, and optionally \code{well_diam} with length
 units.}
 
-\item{pumping_schedules}{A wide data frame with a strictly increasing `t`
+\item{pumping_schedules}{A wide data frame with a strictly increasing \code{t}
 column and one consistently unit-bearing pumping-rate column for every
-`pump_id`.}
+\code{pump_id}.}
 
-\item{observation_wells}{A nonempty `sf` object with point geometry and a
-unique, nonmissing character `observation_id` column.}
+\item{observation_wells}{A nonempty \code{sf} object with point geometry and a
+unique, nonmissing character \code{observation_id} column.}
 
 \item{stream_segments}{A projected stream-segment object returned by
-[prep_stream_segments()].}
+\code{\link[=prep_stream_segments]{prep_stream_segments()}}.}
 
-\item{evaluation_times}{Either `NULL`, a `Date` vector, or a `units` time
-vector giving the requested response times. When `NULL`, pumping-schedule
+\item{evaluation_times}{Either \code{NULL}, a \code{Date} vector, or a \code{units} time
+vector giving the requested response times. When \code{NULL}, pumping-schedule
 times are used.}
 
-\item{injection_times}{Optional `Date` or `units` time values refining the
+\item{injection_times}{Optional \code{Date} or \code{units} time values refining the
 internally generated injection grid.}
 
-\item{stream_injection_schedule}{Either `NULL` or a completed schedule from
-[generate_stream_injection_schedule()].}
+\item{stream_injection_schedule}{Either \code{NULL} or a completed schedule from
+\code{\link[=generate_stream_injection_schedule]{generate_stream_injection_schedule()}}.}
 
-\item{injection_method}{Character string selecting `"adf"` or
-`"constant_head"` when a schedule is not supplied. `"adf"` is the
+\item{injection_method}{Character string selecting \code{"adf"} or
+\code{"constant_head"} when a schedule is not supplied. \code{"adf"} is the
 default.}
 
 \item{stream_apportionment}{An object returned by
-[prep_adf_stream_apportionment()]. It is required when an ADF schedule is
+\code{\link[=prep_adf_stream_apportionment]{prep_adf_stream_apportionment()}}. It is required when an ADF schedule is
 generated internally.}
 
 \item{allow_n_aquifer_parameter_sets}{Positive whole-number scalar giving
 the maximum number of unique aquifer parameter sets allowed when a
 constant-head schedule is generated internally. The default is 5. Use
-`Inf` to impose no limit.}
+\code{Inf} to impose no limit.}
 
 \item{quadrature_order}{Positive integer number of Gauss--Legendre points
 used per straight edge of each finite line element. The default is 16.
@@ -64,11 +64,10 @@ omitted, the order recorded in the schedule metadata is reused. Supplying
 a different order raises a warning and uses the supplied value.}
 }
 \value{
-A tibble with one row for every `pump_id`, `observation_id`, and
-  requested `evaluation_time`. `pumping_drawdown` is the positive decline
-  caused by pumping, `stream_recovery` is the positive recovery caused by
-  stream injection, and `water_level_change` is `-pumping_drawdown +
-  stream_recovery`. All three response columns retain length units.
+A tibble with one row for every \code{pump_id}, \code{observation_id}, and
+requested \code{evaluation_time}. \code{pumping_drawdown} is the positive decline
+caused by pumping, \code{stream_recovery} is the positive recovery caused by
+stream injection, and \code{water_level_change} is \code{-pumping_drawdown + stream_recovery}. All three response columns retain length units.
 }
 \description{
 Superimpose physical pumping and stream-injection responses at observation
@@ -77,16 +76,16 @@ wells using a general stream-segment representation.
 \details{
 Results remain pump-specific so contributions can be inspected individually
 or summed by observation and evaluation time. When no schedule is supplied,
-[generate_stream_injection_schedule()] generates one using
-`injection_method`. A supplied schedule reuses its stored method and
-quadrature metadata; `injection_times` must then be `NULL`.
+\code{\link[=generate_stream_injection_schedule]{generate_stream_injection_schedule()}} generates one using
+\code{injection_method}. A supplied schedule reuses its stored method and
+quadrature metadata; \code{injection_times} must then be \code{NULL}.
 
 The ADF path apportions each pump's analytical stream depletion among stream
-segments and therefore requires `stream_apportionment`. The constant-head
+segments and therefore requires \code{stream_apportionment}. The constant-head
 path solves segment injection rates that keep segment model points as close
 as practical to zero head change. Pumping and stream responses are then
 superimposed at each observation well. Positive pumping rates produce
-positive `pumping_drawdown`; injection produces positive `stream_recovery`.
+positive \code{pumping_drawdown}; injection produces positive \code{stream_recovery}.
 }
 \examples{
 stream_segments <- prep_stream_segments(
@@ -113,6 +112,6 @@ model_aquifer_water_level_change(
 
 }
 \seealso{
-[generate_stream_injection_schedule()],
-  [model_adf_stream_depletion()]
+\code{\link[=generate_stream_injection_schedule]{generate_stream_injection_schedule()}},
+\code{\link[=model_adf_stream_depletion]{model_adf_stream_depletion()}}
 }

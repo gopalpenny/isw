@@ -9,6 +9,7 @@ Description: Prepares stream networks and models transient stream depletion,
     pumping. Supports analytical depletion-function apportionment and a
     finite-line constant-head stream representation.
 License: MIT + file LICENSE
+URL: https://gopalpenny.github.io/isw/
 Encoding: UTF-8
 LazyData: true
 Suggests: 
@@ -32,3 +33,4 @@ Imports:
     tibble
 VignetteBuilder: knitr
 Config/roxygen2/version: 8.1.0
+Roxygen: list(markdown = TRUE)

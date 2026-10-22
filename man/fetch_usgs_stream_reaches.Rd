@@ -13,49 +13,49 @@ fetch_usgs_stream_reaches(
 )
 }
 \arguments{
-\item{aoi}{An `sf` object with a defined coordinate reference system.
+\item{aoi}{An \code{sf} object with a defined coordinate reference system.
 Polygon geometries define the query area directly. Point geometries may
-also be supplied when `buffer_distance` is specified.}
+also be supplied when \code{buffer_distance} is specified.}
 
-\item{buffer_distance}{Either `NULL` or a scalar `units` object with length
-dimensions. A positive buffer distance is required when `aoi` contains
-point geometry. It must be `NULL` when `aoi` contains polygon geometry.}
+\item{buffer_distance}{Either \code{NULL} or a scalar \code{units} object with length
+dimensions. A positive buffer distance is required when \code{aoi} contains
+point geometry. It must be \code{NULL} when \code{aoi} contains polygon geometry.}
 
 \item{source}{Character string specifying the USGS hydrography source.
-Currently, only `"3dhp"` is supported.}
+Currently, only \code{"3dhp"} is supported.}
 
-\item{clip}{Logical. If `TRUE`, the default, returned flowlines are clipped
-to the query area. If `FALSE`, complete USGS flowline features that
+\item{clip}{Logical. If \code{TRUE}, the default, returned flowlines are clipped
+to the query area. If \code{FALSE}, complete USGS flowline features that
 intersect the query area are returned.}
 
-\item{keep_attributes}{Logical. If `TRUE`, the default, all attributes
-returned by the USGS service are retained. If `FALSE`, only `reach_id` and
+\item{keep_attributes}{Logical. If \code{TRUE}, the default, all attributes
+returned by the USGS service are retained. If \code{FALSE}, only \code{reach_id} and
 geometry are returned.}
 }
 \value{
-An `sf` object in the coordinate reference system of `aoi`. The
-  first column, `reach_id`, contains the character 3DHP identifier for each
-  flowline. Remaining USGS attributes are retained when `keep_attributes`
-  is `TRUE`.
+An \code{sf} object in the coordinate reference system of \code{aoi}. The
+first column, \code{reach_id}, contains the character 3DHP identifier for each
+flowline. Remaining USGS attributes are retained when \code{keep_attributes}
+is \code{TRUE}.
 }
 \description{
 Retrieve stream-flowline geometry from the U.S. Geological Survey 3D
 Hydrography Program (3DHP) for a user-supplied area of interest.
 }
 \details{
-This function uses [nhdplusTools::get_3dhp()] to query the 3DHP web service.
-USGS is transitioning `nhdplusTools` to its new name, `hydrogeofetch`, while
+This function uses \code{\link[nhdplusTools:get_3dhp]{nhdplusTools::get_3dhp()}} to query the 3DHP web service.
+USGS is transitioning \code{nhdplusTools} to its new name, \code{hydrogeofetch}, while
 retaining the same function interface. An internet connection is required.
 
 Point areas of interest are buffered before the web-service request. Buffer
 construction is performed in a local UTM coordinate reference system and
 the resulting polygon is transformed back to the input CRS. The downloaded
 stream reaches remain in the input CRS; conversion to the projected model
-CRS occurs later in the `isw` spatial-preparation workflow.
+CRS occurs later in the \code{isw} spatial-preparation workflow.
 
 Clipping may shorten flowlines at the query boundary. Features that only
 touch the boundary at a point, along with empty or zero-length results, are
-removed. The original 3DHP identifier is retained as `reach_id` for each
+removed. The original 3DHP identifier is retained as \code{reach_id} for each
 remaining feature.
 }
 \examples{

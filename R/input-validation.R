@@ -393,7 +393,7 @@
 #'   named `t` and one pumping-rate column per pumping well. Pumping-rate column
 #'   names must match `pumping_wells$pump_id` exactly.
 #' @param pumping_wells A pumping-well object accepted by
-#'   [`.validate_pumping_wells()`].
+#'   `.validate_pumping_wells()`.
 #'
 #' @return The `pumping_schedules` object, unchanged.
 #'

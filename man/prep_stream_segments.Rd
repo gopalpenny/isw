@@ -12,42 +12,42 @@ prep_stream_segments(
 )
 }
 \arguments{
-\item{stream_reaches}{A nonempty `sf` object with one positive-length
-`LINESTRING` or `MULTILINESTRING` feature per stream reach, a defined CRS,
-and a unique, nonmissing character `reach_id` column. An optional
-reach-level `stream_width` column must have length units.}
+\item{stream_reaches}{A nonempty \code{sf} object with one positive-length
+\code{LINESTRING} or \code{MULTILINESTRING} feature per stream reach, a defined CRS,
+and a unique, nonmissing character \code{reach_id} column. An optional
+reach-level \code{stream_width} column must have length units.}
 
-\item{reach_spacing}{A scalar `units` length giving the maximum length of a
+\item{reach_spacing}{A scalar \code{units} length giving the maximum length of a
 model segment.}
 
-\item{analysis_crs}{Either `NULL` or a projected coordinate reference
-system accepted by [sf::st_crs()]. When `NULL`, an existing projected
+\item{analysis_crs}{Either \code{NULL} or a projected coordinate reference
+system accepted by \code{\link[sf:st_crs]{sf::st_crs()}}. When \code{NULL}, an existing projected
 stream CRS is retained; geographic streams are transformed to a local UTM
 CRS selected from their extent.}
 
-\item{stream_width}{Either `NULL` or a positive scalar `units` length. A
-supplied value is applied to every reach. When `NULL`, an existing
-reach-level `stream_width` attribute is retained; if that attribute is
+\item{stream_width}{Either \code{NULL} or a positive scalar \code{units} length. A
+supplied value is applied to every reach. When \code{NULL}, an existing
+reach-level \code{stream_width} attribute is retained; if that attribute is
 absent, every reach uses a default width of 1 m.}
 }
 \value{
-A projected `sf` object with one line feature per stream segment.
-  It contains `reach_id`, `reach_segment_id`, `represented_length`,
-  `stream_width`, `model_point`, and the segment line geometry.
+A projected \code{sf} object with one line feature per stream segment.
+It contains \code{reach_id}, \code{reach_segment_id}, \code{represented_length},
+\code{stream_width}, \code{model_point}, and the segment line geometry.
 }
 \description{
 Transform a stream network to a projected analysis CRS and divide it into
 approximately equal-length model segments.
 }
 \details{
-`model_point` is the along-line midpoint used as the constant-head
+\code{model_point} is the along-line midpoint used as the constant-head
 collocation location. Injection is distributed uniformly along the active
 line geometry. Stream validation requires it to be a finite point in the
 segment CRS and on the active line, and warns if it differs from the
 along-line midpoint. Input objects are not modified.
-`stream_width` regularizes responses on and very near a line element using
+\code{stream_width} regularizes responses on and very near a line element using
 an effective minimum radius of half the width.
-`well_diam` is reserved for pumping-well objects and is not accepted on
+\code{well_diam} is reserved for pumping-well objects and is not accepted on
 stream-reach or stream-segment inputs.
 }
 \examples{

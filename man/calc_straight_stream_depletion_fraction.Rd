@@ -21,7 +21,7 @@ time.}
 }
 \value{
 A dimensionless numeric vector giving stream depletion as a
-  fraction of a single well's constant pumping rate.
+fraction of a single well's constant pumping rate.
 }
 \description{
 Evaluate the Glover--Balmer analytical stream-depletion fraction for one
@@ -34,7 +34,7 @@ cases; they are not superimposed. The current implementation uses the
 Glover--Balmer formulation and assumes no streambed resistance.
 
 Multiply the returned fraction by a pumping rate to obtain a stream-
-depletion rate. Use [model_adf_stream_depletion()] for intermittent pumping,
+depletion rate. Use \code{\link[=model_adf_stream_depletion]{model_adf_stream_depletion()}} for intermittent pumping,
 multiple wells, and spatial apportionment over a stream network.
 }
 \examples{
@@ -50,10 +50,10 @@ calc_straight_stream_depletion_fraction(
 }
 \references{
 Glover, R. E., and Balmer, G. G. (1954). River Depletion Resulting from
-Pumping a Well near a River. *Transactions, American Geophysical Union*,
+Pumping a Well near a River. \emph{Transactions, American Geophysical Union},
 35(3), 468--470. \doi{10.1029/TR035i003p00468}
 }
 \seealso{
-[calc_infinite_aquifer_drawdown_ratio()],
-  [calc_straight_stream_drawdown_ratio()]
+\code{\link[=calc_infinite_aquifer_drawdown_ratio]{calc_infinite_aquifer_drawdown_ratio()}},
+\code{\link[=calc_straight_stream_drawdown_ratio]{calc_straight_stream_drawdown_ratio()}}
 }

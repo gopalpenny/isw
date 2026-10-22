@@ -94,7 +94,7 @@ Injection</h1>
     
     
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">isw</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://gopalpenny.github.io/isw/">isw</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-quantities.github.io/units/" class="external-link">units</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tibble.tidyverse.org/" class="external-link">tibble</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
@@ -726,9 +726,11 @@ ADF result.</p>
 behaves away from the boundary. At day 90, the center transect can also
 be compared with the analytical image-well solution for a straight,
 constant-head stream.</p>
-<p><code>isw</code> uses positive rates for pumping and negative rates
-for injection. <code><a href="../reference/calc_straight_stream_drawdown_ratio.html">calc_straight_stream_drawdown_ratio()</a></code>
-returns the signed ratio
+<p>The analytical response functions use positive rates for pumping and
+negative rates for injection. Public stream-injection schedules instead
+report positive <code>injection_rate</code> values for water entering
+the aquifer. <code><a href="../reference/calc_straight_stream_drawdown_ratio.html">calc_straight_stream_drawdown_ratio()</a></code> returns
+the signed ratio
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi mathvariant="normal">Δ</mi><mi>h</mi><mi>/</mi><mi>Q</mi></mrow><annotation encoding="application/x-tex">\Delta h / Q</annotation></semantics></math>,
 which is negative. Multiplying the positive pumping rate directly by
 this ratio gives the signed water-level change.</p>

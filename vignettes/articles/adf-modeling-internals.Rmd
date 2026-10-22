@@ -176,8 +176,10 @@ stream_apportionment[c(
 
 #### 1. Prepare a common analysis CRS
 
-`prep_stream_segments()` validates the reaches and transforms the input to a projected analysis CRS. By default,
-a local UTM CRS is selected based on the `stream_reaches` extent, or a desired `analysis_crs` can be specified. Pumping wells are
+`prep_stream_segments()` validates the reaches and transforms the input to a
+projected analysis CRS. By default, an existing projected stream CRS is retained;
+for geographic inputs, a local UTM CRS is selected from the `stream_reaches`
+extent. A desired `analysis_crs` can also be specified. Pumping wells are
 transformed to the `analysis_crs` CRS inside `prep_adf_stream_apportionment()`.
 
 ```{r prepare-spatial-inputs}
@@ -597,7 +599,7 @@ The arithmetic mean of those two rates defines the depletion magnitude for that 
 `generate_stream_injection_schedule()` reports that mean as a positive
 `injection_rate`, representing stream water entering the aquifer.
 
-The internal process to calculate these rates uses the following process:
+The following code reproduces the internal calculation of these rates:
 
 ```{r internal-injection-schedule}
 depletion_at_injection_times <- model_adf_stream_depletion(

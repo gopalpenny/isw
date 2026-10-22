@@ -8,7 +8,7 @@
 * Added `generate_stream_injection_schedule()` with ADF and constant-head methods.
   It reports piecewise-constant injection rates that are positive when water
   moves from a stream to the aquifer. The
-  constant-head method solves pump-specific discrete-well rates that enforce
+  constant-head method solves pump-specific finite-line injection rates that enforce
   zero signed water-level change at stream model points at interval endpoints.
   Precomputed output from `model_adf_stream_depletion()` can be reused when it
   includes every schedule boundary.

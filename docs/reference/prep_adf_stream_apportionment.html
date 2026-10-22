@@ -83,58 +83,58 @@ analytical stream depletion to a prepared stream-segment network.</p>
 
 
 <dl><dt id="arg-pumping-wells">pumping_wells<a class="anchor" aria-label="anchor" href="#arg-pumping-wells"></a></dt>
-<dd><p>A nonempty `sf` object with one point per pumping well.
-It must contain unique character `pump_id` values, hydraulic conductivity
-`K` with length-per-time units, aquifer thickness `D` with length units,
-and dimensionless drainable porosity or specific yield `V`. Geometry is
-transformed internally to the CRS of `stream_segments`.</p></dd>
+<dd><p>A nonempty <code>sf</code> object with one point per pumping well.
+It must contain unique character <code>pump_id</code> values, hydraulic conductivity
+<code>K</code> with length-per-time units, aquifer thickness <code>D</code> with length units,
+and dimensionless drainable porosity or specific yield <code>V</code>. Geometry is
+transformed internally to the CRS of <code>stream_segments</code>.</p></dd>
 
 
 <dt id="arg-stream-segments">stream_segments<a class="anchor" aria-label="anchor" href="#arg-stream-segments"></a></dt>
-<dd><p>A projected `sf` object returned by
-[prep_stream_segments()].</p></dd>
+<dd><p>A projected <code>sf</code> object returned by
+<code><a href="prep_stream_segments.html">prep_stream_segments()</a></code>.</p></dd>
 
 
 <dt id="arg-sample-spacing">sample_spacing<a class="anchor" aria-label="anchor" href="#arg-sample-spacing"></a></dt>
-<dd><p>A scalar `units` length giving the maximum stream
+<dd><p>A scalar <code>units</code> length giving the maximum stream
 length represented by an apportionment sample point.</p></dd>
 
 
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
-<dd><p>Character string selecting `"web_squared"` or `"web"`.</p></dd>
+<dd><p>Character string selecting <code>"web_squared"</code> or <code>"web"</code>.</p></dd>
 
 
 <dt id="arg-maximum-distance">maximum_distance<a class="anchor" aria-label="anchor" href="#arg-maximum-distance"></a></dt>
-<dd><p>Either `NULL` or a positive scalar `units` length.
+<dd><p>Either <code>NULL</code> or a positive scalar <code>units</code> length.
 Sample points farther than this distance from a pump receive zero weight.</p></dd>
 
 </dl></div>
     <div id="value">
     <h2>Value</h2>
     <p>A tibble with one row per pump–stream-segment pair and columns
-  `pump_id`, `reach_id`, `reach_segment_id`, `pump_to_reach_distance`, and
-  `apportionment_fraction`. Physical segment geometry and attributes remain
-  in `stream_segments` and are not duplicated in the returned table.</p>
+<code>pump_id</code>, <code>reach_id</code>, <code>reach_segment_id</code>, <code>pump_to_reach_distance</code>, and
+<code>apportionment_fraction</code>. Physical segment geometry and attributes remain
+in <code>stream_segments</code> and are not duplicated in the returned table.</p>
     </div>
     <div id="details">
     <h2>Details</h2>
     <p>Apportionment is static: it describes where a pump's analytical depletion
 is assigned, not how depletion changes through time. Use
-[model_adf_stream_depletion()] to combine it with pumping schedules.</p>
+<code><a href="model_adf_stream_depletion.html">model_adf_stream_depletion()</a></code> to combine it with pumping schedules.</p>
 <p>Each stream segment is represented by points spaced no farther apart than
-`sample_spacing`. A point representing length \(L_i\) at distance \(d_i\)
+<code>sample_spacing</code>. A point representing length \(L_i\) at distance \(d_i\)
 from a pump receives raw weight \(L_i / d_i^p\), where \(p = 2\) for
-`"web_squared"` and \(p = 1\) for `"web"`. Point weights are summed by
+<code>"web_squared"</code> and \(p = 1\) for <code>"web"</code>. Point weights are summed by
 segment and normalized so each pump's segment fractions sum to one.
-`maximum_distance`, when supplied, excludes more distant sample points before
+<code>maximum_distance</code>, when supplied, excludes more distant sample points before
 normalization. If an eligible sample point is exactly colocated with a pump,
 only the eligible zero-distance points receive weight. The reported
-`pump_to_reach_distance` is the exact point-to-segment distance, not a sampled
+<code>pump_to_reach_distance</code> is the exact point-to-segment distance, not a sampled
 distance.</p>
     </div>
     <div id="see-also">
     <h2>See also</h2>
-    <div class="dont-index"><p>[prep_stream_segments()], [model_adf_stream_depletion()]</p></div>
+    <div class="dont-index"><p><code><a href="prep_stream_segments.html">prep_stream_segments()</a></code>, <code><a href="model_adf_stream_depletion.html">model_adf_stream_depletion()</a></code></p></div>
     </div>
 
     <div id="ref-examples">

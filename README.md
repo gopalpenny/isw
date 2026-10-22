@@ -1,8 +1,13 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
+
 # isw
 
-`isw` prepares stream networks and models stream depletion and aquifer water-level change caused by groundwater pumping. Its main workflow separates physical stream segments from pump-specific apportionment and supports both analytical depletion-function (ADF) and constant-head stream injection.
+`isw` prepares stream networks and models stream depletion and aquifer
+water-level change caused by groundwater pumping. Its main workflow
+separates physical stream segments from pump-specific apportionment and
+supports both analytical depletion-function (ADF) and constant-head
+stream injection.
 
 ## Installation
 
@@ -57,7 +62,8 @@ water_level_change <- model_aquifer_water_level_change(
 )
 ```
 
-The map shows the total modeled stream-depletion rate at day 60. Pumping wells are red triangles and observation wells are black points.
+The map shows the total modeled stream-depletion rate at day 60. Pumping
+wells are red triangles and observation wells are black points.
 
 ``` r
 depletion_map <- stream_depletion |>
@@ -100,4 +106,8 @@ ggplot2::ggplot() +
 
 <img src="man/figures/README-example-figure-1.png" alt="" width="100%" />
 
-See the [package workflow](https://gopalpenny.github.io/isw/articles/stream-depletion-and-drawdown.html) for ADF and constant-head examples, and the [function reference](https://gopalpenny.github.io/isw/reference/) for complete input and output descriptions.
+See the [package
+workflow](https://gopalpenny.github.io/isw/articles/stream-depletion-and-drawdown.html)
+for ADF and constant-head examples, and the [function
+reference](https://gopalpenny.github.io/isw/reference/) for complete
+input and output descriptions.

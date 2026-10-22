@@ -325,7 +325,7 @@ prep_adf_stream_apportionment <- function(
 #'
 #' @param pumping_wells A validated pumping-well object.
 #' @param pumping_response_times An event table returned by
-#'   [`.get_pumping_response_times()`].
+#'   `.get_pumping_response_times()`.
 #' @param stream_apportionment A validated stream-depletion apportionment
 #'   object.
 #'

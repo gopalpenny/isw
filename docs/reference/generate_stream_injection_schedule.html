@@ -88,55 +88,55 @@ endpoint-collocated constant-head boundary.</p>
 
 
 <dl><dt id="arg-pumping-wells">pumping_wells<a class="anchor" aria-label="anchor" href="#arg-pumping-wells"></a></dt>
-<dd><p>A nonempty `sf` object with one point per pumping well.
-It must contain unique character `pump_id` values, `K` and `D` with
-physical units, and dimensionless `V`. An optional `well_diam` length may
+<dd><p>A nonempty <code>sf</code> object with one point per pumping well.
+It must contain unique character <code>pump_id</code> values, <code>K</code> and <code>D</code> with
+physical units, and dimensionless <code>V</code>. An optional <code>well_diam</code> length may
 be supplied.</p></dd>
 
 
 <dt id="arg-pumping-schedules">pumping_schedules<a class="anchor" aria-label="anchor" href="#arg-pumping-schedules"></a></dt>
-<dd><p>A wide data frame with a strictly increasing `t`
+<dd><p>A wide data frame with a strictly increasing <code>t</code>
 column and one consistently unit-bearing pumping-rate column for every
-`pump_id`.</p></dd>
+<code>pump_id</code>.</p></dd>
 
 
 <dt id="arg-stream-segments">stream_segments<a class="anchor" aria-label="anchor" href="#arg-stream-segments"></a></dt>
 <dd><p>A projected stream-segment object returned by
-[prep_stream_segments()].</p></dd>
+<code><a href="prep_stream_segments.html">prep_stream_segments()</a></code>.</p></dd>
 
 
 <dt id="arg-evaluation-times">evaluation_times<a class="anchor" aria-label="anchor" href="#arg-evaluation-times"></a></dt>
-<dd><p>Either `NULL`, a `Date` vector, or a `units` time
-vector giving the times that the schedule must span. When `NULL`, the
+<dd><p>Either <code>NULL</code>, a <code>Date</code> vector, or a <code>units</code> time
+vector giving the times that the schedule must span. When <code>NULL</code>, the
 pumping-schedule times are used.</p></dd>
 
 
 <dt id="arg-injection-times">injection_times<a class="anchor" aria-label="anchor" href="#arg-injection-times"></a></dt>
-<dd><p>Optional `Date` or `units` time values that refine the
+<dd><p>Optional <code>Date</code> or <code>units</code> time values that refine the
 injection interval grid.</p></dd>
 
 
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
-<dd><p>Character string selecting `"adf"` or `"constant_head"`.
-`"adf"` is the default.</p></dd>
+<dd><p>Character string selecting <code>"adf"</code> or <code>"constant_head"</code>.
+<code>"adf"</code> is the default.</p></dd>
 
 
 <dt id="arg-stream-apportionment">stream_apportionment<a class="anchor" aria-label="anchor" href="#arg-stream-apportionment"></a></dt>
 <dd><p>An ADF apportionment returned by
-[prep_adf_stream_apportionment()]. Required for the ADF method.</p></dd>
+<code><a href="prep_adf_stream_apportionment.html">prep_adf_stream_apportionment()</a></code>. Required for the ADF method.</p></dd>
 
 
 <dt id="arg-allow-n-aquifer-parameter-sets">allow_n_aquifer_parameter_sets<a class="anchor" aria-label="anchor" href="#arg-allow-n-aquifer-parameter-sets"></a></dt>
 <dd><p>Positive whole-number scalar giving
 the maximum number of unique aquifer parameter sets allowed in a
-constant-head calculation. The default is 5. Use `Inf` to impose no
+constant-head calculation. The default is 5. Use <code>Inf</code> to impose no
 limit.</p></dd>
 
 
 <dt id="arg-adf-stream-depletion">adf_stream_depletion<a class="anchor" aria-label="anchor" href="#arg-adf-stream-depletion"></a></dt>
 <dd><p>Optional output from
-[model_adf_stream_depletion()] that includes every schedule boundary. When
-supplied with `method = "adf"`, these rates are reused instead of being
+<code><a href="model_adf_stream_depletion.html">model_adf_stream_depletion()</a></code> that includes every schedule boundary. When
+supplied with <code>method = "adf"</code>, these rates are reused instead of being
 recalculated; results at additional times are ignored.</p></dd>
 
 
@@ -147,26 +147,26 @@ used per straight edge of each finite line element. The default is 16.</p></dd>
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>A tibble with one row per `pump_id`, `reach_segment_id`, and
-  injection interval. `interval_start` and `interval_end` retain the time
-  representation used by `pumping_schedules$t`. `injection_rate` is positive
-  when water moves from the stream to the aquifer. Constant-head schedules
-  additionally
-  contain `aquifer_id`, `boundary_residual`, and
-  `matrix_condition_number`.
-  Generated schedules carry an `isw_schedule_metadata` attribute recording
-  the injection method and, for constant-head schedules, quadrature order.</p>
+    <p>A tibble with one row per <code>pump_id</code>, <code>reach_segment_id</code>, and
+injection interval. <code>interval_start</code> and <code>interval_end</code> retain the time
+representation used by <code>pumping_schedules$t</code>. <code>injection_rate</code> is positive
+when water moves from the stream to the aquifer. Constant-head schedules
+additionally
+contain <code>aquifer_id</code>, <code>boundary_residual</code>, and
+<code>matrix_condition_number</code>.
+Generated schedules carry an <code>isw_schedule_metadata</code> attribute recording
+the injection method and, for constant-head schedules, quadrature order.</p>
     </div>
     <div id="details">
     <h2>Details</h2>
     <p>The default injection grid contains every pumping-schedule time through the
 final evaluation time. Evaluation times are also included so the final
-requested result is an interval boundary. Optional `injection_times` add
+requested result is an interval boundary. Optional <code>injection_times</code> add
 refinement boundaries; they never remove pumping-schedule boundaries.</p>
-<p>With `method = "adf"`, [model_adf_stream_depletion()] evaluates stream
+<p>With <code>method = "adf"</code>, <code><a href="model_adf_stream_depletion.html">model_adf_stream_depletion()</a></code> evaluates stream
 depletion at every schedule boundary. The arithmetic mean of adjacent
 endpoint rates is applied over each interval.</p>
-<p>With `method = "constant_head"`, segment model points are constant-head
+<p>With <code>method = "constant_head"</code>, segment model points are constant-head
 collocation points and the segment lines are finite injection elements. One
 coupled response matrix is factored for each aquifer parameter set and
 interval duration.

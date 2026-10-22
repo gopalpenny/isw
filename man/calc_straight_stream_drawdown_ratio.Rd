@@ -39,8 +39,8 @@ one well radius. Must have units of length and defaults to zero.}
 }
 \value{
 A units vector containing the ratio of water-level change to pumping
-  rate, with dimensions of time divided by length squared. Values are
-  negative for positive pumping rates.
+rate, with dimensions of time divided by length squared. Values are
+negative for positive pumping rates.
 }
 \description{
 Estimate water-level change at an observation location using a pumping well
@@ -53,9 +53,9 @@ interacting wells or pumping schedules. Multiply the returned ratio by a
 positive pumping rate to obtain the negative water-level change caused by
 pumping.
 
-Use [calc_infinite_aquifer_drawdown_ratio()] when the stream is represented
+Use \code{\link[=calc_infinite_aquifer_drawdown_ratio]{calc_infinite_aquifer_drawdown_ratio()}} when the stream is represented
 explicitly by distributed injection wells; using both approaches would
-count the stream boundary twice. Use [model_aquifer_water_level_change()]
+count the stream boundary twice. Use \code{\link[=model_aquifer_water_level_change]{model_aquifer_water_level_change()}}
 for the normal scheduled, multi-well workflow.
 }
 \examples{

@@ -18,54 +18,54 @@ generate_stream_injection_schedule(
 )
 }
 \arguments{
-\item{pumping_wells}{A nonempty `sf` object with one point per pumping well.
-It must contain unique character `pump_id` values, `K` and `D` with
-physical units, and dimensionless `V`. An optional `well_diam` length may
+\item{pumping_wells}{A nonempty \code{sf} object with one point per pumping well.
+It must contain unique character \code{pump_id} values, \code{K} and \code{D} with
+physical units, and dimensionless \code{V}. An optional \code{well_diam} length may
 be supplied.}
 
-\item{pumping_schedules}{A wide data frame with a strictly increasing `t`
+\item{pumping_schedules}{A wide data frame with a strictly increasing \code{t}
 column and one consistently unit-bearing pumping-rate column for every
-`pump_id`.}
+\code{pump_id}.}
 
 \item{stream_segments}{A projected stream-segment object returned by
-[prep_stream_segments()].}
+\code{\link[=prep_stream_segments]{prep_stream_segments()}}.}
 
-\item{evaluation_times}{Either `NULL`, a `Date` vector, or a `units` time
-vector giving the times that the schedule must span. When `NULL`, the
+\item{evaluation_times}{Either \code{NULL}, a \code{Date} vector, or a \code{units} time
+vector giving the times that the schedule must span. When \code{NULL}, the
 pumping-schedule times are used.}
 
-\item{injection_times}{Optional `Date` or `units` time values that refine the
+\item{injection_times}{Optional \code{Date} or \code{units} time values that refine the
 injection interval grid.}
 
-\item{method}{Character string selecting `"adf"` or `"constant_head"`.
-`"adf"` is the default.}
+\item{method}{Character string selecting \code{"adf"} or \code{"constant_head"}.
+\code{"adf"} is the default.}
 
 \item{stream_apportionment}{An ADF apportionment returned by
-[prep_adf_stream_apportionment()]. Required for the ADF method.}
+\code{\link[=prep_adf_stream_apportionment]{prep_adf_stream_apportionment()}}. Required for the ADF method.}
 
 \item{allow_n_aquifer_parameter_sets}{Positive whole-number scalar giving
 the maximum number of unique aquifer parameter sets allowed in a
-constant-head calculation. The default is 5. Use `Inf` to impose no
+constant-head calculation. The default is 5. Use \code{Inf} to impose no
 limit.}
 
 \item{adf_stream_depletion}{Optional output from
-[model_adf_stream_depletion()] that includes every schedule boundary. When
-supplied with `method = "adf"`, these rates are reused instead of being
+\code{\link[=model_adf_stream_depletion]{model_adf_stream_depletion()}} that includes every schedule boundary. When
+supplied with \code{method = "adf"}, these rates are reused instead of being
 recalculated; results at additional times are ignored.}
 
 \item{quadrature_order}{Positive integer number of Gauss--Legendre points
 used per straight edge of each finite line element. The default is 16.}
 }
 \value{
-A tibble with one row per `pump_id`, `reach_segment_id`, and
-  injection interval. `interval_start` and `interval_end` retain the time
-  representation used by `pumping_schedules$t`. `injection_rate` is positive
-  when water moves from the stream to the aquifer. Constant-head schedules
-  additionally
-  contain `aquifer_id`, `boundary_residual`, and
-  `matrix_condition_number`.
-  Generated schedules carry an `isw_schedule_metadata` attribute recording
-  the injection method and, for constant-head schedules, quadrature order.
+A tibble with one row per \code{pump_id}, \code{reach_segment_id}, and
+injection interval. \code{interval_start} and \code{interval_end} retain the time
+representation used by \code{pumping_schedules$t}. \code{injection_rate} is positive
+when water moves from the stream to the aquifer. Constant-head schedules
+additionally
+contain \code{aquifer_id}, \code{boundary_residual}, and
+\code{matrix_condition_number}.
+Generated schedules carry an \code{isw_schedule_metadata} attribute recording
+the injection method and, for constant-head schedules, quadrature order.
 }
 \description{
 Calculate piecewise-constant stream injection using ADF depletion or an
@@ -74,14 +74,14 @@ endpoint-collocated constant-head boundary.
 \details{
 The default injection grid contains every pumping-schedule time through the
 final evaluation time. Evaluation times are also included so the final
-requested result is an interval boundary. Optional `injection_times` add
+requested result is an interval boundary. Optional \code{injection_times} add
 refinement boundaries; they never remove pumping-schedule boundaries.
 
-With `method = "adf"`, [model_adf_stream_depletion()] evaluates stream
+With \code{method = "adf"}, \code{\link[=model_adf_stream_depletion]{model_adf_stream_depletion()}} evaluates stream
 depletion at every schedule boundary. The arithmetic mean of adjacent
 endpoint rates is applied over each interval.
 
-With `method = "constant_head"`, segment model points are constant-head
+With \code{method = "constant_head"}, segment model points are constant-head
 collocation points and the segment lines are finite injection elements. One
 coupled response matrix is factored for each aquifer parameter set and
 interval duration.

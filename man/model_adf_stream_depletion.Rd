@@ -12,28 +12,28 @@ model_adf_stream_depletion(
 )
 }
 \arguments{
-\item{pumping_wells}{A nonempty `sf` object with one point per pumping well.
-It must contain unique character `pump_id` values, hydraulic conductivity
-`K` with length-per-time units, aquifer thickness `D` with length units,
-and dimensionless drainable porosity or specific yield `V`.}
+\item{pumping_wells}{A nonempty \code{sf} object with one point per pumping well.
+It must contain unique character \code{pump_id} values, hydraulic conductivity
+\code{K} with length-per-time units, aquifer thickness \code{D} with length units,
+and dimensionless drainable porosity or specific yield \code{V}.}
 
-\item{pumping_schedules}{A wide data frame with a strictly increasing `t`
-column and one pumping-rate column for every `pump_id`. Times must be all
-`Date` values or all `units` time values. Pumping rates must have consistent
+\item{pumping_schedules}{A wide data frame with a strictly increasing \code{t}
+column and one pumping-rate column for every \code{pump_id}. Times must be all
+\code{Date} values or all \code{units} time values. Pumping rates must have consistent
 volume-per-time units.}
 
 \item{stream_apportionment}{A normalized relationship table returned by
-[prep_adf_stream_apportionment()].}
+\code{\link[=prep_adf_stream_apportionment]{prep_adf_stream_apportionment()}}.}
 
-\item{evaluation_times}{Either `NULL`, a `Date` vector, or a `units` time
-vector. When `NULL`, `pumping_schedules$t` is used.}
+\item{evaluation_times}{Either \code{NULL}, a \code{Date} vector, or a \code{units} time
+vector. When \code{NULL}, \code{pumping_schedules$t} is used.}
 }
 \value{
-A tibble with one row for every requested `pump_id`,
-  `evaluation_time`, and `reach_segment_id` combination. Columns are
-  `pump_id`, `evaluation_time`, `reach_id`, `reach_segment_id`, and
-  `stream_depletion_rate`. The rate is positive for depletion and retains
-  the pumping-rate units.
+A tibble with one row for every requested \code{pump_id},
+\code{evaluation_time}, and \code{reach_segment_id} combination. Columns are
+\code{pump_id}, \code{evaluation_time}, \code{reach_id}, \code{reach_segment_id}, and
+\code{stream_depletion_rate}. The rate is positive for depletion and retains
+the pumping-rate units.
 }
 \description{
 Apply an ADF stream apportionment to intermittent pumping schedules using
@@ -41,7 +41,7 @@ Glover response fractions and superposition.
 }
 \details{
 Each pumping-rate change is evaluated with the Glover--Balmer response and
-assigned to segments using `apportionment_fraction`. Responses are summed by
+assigned to segments using \code{apportionment_fraction}. Responses are summed by
 superposition. A change beginning exactly at an evaluation time does not
 contribute until a later time. Every requested pump, time, and segment is
 returned, including zero-response combinations.
@@ -69,6 +69,6 @@ model_adf_stream_depletion(
 
 }
 \seealso{
-[prep_adf_stream_apportionment()],
-  [generate_stream_injection_schedule()]
+\code{\link[=prep_adf_stream_apportionment]{prep_adf_stream_apportionment()}},
+\code{\link[=generate_stream_injection_schedule]{generate_stream_injection_schedule()}}
 }

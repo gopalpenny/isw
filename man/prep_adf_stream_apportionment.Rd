@@ -13,28 +13,28 @@ prep_adf_stream_apportionment(
 )
 }
 \arguments{
-\item{pumping_wells}{A nonempty `sf` object with one point per pumping well.
-It must contain unique character `pump_id` values, hydraulic conductivity
-`K` with length-per-time units, aquifer thickness `D` with length units,
-and dimensionless drainable porosity or specific yield `V`. Geometry is
-transformed internally to the CRS of `stream_segments`.}
+\item{pumping_wells}{A nonempty \code{sf} object with one point per pumping well.
+It must contain unique character \code{pump_id} values, hydraulic conductivity
+\code{K} with length-per-time units, aquifer thickness \code{D} with length units,
+and dimensionless drainable porosity or specific yield \code{V}. Geometry is
+transformed internally to the CRS of \code{stream_segments}.}
 
-\item{stream_segments}{A projected `sf` object returned by
-[prep_stream_segments()].}
+\item{stream_segments}{A projected \code{sf} object returned by
+\code{\link[=prep_stream_segments]{prep_stream_segments()}}.}
 
-\item{sample_spacing}{A scalar `units` length giving the maximum stream
+\item{sample_spacing}{A scalar \code{units} length giving the maximum stream
 length represented by an apportionment sample point.}
 
-\item{method}{Character string selecting `"web_squared"` or `"web"`.}
+\item{method}{Character string selecting \code{"web_squared"} or \code{"web"}.}
 
-\item{maximum_distance}{Either `NULL` or a positive scalar `units` length.
+\item{maximum_distance}{Either \code{NULL} or a positive scalar \code{units} length.
 Sample points farther than this distance from a pump receive zero weight.}
 }
 \value{
 A tibble with one row per pump--stream-segment pair and columns
-  `pump_id`, `reach_id`, `reach_segment_id`, `pump_to_reach_distance`, and
-  `apportionment_fraction`. Physical segment geometry and attributes remain
-  in `stream_segments` and are not duplicated in the returned table.
+\code{pump_id}, \code{reach_id}, \code{reach_segment_id}, \code{pump_to_reach_distance}, and
+\code{apportionment_fraction}. Physical segment geometry and attributes remain
+in \code{stream_segments} and are not duplicated in the returned table.
 }
 \description{
 Calculate static web or web-squared fractions assigning a pumping well's
@@ -43,17 +43,17 @@ analytical stream depletion to a prepared stream-segment network.
 \details{
 Apportionment is static: it describes where a pump's analytical depletion
 is assigned, not how depletion changes through time. Use
-[model_adf_stream_depletion()] to combine it with pumping schedules.
+\code{\link[=model_adf_stream_depletion]{model_adf_stream_depletion()}} to combine it with pumping schedules.
 
 Each stream segment is represented by points spaced no farther apart than
-`sample_spacing`. A point representing length \eqn{L_i} at distance \eqn{d_i}
+\code{sample_spacing}. A point representing length \eqn{L_i} at distance \eqn{d_i}
 from a pump receives raw weight \eqn{L_i / d_i^p}, where \eqn{p = 2} for
-`"web_squared"` and \eqn{p = 1} for `"web"`. Point weights are summed by
+\code{"web_squared"} and \eqn{p = 1} for \code{"web"}. Point weights are summed by
 segment and normalized so each pump's segment fractions sum to one.
-`maximum_distance`, when supplied, excludes more distant sample points before
+\code{maximum_distance}, when supplied, excludes more distant sample points before
 normalization. If an eligible sample point is exactly colocated with a pump,
 only the eligible zero-distance points receive weight. The reported
-`pump_to_reach_distance` is the exact point-to-segment distance, not a sampled
+\code{pump_to_reach_distance} is the exact point-to-segment distance, not a sampled
 distance.
 }
 \examples{
@@ -69,5 +69,5 @@ prep_adf_stream_apportionment(
 
 }
 \seealso{
-[prep_stream_segments()], [model_adf_stream_depletion()]
+\code{\link[=prep_stream_segments]{prep_stream_segments()}}, \code{\link[=model_adf_stream_depletion]{model_adf_stream_depletion()}}
 }

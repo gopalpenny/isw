@@ -4,9 +4,9 @@
 #' for use with analytical response functions.
 #'
 #' @param pumping_schedules A pumping-schedule object accepted by
-#'   [`.validate_pumping_schedules()`].
+#'   `.validate_pumping_schedules()`.
 #' @param pumping_wells A pumping-well object accepted by
-#'   [`.validate_pumping_wells()`].
+#'   `.validate_pumping_wells()`.
 #'
 #' @return A tibble with one row per nonzero change in pumping rate and columns
 #'   `pump_id`, `pumping_time`, and `pumping_rate_change`. Pumping times and
@@ -70,9 +70,9 @@
 #' those changes can affect the modeled response.
 #'
 #' @param pumping_schedules A pumping-schedule object accepted by
-#'   [`.validate_pumping_schedules()`].
+#'   `.validate_pumping_schedules()`.
 #' @param pumping_wells A pumping-well object accepted by
-#'   [`.validate_pumping_wells()`].
+#'   `.validate_pumping_wells()`.
 #' @param evaluation_times Either `NULL`, a `Date` vector, or a `units` vector
 #'   with time dimensions. When `NULL`, `pumping_schedules$t` is used.
 #'
