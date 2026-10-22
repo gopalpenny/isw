@@ -565,31 +565,31 @@ in these calculations when constant-head injection is requested.
 
 ### What happens inside `generate_stream_injection_schedule()`
 
-#### 1. Construct the injection time grid
+#### 1. Construct the schedule-boundary grid
 
-`generate_stream_injection_schedule()` first prepares an internal 
-time grid, using `.get_stream_injection_times()`, combining all
+`generate_stream_injection_schedule()` first prepares an internal
+schedule grid, using `.get_stream_injection_times()`, combining all
 pumping-schedule times, requested evaluation times (optional), and injection times
 (optional) through the final evaluation.
 
-`.get_stream_injection_times()` returns `injection_grid`, a list containing the
-requested evaluation times, the combined injection times, and those injection
-times converted to elapsed days. The combined injection times define the
-intervals used below.
+`.get_stream_injection_times()` returns `schedule_grid`, a list containing
+`schedule_boundaries` and the same boundaries converted to elapsed
+`boundary_days`. These boundaries, rather than the user-requested evaluation
+times alone, define the intervals used below.
 
 ```{r injection-time-grid}
-injection_grid <- isw:::.get_stream_injection_times(
+schedule_grid <- isw:::.get_stream_injection_times(
   pumping_schedules,
   evaluation_times,
   injection_times = NULL
 )
 
 tibble(
-  component = names(injection_grid),
-  number_of_times = lengths(injection_grid)
+  component = names(schedule_grid),
+  number_of_times = lengths(schedule_grid)
 )
-head(injection_grid$injection_times)
-tail(injection_grid$injection_times)
+head(schedule_grid$schedule_boundaries)
+tail(schedule_grid$schedule_boundaries)
 ```
 
 #### 2. Approximate continuously changing depletion by intervals
@@ -602,28 +602,31 @@ The arithmetic mean of those two rates defines the depletion magnitude for that 
 The following code reproduces the internal calculation of these rates:
 
 ```{r internal-injection-schedule}
-depletion_at_injection_times <- model_adf_stream_depletion(
+depletion_at_schedule_boundaries <- model_adf_stream_depletion(
   pumping_wells,
   pumping_schedules,
   stream_apportionment,
-  evaluation_times = injection_grid$injection_times
-)
+  evaluation_times = schedule_grid$schedule_boundaries
+) |>
+  rename(schedule_boundary = evaluation_time)
 
-head(depletion_at_injection_times)
+head(depletion_at_schedule_boundaries)
 
 internal_injection_schedule <-
   isw:::.get_interval_average_injection_schedule(
-    depletion_at_injection_times,
+    depletion_at_schedule_boundaries,
     pumping_schedules
   )
 
 head(internal_injection_schedule)
 ```
 
-`depletion_at_injection_times` contains the segment-level depletion rates at
-the start and end of each interval.
-`.get_interval_average_injection_schedule()` converts depletion at precise times to the
-average, positive injection rates returned by `generate_stream_injection_schedule()`.
+`depletion_at_schedule_boundaries` contains the segment-level depletion rates at the
+start and end of each interval. The public depletion function returns its time
+column as `evaluation_time`; the internal copy is renamed `schedule_boundary`
+to make its role here explicit. `.get_interval_average_injection_schedule()`
+converts depletion at those boundaries to the average, positive injection
+rates returned by `generate_stream_injection_schedule()`.
 
 Optional `injection_times` add times at which new intervals start, creating a
 finer piecewise-constant approximation. They do not change `evaluation_times`.

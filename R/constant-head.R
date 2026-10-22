@@ -195,7 +195,7 @@
     pumping_schedules,
     pumping_wells
   )
-  time_nodes <- time_grid$injection_days
+  time_nodes <- time_grid$boundary_days
   number_of_intervals <- length(time_nodes) - 1L
   output_rate_unit <- units::deparse_unit(
     pumping_schedules[[pumping_wells$pump_id[[1]]]]
@@ -207,8 +207,8 @@
       aquifer_id = character(),
       reach_id = character(),
       reach_segment_id = character(),
-      interval_start = time_grid$injection_times[0],
-      interval_end = time_grid$injection_times[0],
+      interval_start = time_grid$schedule_boundaries[0],
+      interval_end = time_grid$schedule_boundaries[0],
       injection_rate = units::set_units(
         numeric(), output_rate_unit, mode = "standard"
       ),
@@ -332,7 +332,9 @@
           stop(
             "The constant-head response matrix could not be solved for ",
             "aquifer_id ", aquifer_id, " and interval ending at ",
-            as.character(time_grid$injection_times[[interval_index + 1L]]),
+            as.character(
+              time_grid$schedule_boundaries[[interval_index + 1L]]
+            ),
             ": ", conditionMessage(error),
             call. = FALSE
           )
@@ -353,7 +355,8 @@
       condition_diagnostics[[length(condition_diagnostics) + 1L]] <-
         tibble::tibble(
           aquifer_id = aquifer_id,
-          interval_end = time_grid$injection_times[[interval_index + 1L]],
+          interval_end =
+            time_grid$schedule_boundaries[[interval_index + 1L]],
           matrix_condition_number = factorization$condition_number
         )
 

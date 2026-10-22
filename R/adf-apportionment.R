@@ -431,7 +431,7 @@ prep_adf_stream_apportionment <- function(
     pumping_schedules$t,
     evaluation_times
   )
-  output_evaluation_times <- normalized_times$output_evaluation_times
+  output_evaluation_times <- normalized_times$output_target_times
   fraction_lookup <- .get_stream_depletion_fraction_lookup(
     pumping_wells,
     pumping_response_times,

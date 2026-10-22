@@ -2,6 +2,11 @@
 
 ## Stream injection and water-level response
 
+* Clarified internal time terminology: user-requested `evaluation_times` and
+  public `evaluation_time` outputs are unchanged, while the combined injection
+  grid now uses `schedule_boundaries`, `boundary_days`, and an internal
+  `schedule_boundary` column. The general time-normalization helper now uses
+  `target_times` terminology.
 * Exported the existing stream-sampling helper as `prep_stream_sample_points()`
   for spatial inspection and water-level evaluation along stream segments.
 * Added `prep_stream_segments()` to separate projected stream discretization

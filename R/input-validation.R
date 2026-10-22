@@ -479,6 +479,48 @@
   pumping_schedules
 }
 
+# Validate optional target times against a schedule time axis.
+.validate_target_times <- function(
+    target_times,
+    schedule_times,
+    target_name) {
+
+  .validate_time_vector(schedule_times, "pumping_schedules$t")
+
+  if (is.null(target_times)) {
+    return(NULL)
+  }
+
+  .validate_time_vector(target_times, target_name)
+
+  target_is_date <- inherits(target_times, "Date")
+  schedule_is_date <- inherits(schedule_times, "Date")
+
+  if (target_is_date != schedule_is_date) {
+    stop(
+      target_name, " and pumping_schedules$t must both use Date values ",
+      "or both use units time values."
+    )
+  }
+
+  if (target_is_date) {
+    before_schedule <- target_times < schedule_times[1]
+  } else {
+    target_days <- units::set_units(target_times, "days")
+    schedule_start_days <- units::set_units(schedule_times[1], "days")
+    before_schedule <- target_days < schedule_start_days
+  }
+
+  if (any(before_schedule)) {
+    stop(
+      target_name,
+      " cannot occur before the first pumping-schedule time."
+    )
+  }
+
+  target_times
+}
+
 #' Validate evaluation-time inputs
 #'
 #' Validate optional model evaluation times against the pumping-schedule time
@@ -506,40 +548,11 @@
 #'
 #' @noRd
 .validate_evaluation_times <- function(evaluation_times, schedule_times) {
-
-  .validate_time_vector(schedule_times, "pumping_schedules$t")
-
-  if (is.null(evaluation_times)) {
-    return(NULL)
-  }
-
-  .validate_time_vector(evaluation_times, "evaluation_times")
-
-  evaluation_is_date <- inherits(evaluation_times, "Date")
-  schedule_is_date <- inherits(schedule_times, "Date")
-
-  if (evaluation_is_date != schedule_is_date) {
-    stop(
-      "evaluation_times and pumping_schedules$t must both use Date values ",
-      "or both use units time values."
-    )
-  }
-
-  if (evaluation_is_date) {
-    before_schedule <- evaluation_times < schedule_times[1]
-  } else {
-    evaluation_days <- units::set_units(evaluation_times, "days")
-    schedule_start_days <- units::set_units(schedule_times[1], "days")
-    before_schedule <- evaluation_days < schedule_start_days
-  }
-
-  if (any(before_schedule)) {
-    stop(
-      "evaluation_times cannot occur before the first pumping-schedule time."
-    )
-  }
-
-  evaluation_times
+  .validate_target_times(
+    evaluation_times,
+    schedule_times,
+    "evaluation_times"
+  )
 }
 
 #' Validate optional stream-injection times
@@ -556,38 +569,9 @@
 #'
 #' @noRd
 .validate_injection_times <- function(injection_times, schedule_times) {
-
-  .validate_time_vector(schedule_times, "pumping_schedules$t")
-
-  if (is.null(injection_times)) {
-    return(NULL)
-  }
-
-  .validate_time_vector(injection_times, "injection_times")
-
-  injection_is_date <- inherits(injection_times, "Date")
-  schedule_is_date <- inherits(schedule_times, "Date")
-
-  if (injection_is_date != schedule_is_date) {
-    stop(
-      "injection_times and pumping_schedules$t must both use Date values ",
-      "or both use units time values."
-    )
-  }
-
-  if (injection_is_date) {
-    before_schedule <- injection_times < schedule_times[1]
-  } else {
-    injection_days <- units::set_units(injection_times, "days")
-    schedule_start_days <- units::set_units(schedule_times[1], "days")
-    before_schedule <- injection_days < schedule_start_days
-  }
-
-  if (any(before_schedule)) {
-    stop(
-      "injection_times cannot occur before the first pumping-schedule time."
-    )
-  }
-
-  injection_times
+  .validate_target_times(
+    injection_times,
+    schedule_times,
+    "injection_times"
+  )
 }

@@ -127,7 +127,7 @@
     pumping_schedules$t,
     evaluation_times
   )
-  evaluation_day_values <- as.numeric(normalized_times$evaluation_times)
+  evaluation_day_values <- as.numeric(normalized_times$normalized_target_times)
   row_evaluation_days <- if (inherits(evaluation_times, "Date")) {
     as.numeric(stream_depletion$evaluation_time - pumping_schedules$t[[1]])
   } else {
@@ -206,6 +206,8 @@
     stream_apportionment,
     evaluation_times = NULL) {
 
+  .validate_evaluation_times(evaluation_times, pumping_schedules$t)
+
   if (!is.data.frame(stream_injection_schedule)) {
     stop("stream_injection_schedule must be a data frame or tibble.")
   }
@@ -235,8 +237,8 @@
     pumping_schedules$t,
     evaluation_times
   )
-  schedule_start <- normalized_evaluations$pumping_times[[1]]
-  final_evaluation <- max(normalized_evaluations$evaluation_times)
+  schedule_start <- normalized_evaluations$normalized_schedule_times[[1]]
+  final_evaluation <- max(normalized_evaluations$normalized_target_times)
 
   if (nrow(stream_injection_schedule) == 0) {
     if (final_evaluation > schedule_start) {
@@ -397,10 +399,8 @@
     pumping_schedules$t,
     evaluation_times
   )
-  output_evaluation_times <-
-    normalized_evaluations$output_evaluation_times
-  evaluation_days <- normalized_evaluations$evaluation_times
-  pumping_days <- normalized_evaluations$pumping_times
+  evaluation_days <- normalized_evaluations$normalized_target_times
+  pumping_days <- normalized_evaluations$normalized_schedule_times
 
   if (is.null(injection_times)) {
     refinement_days <- evaluation_days[0]
@@ -408,56 +408,57 @@
     refinement_days <- .normalize_time_inputs(
       pumping_schedules$t,
       injection_times
-    )$evaluation_times
+    )$normalized_target_times
   }
 
   final_evaluation_day <- max(evaluation_days)
-  internal_day_values <- sort(unique(c(
+  boundary_day_values <- sort(unique(c(
     as.numeric(pumping_days[pumping_days <= final_evaluation_day]),
     as.numeric(evaluation_days),
     as.numeric(refinement_days[refinement_days <= final_evaluation_day])
   )))
-  internal_days <- units::set_units(
-    internal_day_values,
+  boundary_days <- units::set_units(
+    boundary_day_values,
     "days",
     mode = "standard"
   )
 
   if (inherits(pumping_schedules$t, "Date")) {
-    internal_times <- pumping_schedules$t[[1]] + internal_day_values
+    schedule_boundaries <- pumping_schedules$t[[1]] + boundary_day_values
   } else {
-    internal_times <- units::set_units(
-      internal_days,
+    schedule_boundaries <- units::set_units(
+      boundary_days,
       units::deparse_unit(pumping_schedules$t),
       mode = "standard"
     )
   }
 
   list(
-    evaluation_times = output_evaluation_times,
-    injection_times = internal_times,
-    injection_days = internal_days
+    schedule_boundaries = schedule_boundaries,
+    boundary_days = boundary_days
   )
 }
 
 # Calculate interval-average stream-injection rates.
 .get_interval_average_injection_schedule <- function(
-    stream_depletion,
+    depletion_at_schedule_boundaries,
     pumping_schedules) {
 
-  depletion_times <- sort(unique(stream_depletion$evaluation_time))
+  boundary_times <- sort(unique(
+    depletion_at_schedule_boundaries$schedule_boundary
+  ))
   normalized_times <- .normalize_time_inputs(
     pumping_schedules$t,
-    depletion_times
+    boundary_times
   )
-  schedule_start <- normalized_times$pumping_times[[1]]
-  depletion_days <- normalized_times$evaluation_times
-  prepend_initial_zero <- depletion_days[[1]] > schedule_start
+  schedule_start <- normalized_times$normalized_schedule_times[[1]]
+  boundary_days <- normalized_times$normalized_target_times
+  prepend_initial_zero <- boundary_days[[1]] > schedule_start
 
   if (prepend_initial_zero) {
-    time_nodes <- c(schedule_start, depletion_days)
+    time_nodes <- c(schedule_start, boundary_days)
   } else {
-    time_nodes <- depletion_days
+    time_nodes <- boundary_days
   }
 
   pump_output <- character()
@@ -465,10 +466,10 @@
   segment_output <- character()
   interval_start_output <- time_nodes[0]
   interval_end_output <- time_nodes[0]
-  rate_output <- stream_depletion$stream_depletion_rate[0]
+  rate_output <- depletion_at_schedule_boundaries$stream_depletion_rate[0]
   pair_keys <- unique(paste(
-    stream_depletion$pump_id,
-    stream_depletion$reach_segment_id,
+    depletion_at_schedule_boundaries$pump_id,
+    depletion_at_schedule_boundaries$reach_segment_id,
     sep = "\r"
   ))
 
@@ -477,13 +478,14 @@
     pump_id <- key_parts[[1]]
     reach_segment_id <- key_parts[[2]]
     pair_rows <- which(
-      stream_depletion$pump_id == pump_id &
-        stream_depletion$reach_segment_id == reach_segment_id
+      depletion_at_schedule_boundaries$pump_id == pump_id &
+        depletion_at_schedule_boundaries$reach_segment_id == reach_segment_id
     )
     pair_rows <- pair_rows[order(as.numeric(
-      stream_depletion$evaluation_time[pair_rows]
+      depletion_at_schedule_boundaries$schedule_boundary[pair_rows]
     ))]
-    endpoint_rates <- stream_depletion$stream_depletion_rate[pair_rows]
+    endpoint_rates <-
+      depletion_at_schedule_boundaries$stream_depletion_rate[pair_rows]
 
     if (prepend_initial_zero) {
       endpoint_rates <- c(endpoint_rates[[1]] * 0, endpoint_rates)
@@ -501,7 +503,10 @@
     pump_output <- c(pump_output, rep(pump_id, number_of_intervals))
     reach_output <- c(
       reach_output,
-      rep(stream_depletion$reach_id[pair_rows[[1]]], number_of_intervals)
+      rep(
+        depletion_at_schedule_boundaries$reach_id[pair_rows[[1]]],
+        number_of_intervals
+      )
     )
     segment_output <- c(
       segment_output,
@@ -611,18 +616,23 @@
 #'
 #' The first pumping-schedule time defines the initial time boundary. When the
 #' first evaluation occurs later, stream depletion at that initial boundary is
-#' assumed to be zero. The injection rate in each interval is the negative
-#' arithmetic mean of stream depletion at the beginning and end of that
-#' interval. Consecutive rates are converted to signed aquifer-response events;
-#' exact zero changes are omitted.
+#' assumed to be zero. The public injection rate in each interval is the
+#' positive arithmetic mean of stream depletion at the beginning and end of
+#' that interval. Consecutive rates are converted to signed aquifer-response
+#' events; exact zero changes are omitted.
 #'
 #' @noRd
 .get_interval_average_injection_rate_changes <- function(
     stream_depletion,
     pumping_schedules) {
+  depletion_at_schedule_boundaries <- stream_depletion
+  names(depletion_at_schedule_boundaries)[
+    names(depletion_at_schedule_boundaries) == "evaluation_time"
+  ] <- "schedule_boundary"
+
   .get_injection_rate_changes(
     .get_interval_average_injection_schedule(
-      stream_depletion,
+      depletion_at_schedule_boundaries,
       pumping_schedules
     )
   )
@@ -754,7 +764,7 @@ generate_stream_injection_schedule <- function(
         pumping_wells,
         pumping_schedules,
         stream_apportionment,
-        time_grid$injection_times
+        time_grid$schedule_boundaries
       )
     } else {
       internal_depletion <- .validate_apportioned_stream_depletion(
@@ -764,7 +774,7 @@ generate_stream_injection_schedule <- function(
         stream_apportionment
       )
       supplied_times <- sort(unique(internal_depletion$evaluation_time))
-      required_times <- time_grid$injection_times
+      required_times <- time_grid$schedule_boundaries
       supplied_day_values <- if (inherits(supplied_times, "Date")) {
         as.numeric(supplied_times)
       } else {
@@ -804,8 +814,12 @@ generate_stream_injection_schedule <- function(
         row_day_values %in% required_day_values,
       ]
     }
+    depletion_at_schedule_boundaries <- internal_depletion
+    names(depletion_at_schedule_boundaries)[
+      names(depletion_at_schedule_boundaries) == "evaluation_time"
+    ] <- "schedule_boundary"
     injection_schedule <- .get_interval_average_injection_schedule(
-      internal_depletion,
+      depletion_at_schedule_boundaries,
       pumping_schedules
     )
   } else {
@@ -826,15 +840,15 @@ generate_stream_injection_schedule <- function(
 
   start_rows <- match(
     as.numeric(injection_schedule$interval_start),
-    as.numeric(time_grid$injection_days)
+    as.numeric(time_grid$boundary_days)
   )
   end_rows <- match(
     as.numeric(injection_schedule$interval_end),
-    as.numeric(time_grid$injection_days)
+    as.numeric(time_grid$boundary_days)
   )
   injection_schedule$interval_start <-
-    time_grid$injection_times[start_rows]
-  injection_schedule$interval_end <- time_grid$injection_times[end_rows]
+    time_grid$schedule_boundaries[start_rows]
+  injection_schedule$interval_end <- time_grid$schedule_boundaries[end_rows]
 
   attr(injection_schedule, "isw_schedule_metadata") <- list(
     injection_method = method,
@@ -923,8 +937,8 @@ generate_stream_injection_schedule <- function(
     pumping_schedules$t,
     evaluation_times
   )
-  output_evaluation_times <- normalized_times$output_evaluation_times
-  evaluation_days <- normalized_times$evaluation_times
+  output_evaluation_times <- normalized_times$output_target_times
+  evaluation_days <- normalized_times$normalized_target_times
   pumping_responses <- .get_pumping_response_times(
     pumping_schedules,
     pumping_wells,
@@ -954,7 +968,8 @@ generate_stream_injection_schedule <- function(
       pumping_schedules$t,
       unique_injection_times
     )
-    normalized_injection_days <- normalized_injection_times$evaluation_times
+    normalized_injection_days <-
+      normalized_injection_times$normalized_target_times
     injection_events$injection_time <- normalized_injection_days[match(
         as.numeric(injection_events$injection_time),
         as.numeric(unique_injection_times)

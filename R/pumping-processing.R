@@ -30,7 +30,7 @@
 
   .validate_pumping_schedules(pumping_schedules, pumping_wells)
   normalized_times <- .normalize_time_inputs(pumping_schedules$t)
-  pumping_times <- normalized_times$pumping_times
+  pumping_times <- normalized_times$normalized_schedule_times
 
   pump_ids <- pumping_wells$pump_id
   event_pump_ids <- character()
@@ -165,6 +165,7 @@
     pumping_wells,
     evaluation_times = NULL) {
 
+  .validate_evaluation_times(evaluation_times, pumping_schedules$t)
   pumping_rate_changes <- .get_pumping_rate_changes(
     pumping_schedules,
     pumping_wells
@@ -175,8 +176,8 @@
     evaluation_times
   )
 
-  normalized_evaluation_times <- normalized_times$evaluation_times
-  output_evaluation_times <- normalized_times$output_evaluation_times
+  normalized_evaluation_times <- normalized_times$normalized_target_times
+  output_evaluation_times <- normalized_times$output_target_times
 
   evaluation_indices_by_event <- lapply(
     seq_len(nrow(pumping_rate_changes)),
