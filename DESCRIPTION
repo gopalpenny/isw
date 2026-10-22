@@ -29,6 +29,7 @@ Depends:
 Config/testthat/edition: 3
 Imports: 
     sf,
+    statmod,
     stats,
     tibble
 VignetteBuilder: knitr

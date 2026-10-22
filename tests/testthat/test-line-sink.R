@@ -19,6 +19,20 @@ test_that("Gauss-Legendre rule is normalized and symmetric", {
   expect_equal(rule$weight, rev(rule$weight), tolerance = 1e-14)
 })
 
+test_that("Gauss-Legendre rule matches known low-order rules", {
+  one_point_rule <- isw:::.get_gauss_legendre_rule(1)
+  two_point_rule <- isw:::.get_gauss_legendre_rule(2)
+
+  expect_equal(one_point_rule$node, 0)
+  expect_equal(one_point_rule$weight, 1)
+  expect_equal(
+    two_point_rule$node,
+    c(-1, 1) / (2 * sqrt(3)),
+    tolerance = 1e-14
+  )
+  expect_equal(two_point_rule$weight, c(0.5, 0.5), tolerance = 1e-14)
+})
+
 test_that("Theis responses skip numerical underflow without changing values", {
   K <- units::set_units(10, "m/day")
   D <- units::set_units(20, "m")

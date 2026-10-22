@@ -1,6 +1,8 @@
 # Numerical response operators for transient finite line elements.
 
 # Return Gauss--Legendre nodes and normalized weights on [-1/2, 1/2].
+#' @importFrom statmod gauss.quad
+#' @noRd
 .get_gauss_legendre_rule <- function(order = 16L) {
   if (length(order) != 1 || is.na(order) || !is.finite(order) ||
       order < 1 || order != as.integer(order)) {
@@ -9,21 +11,12 @@
 
   order <- as.integer(order)
 
-  if (order == 1L) {
-    return(tibble::tibble(node = 0, weight = 1))
-  }
-
-  indices <- seq_len(order - 1L)
-  off_diagonal <- indices / sqrt(4 * indices^2 - 1)
-  jacobi_matrix <- matrix(0, nrow = order, ncol = order)
-  jacobi_matrix[cbind(indices, indices + 1L)] <- off_diagonal
-  jacobi_matrix[cbind(indices + 1L, indices)] <- off_diagonal
-  decomposition <- eigen(jacobi_matrix, symmetric = TRUE)
-  ordering <- order(decomposition$values)
+  rule <- gauss.quad(order, kind = "legendre")
+  ordering <- order(rule$nodes)
 
   tibble::tibble(
-    node = decomposition$values[ordering] / 2,
-    weight = decomposition$vectors[1, ordering]^2
+    node = rule$nodes[ordering] / 2,
+    weight = rule$weights[ordering] / 2
   )
 }
 

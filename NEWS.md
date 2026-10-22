@@ -2,6 +2,9 @@
 
 ## Stream injection and water-level response
 
+* Replaced the internal Gauss--Legendre eigendecomposition with
+  `statmod::gauss.quad()` and retained the normalized `[-1/2, 1/2]` rule used
+  for finite-line integration.
 * Clarified internal time terminology: user-requested `evaluation_times` and
   public `evaluation_time` outputs are unchanged, while the combined injection
   grid now uses `schedule_boundaries`, `boundary_days`, and an internal
