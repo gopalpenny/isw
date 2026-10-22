@@ -93,23 +93,6 @@
   )
 }
 
-# Calculate a finite-line response matrix at stream collocation points.
-.get_stream_line_response_matrix <- function(
-    response_operator,
-    K,
-    D,
-    V,
-    elapsed_time) {
-
-  .evaluate_line_response_operator(
-    response_operator,
-    K = K,
-    D = D,
-    V = V,
-    elapsed_time = elapsed_time
-  )
-}
-
 # Calculate pump-specific signed head change at stream model points.
 .get_pumping_head_at_stream <- function(
     pumping_well,
@@ -221,6 +204,8 @@
   condition_diagnostics <- list()
   output_index <- 0L
 
+  # aquifer groups avoid re-calculating the stream-to-stream
+  # response ratio for each set of aquifer parameters
   for (aquifer_id in unique(aquifer_groups$aquifer_id)) {
     pump_rows <- which(prepared_pumping_wells$aquifer_id == aquifer_id)
     group_pumps <- prepared_pumping_wells[pump_rows, , drop = FALSE]
@@ -246,7 +231,7 @@
       if (!exists(cache_key, envir = response_cache, inherits = FALSE)) {
         assign(
           cache_key,
-          .get_stream_line_response_matrix(
+          .evaluate_line_response_operator(
             boundary_response_operator,
             group_pumps$K[[1]],
             group_pumps$D[[1]],
