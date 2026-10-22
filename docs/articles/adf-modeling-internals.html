@@ -58,9 +58,6 @@
     </li>
 <li class="dropdown-header">Detailed methods</li>
     <li>
-      <a href="../articles/stream-injection-methods.html">Comparing ADF and Constant-Head Stream Injection</a>
-    </li>
-    <li>
       <a href="../articles/adf-modeling-internals.html">ADF modeling internals: Detailed walkthrough</a>
     </li>
   </ul>
@@ -134,8 +131,8 @@ and</li>
 <code><a href="../reference/model_aquifer_water_level_change.html">model_aquifer_water_level_change()</a></code> combines pumping
 drawdown with stream recovery.</li>
 </ul>
-<p>The <a href="stream-injection-methods.html">method-comparison
-article</a> presents the constant-head alternative.</p>
+<p>The <a href="stream-depletion-and-drawdown.html">main vignette</a>
+also demonstrates the constant-head alternative.</p>
 </div>
 <div class="section level2">
 <h2 id="load-the-example-spatial-inputs">Load the example spatial inputs<a class="anchor" aria-label="anchor" href="#load-the-example-spatial-inputs"></a>
@@ -319,8 +316,8 @@ segments.</p>
 </h4>
 <p><code><a href="../reference/prep_stream_segments.html">prep_stream_segments()</a></code> validates the reaches and
 transforms the input to a projected analysis CRS. By default, an
-existing projected stream CRS is retained; for geographic inputs, a
-local UTM CRS is selected from the <code>stream_reaches</code> extent. A
+existing projected stream CRS is retained, or, a local UTM CRS is
+automatically determined from the <code>stream_reaches</code> extent. A
 desired <code>analysis_crs</code> can also be specified. Pumping wells
 are transformed to the <code>analysis_crs</code> CRS inside
 <code><a href="../reference/prep_adf_stream_apportionment.html">prep_adf_stream_apportionment()</a></code>.</p>

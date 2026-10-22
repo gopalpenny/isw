@@ -3,11 +3,13 @@
 
 # isw
 
-`isw` prepares stream networks and models stream depletion and aquifer
-water-level change caused by groundwater pumping. Its main workflow
-separates physical stream segments from pump-specific apportionment and
-supports both analytical depletion-function (ADF) and constant-head
-stream injection.
+`isw` provides multiple options to model stream depletion and aquifer
+water-level change caused by groundwater pumping and stream-aquifer
+interactions. It supports both analytical depletion functions (ADFs) and
+constant-head stream behavior. The main workflow separates physical
+stream segments from pump-specific apportionment, allowing flexible
+aggregation of results according to the pump, time period, and stream
+reach.
 
 ## Installation
 

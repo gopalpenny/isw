@@ -41,9 +41,7 @@ using spatial inputs included with the package:
   water-level change equal to zero at the stream-segment model points.
 
 The focus here is how to prepare the inputs and connect the main functions.
-For more detail, see the website articles on the
-[comparison of the two methods](https://gopalpenny.github.io/isw/articles/stream-injection-methods.html)
-and the
+For more detail on ADF calculations, see the
 [ADF modeling internals](https://gopalpenny.github.io/isw/articles/adf-modeling-internals.html).
 
 ## Load the spatial inputs
@@ -484,11 +482,7 @@ ggplot(
 
 The
 [`model_aquifer_water_level_change()` reference](https://gopalpenny.github.io/isw/reference/model_aquifer_water_level_change.html)
-documents the returned pumping, recovery, and net water-level components. The
-[method-comparison article](https://gopalpenny.github.io/isw/articles/stream-injection-methods.html)
-extends this workflow with observations along the stream and on perpendicular transects,
-and compares the constant-head results with the ADF
-solution.
+documents the returned pumping, recovery, and net water-level components.
 
 ## Map water-level change along the stream
 

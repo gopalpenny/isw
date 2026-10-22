@@ -9,7 +9,6 @@ articles:
 - title: Detailed methods
   navbar: Detailed methods
   contents:
-  - articles/stream-injection-methods
   - articles/adf-modeling-internals
 
 reference:

@@ -51,8 +51,8 @@ The walkthrough includes:
 * `model_aquifer_water_level_change()` combines pumping drawdown with stream
 recovery. 
 
-The [method-comparison article](stream-injection-methods.html)
-presents the constant-head alternative.
+The [main vignette](stream-depletion-and-drawdown.html) also demonstrates
+the constant-head alternative.
 
 ## Load the example spatial inputs
 
