@@ -156,6 +156,8 @@
   expected_keys <- character()
   expected_reaches <- character()
 
+  # Build the complete set of pump, segment, and evaluation-time combinations
+  # required in the supplied depletion table.
   for (pump_id in pumping_wells$pump_id) {
     pump_segments <- apportionment_table[
       apportionment_table$pump_id == pump_id,
@@ -355,6 +357,7 @@
     expected_keys
   )
 
+  # Validate continuous schedule coverage for every pump-segment pair.
   for (pair_key in unique(expected_keys)) {
     pair_rows <- which(schedule_keys == pair_key)
     pair_rows <- pair_rows[order(as.numeric(interval_starts[pair_rows]))]
@@ -473,6 +476,8 @@
     sep = "\r"
   ))
 
+  # Convert boundary depletion rates into interval-average rates separately
+  # for every pump-segment pair.
   for (pair_key in pair_keys) {
     key_parts <- strsplit(pair_key, "\r", fixed = TRUE)[[1]]
     pump_id <- key_parts[[1]]
@@ -544,6 +549,7 @@
     sep = "\r"
   ))
 
+  # Convert each pump-segment interval schedule into nonzero rate-change events.
   for (pair_key in pair_keys) {
     key_parts <- strsplit(pair_key, "\r", fixed = TRUE)[[1]]
     pump_id <- key_parts[[1]]
@@ -1027,10 +1033,15 @@ generate_stream_injection_schedule <- function(
     get(parameter_key, envir = injection_response_cache, inherits = FALSE)
   }
 
+  # Evaluate every pump at every observation well and requested time,
+  # separating direct pumping drawdown from recovery due to stream injection.
   for (pump_id in pumping_wells$pump_id) {
     pump_row <- match(pump_id, prepared_pumping_wells$pump_id)
 
+    # Step through the observation wells for this pump.
     for (observation_index in seq_len(nrow(prepared_observation_wells))) {
+      # Combine all contributing pumping and injection events at each output
+      # time.
       for (evaluation_index in seq_along(output_evaluation_times)) {
         pumping_change <- zero_drawdown
         stream_change <- zero_drawdown

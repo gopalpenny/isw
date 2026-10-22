@@ -37,6 +37,7 @@
   event_times <- pumping_times[0]
   event_rate_changes <- pumping_schedules[[pump_ids[[1]]]][0]
 
+  # Convert each pump's scheduled rates into nonzero rate-change events.
   for (pump_id in pump_ids) {
     pumping_rates <- pumping_schedules[[pump_id]]
     previous_rates <- c(

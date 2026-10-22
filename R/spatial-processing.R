@@ -763,6 +763,8 @@ prep_stream_segments <- function(
   model_points <- vector("list", total_model_reaches)
   output_index <- 0L
 
+  # Split each input linestring part into approximately equal-length model
+  # segments while retaining its original path through bends.
   for (part_index in seq_len(nrow(line_parts))) {
     coordinates <- sf::st_coordinates(
       sf::st_geometry(line_parts)[[part_index]]
@@ -777,6 +779,7 @@ prep_stream_segments <- function(
       length.out = model_reaches_per_part[[part_index]] + 1
     )
 
+    # Construct each segment geometry and its along-line midpoint.
     for (segment_number in seq_len(model_reaches_per_part[[part_index]])) {
       output_index <- output_index + 1L
       start_distance <- break_distances[[segment_number]]
@@ -1043,6 +1046,7 @@ prep_stream_sample_points <- function(stream_segments, sample_spacing) {
   sampled_lengths <- numeric(total_points)
   output_index <- 0L
 
+  # Place evenly spaced sampling points along each modeled stream segment.
   for (segment_index in seq_len(nrow(stream_segments))) {
     coordinates <- sf::st_coordinates(
       sf::st_geometry(stream_segments)[[segment_index]]
@@ -1058,6 +1062,7 @@ prep_stream_sample_points <- function(stream_segments, sample_spacing) {
     interval_length <- segment_length / number_of_points
     point_distances <- (seq_len(number_of_points) - 0.5) * interval_length
 
+    # Record each sample point and the stream length that it represents.
     for (point_number in seq_len(number_of_points)) {
       output_index <- output_index + 1L
       source_segment_rows[[output_index]] <- segment_index

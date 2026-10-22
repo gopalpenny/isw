@@ -109,6 +109,7 @@
 
   pump_distances <- sf::st_distance(pumping_well, stream_points)[1, ]
 
+  # Sum the head response from every earlier pumping-rate change for this pump.
   for (event_row in contributing_rows) {
     response <- .theis_aquifer_drawdown_ratio(
       distance = pump_distances,
@@ -204,8 +205,8 @@
   condition_diagnostics <- list()
   output_index <- 0L
 
-  # aquifer groups avoid re-calculating the stream-to-stream
-  # response ratio for each set of aquifer parameters
+  # Solve separately for each aquifer-parameter group so pumps with identical
+  # K, D, and V can share response matrices and their matrix factorizations.
   for (aquifer_id in unique(aquifer_groups$aquifer_id)) {
     pump_rows <- which(prepared_pumping_wells$aquifer_id == aquifer_id)
     group_pumps <- prepared_pumping_wells[pump_rows, , drop = FALSE]
@@ -245,6 +246,8 @@
       get(cache_key, envir = response_cache, inherits = FALSE)
     }
 
+    # Step through the schedule intervals and solve the segment injection rates
+    # needed to restore constant head at the end of each interval.
     for (interval_index in seq_len(number_of_intervals)) {
       interval_start <- time_nodes[[interval_index]]
       interval_end <- time_nodes[[interval_index + 1L]]
@@ -256,6 +259,8 @@
       )
       historical_head <- pumping_head
 
+      # Calculate direct pumping head at every stream model point for each pump
+      # in this aquifer group.
       for (group_pump_index in seq_len(number_of_pumps)) {
         pump_id <- group_pumps$pump_id[[group_pump_index]]
         pump_events <- pumping_events[
@@ -272,6 +277,8 @@
       }
 
       if (interval_index > 1L) {
+        # Accumulate the head response remaining from injection rates solved
+        # for all preceding intervals.
         for (previous_index in seq_len(interval_index - 1L)) {
           pulse_response <-
             get_response_matrix(
@@ -345,6 +352,7 @@
           matrix_condition_number = factorization$condition_number
         )
 
+      # Store the solved segment rates and boundary residuals for each pump.
       for (group_pump_index in seq_len(number_of_pumps)) {
         output_index <- output_index + 1L
         solved_rate_units <- units::set_units(

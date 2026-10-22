@@ -113,6 +113,8 @@
   t <- recycle(t)
   stream_width <- recycle(stream_width)
 
+  # Evaluate each requested line response by summing the weighted response at
+  # its quadrature points.
   for (index in seq_len(output_length)) {
     source_offset <- rule$node * line_length[[index]]
     distances <- sqrt(
@@ -156,6 +158,8 @@
   segment_index <- integer()
   point_index <- 0L
 
+  # Expand each stream segment into physical quadrature points, processing
+  # every straight edge in segments that contain bends.
   for (index in seq_len(nrow(stream_segments))) {
     coordinates <- sf::st_coordinates(geometry[[index]])[, 1:2, drop = FALSE]
     starts <- coordinates[-nrow(coordinates), , drop = FALSE]
@@ -169,6 +173,8 @@
       stop("Every line element must contain at least one positive-length edge.")
     }
 
+    # Place the quadrature rule along each edge and scale its weights by the
+    # fraction of the segment's total length represented by that edge.
     for (edge_index in positive_edges) {
       edge_midpoint <- (starts[edge_index, ] + ends[edge_index, ]) / 2
       edge_points <- sweep(
@@ -178,6 +184,7 @@
         "+"
       )
 
+      # Store each coordinate as an sf point for later distance calculations.
       for (node_index in seq_len(nrow(edge_points))) {
         point_index <- point_index + 1L
         quadrature_coordinates[[point_index]] <- edge_points[node_index, ]
@@ -312,6 +319,8 @@
     ncol = operator$number_of_segments
   )
 
+  # Combine the weighted quadrature-point responses into one response column
+  # for each source segment.
   for (segment in seq_len(operator$number_of_segments)) {
     response[, segment] <- rowSums(
       point_response[, operator$segment_index == segment, drop = FALSE]

@@ -91,6 +91,8 @@ prep_adf_stream_apportionment <- function(
   )
   exact_distances <- vector("list", number_of_pumps)
 
+  # For each pump, weight the sampled stream lengths by distance and then
+  # aggregate those weights to the modeled stream segments.
   for (pump_index in seq_len(number_of_pumps)) {
     point_distances <- sf::st_distance(
       prepared_pumping_wells[pump_index, ],
@@ -137,6 +139,7 @@ prep_adf_stream_apportionment <- function(
 
     point_fractions <- raw_weights / sum(raw_weights)
 
+    # Sum the normalized sample-point weights belonging to each segment.
     for (segment_index in seq_len(number_of_segments)) {
       segment_fractions[pump_index, segment_index] <- sum(
         point_fractions[
@@ -352,6 +355,8 @@ prep_adf_stream_apportionment <- function(
   fraction_output <- numeric()
   apportionment_table <- sf::st_drop_geometry(stream_apportionment)
 
+  # Build reusable segment depletion fractions for each pump and distinct
+  # elapsed response time.
   for (pump_id in pumping_wells$pump_id) {
     pump_response_rows <- pumping_response_times$pump_id == pump_id
     elapsed_values <- sort(unique(as.numeric(
@@ -369,6 +374,7 @@ prep_adf_stream_apportionment <- function(
     ]
     pump_row <- match(pump_id, pumping_wells$pump_id)
 
+    # Evaluate all apportioned stream segments at each distinct elapsed time.
     for (elapsed_value in elapsed_values) {
       elapsed_time <- units::set_units(
         elapsed_value,
@@ -445,6 +451,7 @@ prep_adf_stream_apportionment <- function(
   segment_output <- character()
   rate_output <- pumping_schedules[[pumping_wells$pump_id[[1]]]][0]
 
+  # Calculate segment-level depletion separately for each pumping well.
   for (pump_id in pumping_wells$pump_id) {
     segment_table <- apportionment_table[
       apportionment_table$pump_id == pump_id,
@@ -457,6 +464,7 @@ prep_adf_stream_apportionment <- function(
       number_of_segments
     )
 
+    # Evaluate depletion at every requested output time for this pump.
     for (evaluation_index in seq_along(output_evaluation_times)) {
       evaluation_time <- output_evaluation_times[evaluation_index]
       event_rows <- which(
@@ -466,6 +474,8 @@ prep_adf_stream_apportionment <- function(
       )
       segment_rates <- zero_rates
 
+      # Sum depletion from every earlier pumping-rate change across all
+      # apportioned stream segments.
       for (event_row in event_rows) {
         elapsed_value <- as.numeric(
           pumping_response_times$elapsed_time[[event_row]]
