@@ -663,6 +663,13 @@ The physical pumping response uses the user-supplied pumping-well diameter.
 The line response uses `stream_width`, holding the water level response constant inside
 `stream_width/2` to prevent a singular response on the stream.
 
+`isw:::.prepare_line_elements()` places Gauss--Legendre quadrature points
+along each stream segment and stores their weights, segment identifiers, and
+stream widths. `isw:::.prepare_line_response_operator()` then calculates the
+distances from each observation well to those points and packages them with
+the weights and widths for reuse when evaluating responses at different
+elapsed times.
+
 These intermediate geometries and distance matrices can be constructed and
 inspected directly:
 
@@ -687,10 +694,8 @@ line_response_operator <- isw:::.prepare_line_response_operator(
 )
 
 pump_to_observation_distances
-head(line_elements$quadrature_points)
-line_response_operator$distances[1:min(3, nrow(
-  line_response_operator$distances
-)), 1:min(6, ncol(line_response_operator$distances))]
+print(line_elements$quadrature_points, n = 17)
+dim(line_response_operator$distances)
 ```
 
 #### 2. Convert pumping and injection schedules to events
@@ -701,16 +706,12 @@ both responses can use the same superposition principle. Because this example
 supplies `stream_injection_schedule`, the function validates and reuses it
 rather than calculating depletion again.
 
-The two helper functions return different forms of event data.
+Two helper functions return different forms of event data.
 `.get_pumping_response_times()` converts the pumping schedule to rate changes,
 pairs each change with every later evaluation time, and calculates the elapsed
-response time for each pair. `.get_injection_rate_changes()` only converts the
-interval injection schedule to signed rate changes for superposition. It
-negates the positive stream-to-aquifer interval rates to use the analytical
-response's pumping convention: injection is negative pumping. A rise in
-injection therefore produces a negative change event, while a fall produces a
-positive change event. Injection events are
-kept in this compact form because there is one event series for every pump and
+response time for each pair. `.get_injection_rate_changes()` converts the
+interval injection schedule to signed rate changes. Note that there is one 
+event series for every pump and
 reach segment. During the drawdown calculation, each evaluation time is paired
 with its earlier injection events and their elapsed times are calculated then.
 
@@ -753,13 +754,11 @@ negative and rising water levels are positive:
 -\text{pumping_drawdown} + \text{stream_recovery}.
 \]
 
-Results remain separated by `pump_id` and `observation_id`, allowing users to
-inspect individual contributions or sum across pumps. Observation locations,
-evaluation times, injection-grid resolution, pumping-well diameter, and
-aquifer properties are therefore the main choices controlling this step.
+Results remain separated by `pump_id` and `observation_id`, allowing inspection
+of individual contributions or sum across pumps. 
 
 ```{r plot-apportioned-aquifer-drawdown}
-water_level_changes |>
+water_level_changes_plot <- water_level_changes |>
   mutate(
     pumping_water_level_change = -pumping_drawdown
   ) |>
@@ -771,7 +770,9 @@ water_level_changes |>
     ),
     names_to = "component",
     values_to = "water_level"
-  ) |>
+  )
+
+water_level_changes_plot |>
   ggplot(aes(
     evaluation_time,
     water_level,
