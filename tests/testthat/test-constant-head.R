@@ -32,7 +32,7 @@ make_constant_head_inputs <- function(two_pumps = FALSE) {
       crs = 32615
     )
   )
-  stream_segments <- get_stream_segments(
+  stream_segments <- prep_stream_segments(
     stream_reaches,
     units::set_units(50, "m")
   )
@@ -60,7 +60,7 @@ make_constant_head_inputs <- function(two_pumps = FALSE) {
 test_that("constant-head schedule enforces endpoint boundary conditions", {
   inputs <- make_constant_head_inputs()
 
-  schedule <- get_stream_injection_schedule(
+  schedule <- generate_stream_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_segments,
@@ -76,7 +76,7 @@ test_that("constant-head schedule enforces endpoint boundary conditions", {
       "boundary_residual", "matrix_condition_number"
     )
   )
-  expect_true(all(as.numeric(schedule$injection_rate[1:2]) < 0))
+  expect_true(all(as.numeric(schedule$injection_rate[1:2]) > 0))
   expect_lt(
     max(abs(as.numeric(units::set_units(
       schedule$boundary_residual,
@@ -94,7 +94,7 @@ test_that("constant-head schedule enforces endpoint boundary conditions", {
     ),
     geometry = inputs$stream_segments$model_point
   )
-  boundary_response <- get_aquifer_water_level_change(
+  boundary_response <- model_aquifer_water_level_change(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     stream_observations,
@@ -113,10 +113,62 @@ test_that("constant-head schedule enforces endpoint boundary conditions", {
   )
 })
 
+test_that("constant-head schedule metadata preserves quadrature order", {
+  inputs <- make_constant_head_inputs()
+  schedule <- generate_stream_injection_schedule(
+    inputs$pumping_wells,
+    inputs$pumping_schedules,
+    inputs$stream_segments,
+    inputs$evaluation_times,
+    method = "constant_head",
+    quadrature_order = 8L
+  )
+  metadata <- attr(schedule, "isw_schedule_metadata", exact = TRUE)
+
+  expect_identical(metadata$injection_method, "constant_head")
+  expect_identical(metadata$quadrature_order, 8L)
+
+  observation_wells <- sf::st_sf(
+    observation_id = "obs_1",
+    geometry = sf::st_sfc(sf::st_point(c(50, 0)), crs = 32615)
+  )
+  reused_order <- model_aquifer_water_level_change(
+    inputs$pumping_wells,
+    inputs$pumping_schedules,
+    observation_wells,
+    inputs$stream_segments,
+    inputs$evaluation_times,
+    stream_injection_schedule = schedule
+  )
+  explicit_order <- model_aquifer_water_level_change(
+    inputs$pumping_wells,
+    inputs$pumping_schedules,
+    observation_wells,
+    inputs$stream_segments,
+    inputs$evaluation_times,
+    stream_injection_schedule = schedule,
+    quadrature_order = 8L
+  )
+
+  expect_equal(reused_order, explicit_order)
+  expect_warning(
+    model_aquifer_water_level_change(
+      inputs$pumping_wells,
+      inputs$pumping_schedules,
+      observation_wells,
+      inputs$stream_segments,
+      inputs$evaluation_times,
+      stream_injection_schedule = schedule,
+      quadrature_order = 16L
+    ),
+    "differs from the value used to construct"
+  )
+})
+
 test_that("shared aquifer factorization preserves pump-specific schedules", {
   inputs <- make_constant_head_inputs(two_pumps = TRUE)
 
-  combined_schedule <- get_stream_injection_schedule(
+  combined_schedule <- generate_stream_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_segments,
@@ -130,7 +182,7 @@ test_that("shared aquifer factorization preserves pump-specific schedules", {
     pump_row <- inputs$pumping_wells$pump_id == pump_id
     single_well <- inputs$pumping_wells[pump_row, , drop = FALSE]
     single_schedule_input <- inputs$pumping_schedules[c("t", pump_id)]
-    single_schedule <- get_stream_injection_schedule(
+    single_schedule <- generate_stream_injection_schedule(
       single_well,
       single_schedule_input,
       inputs$stream_segments,
@@ -161,7 +213,7 @@ test_that("explicit aquifer identifiers must match hydraulic properties", {
   )
 })
 
-test_that("multiple aquifer parameter sets warn and more than ten stop", {
+test_that("the aquifer parameter-set limit is configurable", {
   inputs <- make_constant_head_inputs(two_pumps = TRUE)
   inputs$pumping_wells$K[[2]] <- units::set_units(12, "m/day")
 
@@ -171,40 +223,74 @@ test_that("multiple aquifer parameter sets warn and more than ten stop", {
   )
   expect_identical(length(unique(groups$aquifer_id)), 2L)
 
-  many_wells <- inputs$pumping_wells[rep(1, 11), , drop = FALSE]
-  many_wells$pump_id <- paste0("pump_", seq_len(11))
-  many_wells$K <- units::set_units(seq_len(11), "m/day")
+  many_wells <- inputs$pumping_wells[rep(1, 6), , drop = FALSE]
+  many_wells$pump_id <- paste0("pump_", seq_len(6))
+  many_wells$K <- units::set_units(seq_len(6), "m/day")
 
   expect_error(
     suppressWarnings(isw:::.get_aquifer_groups(many_wells)),
-    "More than 10"
+    "allow_n_aquifer_parameter_sets = 5"
   )
   expect_warning(
     allowed_groups <- isw:::.get_aquifer_groups(
       many_wells,
-      allow_many_aquifer_parameter_sets = TRUE
+      allow_n_aquifer_parameter_sets = 6
     ),
-    "11 pump-specific aquifer parameter sets"
+    "6 pump-specific aquifer parameter sets"
   )
-  expect_identical(length(unique(allowed_groups$aquifer_id)), 11L)
+  expect_identical(length(unique(allowed_groups$aquifer_id)), 6L)
+
+  expect_warning(
+    unlimited_groups <- isw:::.get_aquifer_groups(
+      many_wells,
+      allow_n_aquifer_parameter_sets = Inf
+    ),
+    "6 pump-specific aquifer parameter sets"
+  )
+  expect_identical(length(unique(unlimited_groups$aquifer_id)), 6L)
+
+  expect_identical(
+    formals(generate_stream_injection_schedule)$allow_n_aquifer_parameter_sets,
+    5
+  )
+  expect_identical(
+    formals(model_aquifer_water_level_change)$allow_n_aquifer_parameter_sets,
+    5
+  )
+})
+
+test_that("the aquifer parameter-set limit is validated", {
+  inputs <- make_constant_head_inputs()
+
+  invalid_limits <- list(0, -1, 1.5, NA_real_, NaN, c(1, 2), "5")
+
+  for (invalid_limit in invalid_limits) {
+    expect_error(
+      isw:::.get_aquifer_groups(
+        inputs$pumping_wells,
+        allow_n_aquifer_parameter_sets = invalid_limit
+      ),
+      "positive whole-number scalar or Inf"
+    )
+  }
 })
 
 test_that("ADF remains the default injection method", {
   inputs <- make_constant_head_inputs()
-  stream_apportionment <- get_adf_stream_apportionment(
+  stream_apportionment <- prep_adf_stream_apportionment(
     inputs$pumping_wells,
     inputs$stream_segments,
     units::set_units(25, "m")
   )
 
-  default_schedule <- get_stream_injection_schedule(
+  default_schedule <- generate_stream_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_segments,
     inputs$evaluation_times,
     stream_apportionment = stream_apportionment
   )
-  explicit_schedule <- get_stream_injection_schedule(
+  explicit_schedule <- generate_stream_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_segments,
@@ -215,13 +301,27 @@ test_that("ADF remains the default injection method", {
 
   expect_equal(default_schedule, explicit_schedule)
 
-  direct_depletion <- get_adf_stream_depletion(
+  mismatched_apportionment <- stream_apportionment
+  mismatched_apportionment$reach_segment_id[[1]] <- "different_segment"
+  expect_error(
+    generate_stream_injection_schedule(
+      inputs$pumping_wells,
+      inputs$pumping_schedules,
+      inputs$stream_segments,
+      inputs$evaluation_times,
+      method = "adf",
+      stream_apportionment = mismatched_apportionment
+    ),
+    "must match stream_segments"
+  )
+
+  direct_depletion <- model_adf_stream_depletion(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     stream_apportionment,
     units::set_units(c(0, 10, 20, 25), "days")
   )
-  reused_schedule <- get_stream_injection_schedule(
+  reused_schedule <- generate_stream_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_segments,
@@ -234,7 +334,7 @@ test_that("ADF remains the default injection method", {
   expect_equal(reused_schedule, explicit_schedule)
 
   expect_error(
-    get_stream_injection_schedule(
+    generate_stream_injection_schedule(
       inputs$pumping_wells,
       inputs$pumping_schedules,
       inputs$stream_segments,
@@ -250,7 +350,7 @@ test_that("ADF remains the default injection method", {
   )
 
   expect_error(
-    get_stream_injection_schedule(
+    generate_stream_injection_schedule(
       inputs$pumping_wells,
       inputs$pumping_schedules,
       inputs$stream_segments,
@@ -266,7 +366,7 @@ test_that("ADF remains the default injection method", {
     geometry = sf::st_sfc(sf::st_point(c(50, 0)), crs = 32615)
   )
   expect_equal(
-    get_aquifer_water_level_change(
+    model_aquifer_water_level_change(
       inputs$pumping_wells,
       inputs$pumping_schedules,
       observation_wells,
@@ -274,21 +374,22 @@ test_that("ADF remains the default injection method", {
       inputs$evaluation_times,
       stream_injection_schedule = explicit_schedule
     )$water_level_change,
-    get_apportioned_aquifer_drawdown(
+    model_aquifer_water_level_change(
       inputs$pumping_wells,
       inputs$pumping_schedules,
       observation_wells,
-      stream_apportionment,
+      inputs$stream_segments,
       inputs$evaluation_times,
-      stream_injection_schedule = explicit_schedule
+      stream_injection_schedule = explicit_schedule,
+      stream_apportionment = stream_apportionment
     )$water_level_change
   )
 })
 
-test_that("injection schedules retain their signed output", {
+test_that("injection schedules report stream-to-aquifer flow as positive", {
   inputs <- make_constant_head_inputs()
 
-  schedule <- get_stream_injection_schedule(
+  schedule <- generate_stream_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_segments,
@@ -297,7 +398,7 @@ test_that("injection schedules retain their signed output", {
   )
 
   expect_true("injection_rate" %in% names(schedule))
-  expect_true(all(as.numeric(schedule$injection_rate[1:2]) < 0))
+  expect_true(all(as.numeric(schedule$injection_rate[1:2]) > 0))
 })
 
 test_that("constant-head schedules retain Date interval boundaries", {
@@ -305,7 +406,7 @@ test_that("constant-head schedules retain Date interval boundaries", {
   inputs$pumping_schedules$t <- as.Date("2025-01-01") + c(0, 10)
   evaluation_dates <- as.Date("2025-01-01") + c(10, 20)
 
-  schedule <- get_stream_injection_schedule(
+  schedule <- generate_stream_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$stream_segments,

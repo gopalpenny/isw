@@ -22,6 +22,7 @@
 #'
 #' check_dimensionality(1, "m", "object") # error because object not a units object
 #' }
+#' @noRd
 check_dimensionality <- function(object, desired_units, variable_name = NULL) {
 
   if (is.null(variable_name)) {

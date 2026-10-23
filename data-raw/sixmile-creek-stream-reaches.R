@@ -12,7 +12,7 @@ sixmile_example_well <- sf::st_sf(
   )
 )
 
-downloaded_stream_reaches <- get_usgs_stream_reaches(
+downloaded_stream_reaches <- fetch_usgs_stream_reaches(
   aoi = sixmile_example_well,
   buffer_distance = units::set_units(10, "km")
 )

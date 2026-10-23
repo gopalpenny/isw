@@ -12,7 +12,7 @@ test_that("check_dimensionality receives a non-units object", {
 })
 
 
-# Check that units errors work properly for get_aquifer_drawdown_ratio
+# Check that units errors work properly for calc_infinite_aquifer_drawdown_ratio
 D <- units::set_units(100, "ft")
 K <- units::set_units(0.001, "ft/sec")
 t <- units::set_units(5, "year")
@@ -20,12 +20,12 @@ V <- 0.2 # unitless
 distance <- units::set_units(1, "mi")
 t <- units::set_units(5, "year")
 
-val <- round(get_aquifer_drawdown_ratio(distance = distance, K = K, D = D, V = V, t = t),6)
+val <- round(calc_infinite_aquifer_drawdown_ratio(distance = distance, K = K, D = D, V = V, t = t),6)
 
-test_that("get_aquifer_drawdown_ratio gives error with wrong input units", {
+test_that("calc_infinite_aquifer_drawdown_ratio gives error with wrong input units", {
   expect_equal(val, units::set_units(-1.540413, "s/ft^2"))
-  expect_error(get_aquifer_drawdown_ratio(distance = 1, K = K, D = D, V = V, t = t))
-  expect_error(get_aquifer_drawdown_ratio(distance = distance, K = 1, D = D, V = V, t = t))
-  expect_error(get_aquifer_drawdown_ratio(distance = distance, K = K, D = 1, V = set_units(1,"ft"), t = t))
-  expect_error(get_aquifer_drawdown_ratio(distance = distance, K = K, D = D, V = V, t = 1))
+  expect_error(calc_infinite_aquifer_drawdown_ratio(distance = 1, K = K, D = D, V = V, t = t))
+  expect_error(calc_infinite_aquifer_drawdown_ratio(distance = distance, K = 1, D = D, V = V, t = t))
+  expect_error(calc_infinite_aquifer_drawdown_ratio(distance = distance, K = K, D = 1, V = set_units(1,"ft"), t = t))
+  expect_error(calc_infinite_aquifer_drawdown_ratio(distance = distance, K = K, D = D, V = V, t = 1))
 })

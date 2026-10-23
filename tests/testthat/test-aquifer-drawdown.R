@@ -37,14 +37,17 @@ make_drawdown_test_inputs <- function() {
     pump_1 = units::set_units(c(100, 0), "m^3/day")
   )
   evaluation_times <- units::set_units(c(0, 10, 20), "days")
-  stream_apportionment <- get_stream_reach_apportionment(
-    pumping_wells,
+  stream_segments <- prep_stream_segments(
     stream_reaches,
     reach_spacing = units::set_units(100, "m"),
-    sample_spacing = units::set_units(25, "m"),
     analysis_crs = 32615
   )
-  stream_depletion <- get_apportioned_stream_depletion(
+  stream_apportionment <- prep_adf_stream_apportionment(
+    pumping_wells,
+    stream_segments,
+    sample_spacing = units::set_units(25, "m")
+  )
+  stream_depletion <- model_adf_stream_depletion(
     pumping_wells,
     pumping_schedules,
     stream_apportionment,
@@ -55,6 +58,7 @@ make_drawdown_test_inputs <- function() {
     pumping_wells = pumping_wells,
     pumping_schedules = pumping_schedules,
     observation_wells = observation_wells,
+    stream_segments = stream_segments,
     stream_apportionment = stream_apportionment,
     stream_depletion = stream_depletion,
     evaluation_times = evaluation_times
@@ -62,7 +66,7 @@ make_drawdown_test_inputs <- function() {
 }
 
 make_injection_schedule <- function(...) {
-  get_stream_injection_schedule(...)
+  generate_stream_injection_schedule(...)
 }
 
 test_that("straight-stream drawdown is the real well minus its image", {
@@ -76,13 +80,13 @@ test_that("straight-stream drawdown is the real well minus its image", {
   real_distance <- sqrt((x2 - x1)^2 + y_diff^2)
   image_distance <- sqrt((x2 + x1)^2 + y_diff^2)
 
-  expected <- get_aquifer_drawdown_ratio(
+  expected <- calc_infinite_aquifer_drawdown_ratio(
     distance = real_distance,
     K = K,
     D = D,
     V = V,
     t = elapsed_time
-  ) - get_aquifer_drawdown_ratio(
+  ) - calc_infinite_aquifer_drawdown_ratio(
     distance = image_distance,
     K = K,
     D = D,
@@ -91,7 +95,7 @@ test_that("straight-stream drawdown is the real well minus its image", {
   )
 
   expect_equal(
-    get_straight_stream_drawdown_ratio(
+    calc_straight_stream_drawdown_ratio(
       x1 = x1,
       x2 = x2,
       y_diff = y_diff,
@@ -104,22 +108,54 @@ test_that("straight-stream drawdown is the real well minus its image", {
   )
 })
 
+test_that("injection grids distinguish boundaries from evaluation times", {
+  pumping_schedules <- tibble::tibble(
+    t = units::set_units(c(0, 10, 30), "days"),
+    pump_1 = units::set_units(c(100, 50, 0), "m^3/day")
+  )
+
+  schedule_grid <- isw:::.get_stream_injection_times(
+    pumping_schedules,
+    evaluation_times = units::set_units(c(0, 20, 40), "days"),
+    injection_times = units::set_units(c(5, 25, 50), "days")
+  )
+
+  expect_named(
+    schedule_grid,
+    c("schedule_boundaries", "boundary_days")
+  )
+  expect_equal(
+    schedule_grid$schedule_boundaries,
+    units::set_units(c(0, 5, 10, 20, 25, 30, 40), "days")
+  )
+  expect_equal(
+    schedule_grid$boundary_days,
+    units::set_units(c(0, 5, 10, 20, 25, 30, 40), "days")
+  )
+})
+
 test_that("interval injection rates average depletion endpoints", {
   pumping_schedules <- tibble::tibble(
     t = units::set_units(c(0, 10), "days"),
     pump_1 = units::set_units(c(100, 0), "m^3/day")
   )
-  stream_depletion <- tibble::tibble(
+  depletion_at_schedule_boundaries <- tibble::tibble(
     pump_id = rep("pump_1", 3),
-    evaluation_time = units::set_units(c(0, 10, 20), "days"),
+    schedule_boundary = units::set_units(c(0, 10, 20), "days"),
     reach_id = rep("stream_1", 3),
     reach_segment_id = rep("stream_1_segment_1", 3),
     stream_depletion_rate = units::set_units(c(0, 20, 40), "m^3/day")
   )
 
-  events <- isw:::.get_interval_average_injection_rate_changes(
-    stream_depletion,
+  schedule <- isw:::.get_interval_average_injection_schedule(
+    depletion_at_schedule_boundaries,
     pumping_schedules
+  )
+  events <- isw:::.get_injection_rate_changes(schedule)
+
+  expect_equal(
+    schedule$injection_rate,
+    units::set_units(c(10, 30), "m^3/day")
   )
 
   expect_equal(
@@ -156,20 +192,22 @@ test_that("zero depletion is assumed at an unevaluated initial boundary", {
   )
 })
 
-test_that("apportioned drawdown superimposes pumping and stream injection", {
+test_that("water-level model superimposes pumping and stream injection", {
   inputs <- make_drawdown_test_inputs()
-  result <- get_apportioned_aquifer_drawdown(
+  result <- model_aquifer_water_level_change(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$observation_wells,
-    inputs$stream_apportionment,
-    inputs$evaluation_times
+    inputs$stream_segments,
+    inputs$evaluation_times,
+    stream_apportionment = inputs$stream_apportionment
   )
   injection_schedule <- make_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
-    inputs$stream_apportionment,
-    inputs$evaluation_times
+    inputs$stream_segments,
+    inputs$evaluation_times,
+    stream_apportionment = inputs$stream_apportionment
   )
   injection_events <- isw:::.get_injection_rate_changes(injection_schedule)
 
@@ -185,8 +223,18 @@ test_that("apportioned drawdown superimposes pumping and stream injection", {
     -inputs$pumping_schedules$pump_1[[1]] * pumping_ratio_10,
     "m"
   )
+  line_ratio_10 <- isw:::.line_sink_aquifer_drawdown_ratio(
+    along_distance = units::set_units(0, "m"),
+    perpendicular_distance = units::set_units(50, "m"),
+    line_length = inputs$stream_segments$represented_length[[1]],
+    K = inputs$pumping_wells$K,
+    D = inputs$pumping_wells$D,
+    V = inputs$pumping_wells$V,
+    t = units::set_units(10, "days"),
+    stream_width = inputs$stream_segments$stream_width[[1]]
+  )
   expected_recovery_10 <- units::set_units(
-    injection_events$injection_rate_change[[1]] * pumping_ratio_10,
+    injection_events$injection_rate_change[[1]] * line_ratio_10,
     "m"
   )
 
@@ -212,7 +260,7 @@ test_that("apportioned drawdown superimposes pumping and stream injection", {
   )
 })
 
-test_that("stream injection diameter equals represented segment length", {
+test_that("stream injection uses finite-line geometry and stream width", {
   inputs <- make_drawdown_test_inputs()
   stream_point <- sf::st_as_sf(
     tibble::tibble(
@@ -227,27 +275,31 @@ test_that("stream injection diameter equals represented segment length", {
   injection_schedule <- make_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
-    inputs$stream_apportionment,
-    evaluation_time
+    inputs$stream_segments,
+    evaluation_time,
+    stream_apportionment = inputs$stream_apportionment
   )
   injection_events <- isw:::.get_injection_rate_changes(injection_schedule)
 
-  result <- get_apportioned_aquifer_drawdown(
+  result <- model_aquifer_water_level_change(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     stream_point,
-    inputs$stream_apportionment,
+    inputs$stream_segments,
     evaluation_time,
-    stream_injection_schedule = injection_schedule
+    stream_injection_schedule = injection_schedule,
+    stream_apportionment = inputs$stream_apportionment
   )
 
-  expected_ratio <- isw:::.theis_aquifer_drawdown_ratio(
-    distance = units::set_units(0, "m"),
+  expected_ratio <- isw:::.line_sink_aquifer_drawdown_ratio(
+    along_distance = units::set_units(0, "m"),
+    perpendicular_distance = units::set_units(0, "m"),
+    line_length = inputs$stream_segments$represented_length[[1]],
     K = inputs$pumping_wells$K,
     D = inputs$pumping_wells$D,
     V = inputs$pumping_wells$V,
     t = evaluation_time,
-    well_diam = inputs$stream_apportionment$represented_length
+    stream_width = inputs$stream_segments$stream_width[[1]]
   )
   expected_recovery <- units::set_units(
     injection_events$injection_rate_change[[1]] * expected_ratio,
@@ -263,21 +315,23 @@ test_that("apportioned drawdown reuses a supplied injection schedule", {
   injection_schedule <- make_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
-    inputs$stream_apportionment,
-    inputs$evaluation_times
+    inputs$stream_segments,
+    inputs$evaluation_times,
+    stream_apportionment = inputs$stream_apportionment
   )
-  internal_result <- get_apportioned_aquifer_drawdown(
+  internal_result <- model_aquifer_water_level_change(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$observation_wells,
-    inputs$stream_apportionment,
-    inputs$evaluation_times
+    inputs$stream_segments,
+    inputs$evaluation_times,
+    stream_apportionment = inputs$stream_apportionment
   )
-  supplied_result <- get_apportioned_aquifer_drawdown(
+  supplied_result <- model_aquifer_water_level_change(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     inputs$observation_wells,
-    inputs$stream_apportionment,
+    inputs$stream_segments,
     inputs$evaluation_times,
     stream_injection_schedule = injection_schedule
   )
@@ -290,19 +344,21 @@ test_that("a supplied injection schedule controls the injection grid", {
   injection_schedule <- make_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
-    inputs$stream_apportionment,
-    inputs$evaluation_times
+    inputs$stream_segments,
+    inputs$evaluation_times,
+    stream_apportionment = inputs$stream_apportionment
   )
 
   expect_error(
-    get_apportioned_aquifer_drawdown(
+    model_aquifer_water_level_change(
       inputs$pumping_wells,
       inputs$pumping_schedules,
       inputs$observation_wells,
-      inputs$stream_apportionment,
+      inputs$stream_segments,
       inputs$evaluation_times,
       injection_times = units::set_units(c(5, 15), "days"),
-      stream_injection_schedule = injection_schedule
+      stream_injection_schedule = injection_schedule,
+      stream_apportionment = inputs$stream_apportionment
     ),
     "injection_times must be NULL"
   )
@@ -313,8 +369,9 @@ test_that("a supplied injection schedule must cover the evaluation period", {
   injection_schedule <- make_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
-    inputs$stream_apportionment,
-    inputs$evaluation_times
+    inputs$stream_segments,
+    inputs$evaluation_times,
+    stream_apportionment = inputs$stream_apportionment
   )
   incomplete_schedule <- injection_schedule[
     injection_schedule$interval_end < units::set_units(20, "days"),
@@ -323,13 +380,14 @@ test_that("a supplied injection schedule must cover the evaluation period", {
   ]
 
   expect_error(
-    get_apportioned_aquifer_drawdown(
+    model_aquifer_water_level_change(
       inputs$pumping_wells,
       inputs$pumping_schedules,
       inputs$observation_wells,
-      inputs$stream_apportionment,
+      inputs$stream_segments,
       inputs$evaluation_times,
-      stream_injection_schedule = incomplete_schedule
+      stream_injection_schedule = incomplete_schedule,
+      stream_apportionment = inputs$stream_apportionment
     ),
     "continuous intervals"
   )
@@ -344,8 +402,9 @@ test_that("injection grid includes pumping times with sparse evaluations", {
   injection_schedule <- make_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
-    inputs$stream_apportionment,
-    evaluation_times = units::set_units(30, "days")
+    inputs$stream_segments,
+    evaluation_times = units::set_units(30, "days"),
+    stream_apportionment = inputs$stream_apportionment
   )
 
   expect_equal(
@@ -363,9 +422,10 @@ test_that("optional injection times refine the schedule", {
   injection_schedule <- make_injection_schedule(
     inputs$pumping_wells,
     inputs$pumping_schedules,
-    inputs$stream_apportionment,
+    inputs$stream_segments,
     evaluation_times = units::set_units(20, "days"),
-    injection_times = units::set_units(c(5, 15), "days")
+    injection_times = units::set_units(c(5, 15), "days"),
+    stream_apportionment = inputs$stream_apportionment
   )
 
   expect_equal(

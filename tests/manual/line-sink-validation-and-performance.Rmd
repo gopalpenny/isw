@@ -1,0 +1,719 @@
+---
+title: "Finite Line-Sink Validation and Performance"
+output:
+  rmarkdown::html_document:
+    toc: true
+    toc_float: true
+    code_folding: show
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  warning = FALSE,
+  fig.width = 8,
+  fig.height = 4.5,
+  out.width = "90%",
+  fig.align = "center"
+)
+```
+
+```{r packages, message = FALSE}
+library(isw)
+library(units)
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(sf)
+```
+
+# Numerical validation
+
+## Purpose
+
+The finite line-sink calculation uses fixed Gauss--Legendre quadrature. This
+article compares that calculation with an independent adaptive numerical
+integration and makes the numerical results visible for review. It is a
+diagnostic article rather than a pass/fail unit test: the tables and figures
+show how the approximation changes with quadrature order and observation
+location.
+
+The comparison uses the package convention that a segment rate is a total
+volumetric rate. Both calculations therefore evaluate the normalized average
+response over the line. The stream width supplies an effective minimum radius
+of half the width.
+
+## Independent adaptive reference
+
+The reference function below evaluates
+
+\[
+R_{line} = \int_{-1/2}^{1/2}
+-\frac{E_1\!\left(r_{eff}^2/(4\alpha t)\right)}{4\pi K D}
+\,d\xi,
+\]
+
+where \(\alpha=KD/V\), \(r_{eff}=\max(r, w/2)\), and
+\(r^2=(x-L\xi)^2+y^2\). It uses `stats::integrate()` rather than the
+Gauss--Legendre implementation in `isw`.
+
+```{r reference-function}
+adaptive_line_response <- function(
+    along_distance,
+    perpendicular_distance,
+    line_length,
+    K,
+    D,
+    V,
+    elapsed_time,
+    stream_width) {
+
+  x <- drop_units(set_units(along_distance, "m"))
+  y <- drop_units(set_units(perpendicular_distance, "m"))
+  line_length <- drop_units(set_units(line_length, "m"))
+  K <- drop_units(set_units(K, "m/day"))
+  D <- drop_units(set_units(D, "m"))
+  elapsed_time <- drop_units(set_units(elapsed_time, "day"))
+  minimum_radius <- drop_units(set_units(stream_width, "m")) / 2
+  diffusivity <- K * D / V
+
+  integrand <- function(line_fraction) {
+    distance <- sqrt((x - line_length * line_fraction)^2 + y^2)
+    effective_distance <- pmax(distance, minimum_radius)
+    dimensionless_time <- effective_distance^2 /
+      (4 * diffusivity * elapsed_time)
+
+    -expint::expint_E1(dimensionless_time) / (4 * pi * K * D)
+  }
+
+  reference <- stats::integrate(
+    integrand,
+    lower = -0.5,
+    upper = 0.5,
+    subdivisions = 2000,
+    rel.tol = 1e-10,
+    stop.on.error = TRUE
+  )$value
+
+  set_units(reference, "day/m^2")
+}
+```
+
+## Evaluation cases
+
+The cases exercise the segment midpoint, an off-center point very near the
+line, an endpoint, an ordinary off-line location, and the far field. The
+default 1 m stream width is used throughout so its numerical consequences are
+visible. The line is 100 m long and centered at the local origin.
+
+```{r cases}
+hydraulics <- list(
+  line_length = set_units(100, "m"),
+  K = set_units(10, "m/day"),
+  D = set_units(20, "m"),
+  V = 0.15,
+  elapsed_time = set_units(10, "day"),
+  stream_width = set_units(1, "m")
+)
+
+cases <- tribble(
+  ~location,              ~along_m, ~perpendicular_m,
+  "Midpoint on line",             0,              0,
+  "Off-center near line",        20,            0.2,
+  "Segment endpoint",            50,              2,
+  "Ordinary off-line point",     20,             20,
+  "Far field",                    0,            500
+)
+
+quadrature_orders <- c(8L, 16L, 32L, 64L)
+cases
+```
+
+## Calculate responses and errors
+
+The following chunk is deliberately visible so parameters, cases, and
+quadrature orders can be changed and rerun during review.
+
+```{r calculate-comparison}
+reference_response <- vapply(
+  seq_len(nrow(cases)),
+  function(case_index) {
+    as.numeric(adaptive_line_response(
+      along_distance = set_units(cases$along_m[[case_index]], "m"),
+      perpendicular_distance =
+        set_units(cases$perpendicular_m[[case_index]], "m"),
+      line_length = hydraulics$line_length,
+      K = hydraulics$K,
+      D = hydraulics$D,
+      V = hydraulics$V,
+      elapsed_time = hydraulics$elapsed_time,
+      stream_width = hydraulics$stream_width
+    ))
+  },
+  numeric(1)
+)
+
+comparison <- tidyr::crossing(
+  case_index = seq_len(nrow(cases)),
+  quadrature_order = quadrature_orders
+) |>
+  mutate(
+    location = cases$location[case_index],
+    along_m = cases$along_m[case_index],
+    perpendicular_m = cases$perpendicular_m[case_index],
+    reference_day_per_m2 = reference_response[case_index],
+    quadrature_day_per_m2 = vapply(
+      seq_len(n()),
+      function(result_index) {
+        as.numeric(isw:::.line_sink_aquifer_drawdown_ratio(
+          along_distance = set_units(along_m[[result_index]], "m"),
+          perpendicular_distance =
+            set_units(perpendicular_m[[result_index]], "m"),
+          line_length = hydraulics$line_length,
+          K = hydraulics$K,
+          D = hydraulics$D,
+          V = hydraulics$V,
+          t = hydraulics$elapsed_time,
+          stream_width = hydraulics$stream_width,
+          quadrature_order = quadrature_order[[result_index]]
+        ))
+      },
+      numeric(1)
+    ),
+    absolute_error_day_per_m2 =
+      abs(quadrature_day_per_m2 - reference_day_per_m2),
+    relative_error_percent = 100 * absolute_error_day_per_m2 /
+      abs(reference_day_per_m2)
+  ) |>
+  select(-case_index)
+```
+
+## Review the values
+
+The full table retains the signed response values as well as absolute and
+relative errors.
+
+```{r full-results}
+comparison |>
+  mutate(across(
+    c(
+      reference_day_per_m2,
+      quadrature_day_per_m2,
+      absolute_error_day_per_m2,
+      relative_error_percent
+    ),
+    ~ signif(.x, 6)
+  )) |>
+  knitr::kable()
+```
+
+This compact table makes convergence by quadrature order easier to compare.
+
+```{r error-table}
+comparison |>
+  select(location, quadrature_order, relative_error_percent) |>
+  mutate(relative_error_percent = signif(relative_error_percent, 5)) |>
+  pivot_wider(
+    names_from = quadrature_order,
+    values_from = relative_error_percent,
+    names_prefix = "order_"
+  ) |>
+  knitr::kable(
+    caption = "Absolute relative error (%) compared with adaptive integration"
+  )
+```
+
+```{r error-plot}
+ggplot(
+  comparison,
+  aes(
+    x = quadrature_order,
+    y = pmax(relative_error_percent, 1e-12),
+    color = location
+  )
+) +
+  geom_line(linewidth = 0.7) +
+  geom_point(size = 2) +
+  scale_x_continuous(breaks = quadrature_orders) +
+  scale_y_log10() +
+  labs(
+    x = "Gauss-Legendre quadrature order",
+    y = "Absolute relative error (%)",
+    color = "Observation location"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+## Focus on the default order
+
+`isw` currently uses order 16 by default. This table isolates that order
+so its approximation error can be reviewed directly before deciding whether
+the default should change.
+
+```{r default-order}
+comparison |>
+  filter(quadrature_order == 16L) |>
+  transmute(
+    location,
+    along_m,
+    perpendicular_m,
+    reference_day_per_m2 = signif(reference_day_per_m2, 7),
+    quadrature_day_per_m2 = signif(quadrature_day_per_m2, 7),
+    relative_error_percent = signif(relative_error_percent, 5)
+  ) |>
+  knitr::kable()
+```
+
+## Short-line convergence to a point well
+
+A finite line carrying a fixed total volumetric rate should approach a point
+well at the line midpoint as the line length approaches zero. This comparison
+is also sensitive to an incorrect linear-rate convention: multiplying by line
+length, rather than using total segment rate, would prevent convergence to the
+point-well response shown here.
+
+The point-well reference uses `well_diam = 1 m`, matching the line calculation's
+`stream_width = 1 m`. The off-line midpoint case isolates perpendicular
+distance, the off-center case includes both coordinate directions, and the
+on-line case exercises the common minimum-radius treatment.
+
+```{r short-line-cases}
+short_line_cases <- tribble(
+  ~location,              ~along_m, ~perpendicular_m,
+  "Midpoint off line",             0,             20,
+  "Off-center off line",          20,             20,
+  "Midpoint on line",              0,              0
+)
+
+line_lengths_m <- c(100, 30, 10, 3, 1, 0.3, 0.1)
+```
+
+```{r calculate-short-line-convergence}
+short_line_convergence <- tidyr::crossing(
+  case_index = seq_len(nrow(short_line_cases)),
+  line_length_m = line_lengths_m
+) |>
+  mutate(
+    location = short_line_cases$location[case_index],
+    along_m = short_line_cases$along_m[case_index],
+    perpendicular_m = short_line_cases$perpendicular_m[case_index],
+    point_distance_m = sqrt(along_m^2 + perpendicular_m^2),
+    point_response_day_per_m2 = vapply(
+      seq_len(n()),
+      function(result_index) {
+        as.numeric(isw:::.theis_aquifer_drawdown_ratio(
+          distance = set_units(point_distance_m[[result_index]], "m"),
+          K = hydraulics$K,
+          D = hydraulics$D,
+          V = hydraulics$V,
+          t = hydraulics$elapsed_time,
+          well_diam = hydraulics$stream_width
+        ))
+      },
+      numeric(1)
+    ),
+    line_response_day_per_m2 = vapply(
+      seq_len(n()),
+      function(result_index) {
+        as.numeric(isw:::.line_sink_aquifer_drawdown_ratio(
+          along_distance = set_units(along_m[[result_index]], "m"),
+          perpendicular_distance =
+            set_units(perpendicular_m[[result_index]], "m"),
+          line_length = set_units(line_length_m[[result_index]], "m"),
+          K = hydraulics$K,
+          D = hydraulics$D,
+          V = hydraulics$V,
+          t = hydraulics$elapsed_time,
+          stream_width = hydraulics$stream_width,
+          quadrature_order = 16L
+        ))
+      },
+      numeric(1)
+    ),
+    relative_difference_percent = 100 *
+      abs(line_response_day_per_m2 - point_response_day_per_m2) /
+      abs(point_response_day_per_m2)
+  ) |>
+  select(-case_index)
+```
+
+```{r short-line-table}
+short_line_convergence |>
+  transmute(
+    location,
+    line_length_m,
+    point_response_day_per_m2 = signif(point_response_day_per_m2, 7),
+    line_response_day_per_m2 = signif(line_response_day_per_m2, 7),
+    relative_difference_percent = signif(relative_difference_percent, 5)
+  ) |>
+  knitr::kable()
+```
+
+```{r short-line-plot}
+ggplot(
+  short_line_convergence,
+  aes(
+    x = line_length_m,
+    y = pmax(relative_difference_percent, 1e-12),
+    color = location
+  )
+) +
+  geom_line(linewidth = 0.7) +
+  geom_point(size = 2) +
+  scale_x_log10(breaks = rev(line_lengths_m)) +
+  scale_y_log10() +
+  labs(
+    x = "Line length (m)",
+    y = "Difference from point-well response (%)",
+    color = "Observation location"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+For each location, the relative difference should decrease toward zero as the
+line becomes short relative to the observation distance or the shared minimum
+radius.
+
+These results should be interpreted in the context of the model's intended
+accuracy and computational cost. In particular, the on-line and near-line
+cases are intentionally demanding because a fixed quadrature rule may not
+place a source point inside the narrow width-regularized region.
+
+# Performance and memory scaling
+
+## Purpose
+
+This article measures how the finite line-sink implementation scales as the
+number of stream segments increases. It focuses on the core operations used by
+the constant-head method:
+
+1. Expand line segments into Gauss--Legendre source points.
+2. Calculate distances from all collocation targets to all source points.
+3. Evaluate and aggregate the finite-line response matrix.
+4. Factor and solve the dense constant-head matrix.
+
+The code and results are visible so the segment counts, quadrature order, and
+model parameters can be changed and rerun. Elapsed times are specific to the
+computer running the article; memory dimensions and asymptotic relationships
+are platform-independent.
+
+## Expected scaling
+
+Let \(S\) be the number of stream segments, \(M\) the number of observation
+targets, \(q\) the quadrature order, and \(e\) the average number of straight
+edges per segment.
+
+For ordinary observation-well calculations, the stored distance matrix has
+\(M S q e\) entries. For the constant-head calculation, every segment midpoint
+is a target, so \(M=S\) and the distance matrix has \(S^2 q e\) entries. The
+aggregated response matrix has \(S^2\) entries, and its dense QR factorization
+requires approximately cubic work in \(S\).
+
+The table below shows the raw numeric storage implied by these dimensions for
+single-edge segments at the default quadrature order. Actual R objects are
+larger because they also carry units, geometry, dimensions, and other metadata.
+
+```{r theoretical-memory}
+quadrature_order <- 16L
+theoretical_segment_counts <- c(100L, 250L, 500L, 1000L, 2000L)
+
+theoretical_memory <- tibble(
+  segments = theoretical_segment_counts,
+  distance_values = quadrature_order * segments^2,
+  distance_matrix_mib = 8 * distance_values / 1024^2,
+  response_matrix_mib = 8 * segments^2 / 1024^2
+) |>
+  mutate(across(
+    c(distance_matrix_mib, response_matrix_mib),
+    ~ round(.x, 2)
+  ))
+
+knitr::kable(theoretical_memory)
+```
+
+## Benchmark setup
+
+The benchmark uses one straight reach divided into equal 100 m segments. Each
+segment therefore has one edge and 16 quadrature points. Its midpoint is used
+as the constant-head collocation target. The hydraulic parameters remain fixed
+across sizes.
+
+The benchmark isolates one response matrix and one right-hand side. A complete
+schedule can reuse response matrices and QR factorizations for repeated elapsed
+times, but it may also evaluate additional matrices for historical injection
+pulses. Consequently, these measurements describe the core cost rather than a
+universal runtime for every schedule.
+
+### Negligible-response shortcut
+
+The Theis response uses the exponential integral \(E_1(u)\). The implementation
+does not call `expint()` when the dimensionless argument \(u\) is greater than
+700; it assigns a response of zero directly. At that threshold,
+\(E_1(700)\) is approximately \(1.4 \times 10^{-307}\), so the omitted response
+is negligible at ordinary model precision. This also avoids numerical
+underflow warnings and saves the special-function calculation for distant
+source--target pairs or very short elapsed times. The shortcut is applied while
+evaluating response matrices, after distances and elapsed times are known.
+
+The live benchmark stops at 400 segments so the article remains practical to
+rerun interactively. The theoretical memory table extends to 2,000 segments.
+Larger measured cases can be explored by editing `segment_counts`, with runtime
+and memory requirements depending on the computer.
+
+```{r benchmark-parameters}
+segment_counts <- c(25L, 50L, 100L, 200L, 400L)
+segment_length_m <- 100
+
+K <- set_units(10, "m/day")
+D <- set_units(20, "m")
+V <- 0.15
+elapsed_time <- set_units(10, "day")
+```
+
+```{r benchmark-function}
+object_mib <- function(x) {
+  as.numeric(object.size(x)) / 1024^2
+}
+
+elapsed <- function(expression) {
+  gc()
+  unname(system.time(force(expression))[["elapsed"]])
+}
+
+benchmark_segment_count <- function(number_of_segments) {
+  stream_reach <- st_sf(
+    reach_id = "benchmark_reach",
+    geometry = st_sfc(
+      st_linestring(matrix(
+        c(
+          0, 0,
+          number_of_segments * segment_length_m, 0
+        ),
+        ncol = 2,
+        byrow = TRUE
+      )),
+      crs = 32615
+    )
+  )
+  stream_segments <- prep_stream_segments(
+    stream_reach,
+    reach_spacing = set_units(segment_length_m, "m")
+  )
+  stopifnot(nrow(stream_segments) == number_of_segments)
+  collocation_targets <- st_sf(
+    reach_segment_id = stream_segments$reach_segment_id,
+    geometry = stream_segments$model_point
+  )
+
+  prepare_seconds <- elapsed({
+    line_elements <- isw:::.prepare_line_elements(
+      stream_segments,
+      quadrature_order = quadrature_order
+    )
+  })
+  distance_seconds <- elapsed({
+    response_operator <- isw:::.prepare_line_response_operator(
+      collocation_targets,
+      line_elements
+    )
+  })
+  response_seconds <- elapsed({
+    response_matrix <- isw:::.evaluate_line_response_operator(
+      response_operator,
+      K = K,
+      D = D,
+      V = V,
+      elapsed_time = elapsed_time
+    )
+  })
+  factor_and_solve_seconds <- elapsed({
+    numeric_response_matrix <- units::drop_units(units::set_units(
+      response_matrix,
+      "days/m^2",
+      mode = "standard"
+    ))
+    response_qr <- qr(numeric_response_matrix)
+    condition_number <- kappa(response_qr, exact = FALSE)
+    solved_rates <- qr.coef(
+      response_qr,
+      matrix(1, nrow = number_of_segments, ncol = 1)
+    )
+  })
+
+  stopifnot(
+    all(is.finite(response_matrix)),
+    all(is.finite(solved_rates)),
+    is.finite(condition_number)
+  )
+
+  tibble(
+    segments = number_of_segments,
+    quadrature_points = nrow(line_elements$quadrature_points),
+    distance_values = length(response_operator$distances),
+    prepare_seconds,
+    distance_seconds,
+    response_seconds,
+    factor_and_solve_seconds,
+    line_elements_mib = object_mib(line_elements),
+    response_operator_mib = object_mib(response_operator),
+    response_matrix_mib = object_mib(response_matrix),
+    qr_factorization_mib = object_mib(response_qr),
+    matrix_condition_number = condition_number
+  )
+}
+```
+
+## Run the benchmark
+
+Each size is run once because the larger operations are deterministic and the
+purpose is to expose approximate scaling, not to compare small timing
+differences between competing implementations. Rerunning the article provides
+a fresh measurement on the current machine.
+
+```{r run-benchmark}
+benchmark_results <- bind_rows(lapply(
+  segment_counts,
+  benchmark_segment_count
+))
+```
+
+## Timing results
+
+```{r timing-table}
+benchmark_results |>
+  select(
+    segments,
+    quadrature_points,
+    prepare_seconds,
+    distance_seconds,
+    response_seconds,
+    factor_and_solve_seconds
+  ) |>
+  mutate(across(ends_with("seconds"), ~ signif(.x, 4))) |>
+  knitr::kable()
+```
+
+```{r timing-plot}
+timing_long <- benchmark_results |>
+  select(segments, ends_with("seconds")) |>
+  pivot_longer(
+    -segments,
+    names_to = "stage",
+    values_to = "seconds"
+  ) |>
+  mutate(
+    stage = recode(
+      stage,
+      prepare_seconds = "Prepare quadrature geometry",
+      distance_seconds = "Calculate distances",
+      response_seconds = "Evaluate response matrix",
+      factor_and_solve_seconds = "Factor and solve matrix"
+    )
+  )
+
+ggplot(
+  timing_long,
+  aes(
+    x = segments,
+    y = pmax(seconds, 1e-4),
+    color = stage
+  )
+) +
+  geom_line(linewidth = 0.7) +
+  geom_point(size = 2) +
+  scale_x_log10(breaks = segment_counts) +
+  scale_y_log10() +
+  labs(
+    x = "Stream segments",
+    y = "Elapsed time (seconds)",
+    color = "Stage"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+## Memory results
+
+The response-operator size includes the target-to-quadrature distance matrix
+and the vectors needed to aggregate quadrature points back to source segments.
+The objects in this table coexist during a constant-head solve, although R may
+temporarily allocate additional copies while calculating responses and matrix
+factorizations.
+
+```{r memory-table}
+benchmark_results |>
+  select(
+    segments,
+    distance_values,
+    line_elements_mib,
+    response_operator_mib,
+    response_matrix_mib,
+    qr_factorization_mib
+  ) |>
+  mutate(across(ends_with("mib"), ~ round(.x, 3))) |>
+  knitr::kable()
+```
+
+```{r memory-plot}
+memory_long <- benchmark_results |>
+  select(segments, ends_with("mib")) |>
+  pivot_longer(
+    -segments,
+    names_to = "object",
+    values_to = "mib"
+  ) |>
+  mutate(
+    object = recode(
+      object,
+      line_elements_mib = "Prepared line elements",
+      response_operator_mib = "Response operator",
+      response_matrix_mib = "Response matrix",
+      qr_factorization_mib = "QR factorization"
+    )
+  )
+
+ggplot(
+  memory_long,
+  aes(x = segments, y = mib, color = object)
+) +
+  geom_line(linewidth = 0.7) +
+  geom_point(size = 2) +
+  scale_x_log10(breaks = segment_counts) +
+  scale_y_log10() +
+  labs(
+    x = "Stream segments",
+    y = "Measured object size (MiB)",
+    color = "Object"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+## Conditioning observed during the benchmark
+
+Matrix conditioning is a property of the geometry, hydraulic parameters,
+elapsed time, and segment discretization. It is shown separately because a
+large condition number is a numerical-stability warning rather than a direct
+measure of computational cost.
+
+```{r condition-table}
+benchmark_results |>
+  transmute(
+    segments,
+    matrix_condition_number = signif(matrix_condition_number, 6)
+  ) |>
+  knitr::kable()
+```
+
+## Interpretation
+
+The distance operator and response evaluation grow quadratically for the
+constant-head geometry, while dense factorization eventually grows cubically.
+The measured tables show when those costs become material on the machine used
+for analysis. They can be used to decide whether the current implementation is
+adequate for expected networks, whether quadrature construction should be
+optimized, or whether a practical segment-count warning should be documented.

@@ -1,6 +1,3 @@
-# TODO: Before finalizing this public interface, review the source options,
-# buffering and clipping defaults, and retained USGS attributes.
-
 #' Retrieve USGS stream reaches
 #'
 #' Retrieve stream-flowline geometry from the U.S. Geological Survey 3D
@@ -26,6 +23,11 @@
 #'   flowline. Remaining USGS attributes are retained when `keep_attributes`
 #'   is `TRUE`.
 #'
+#' @section Development status:
+#' This interface is provisional. Its supported hydrography sources, buffering
+#' and clipping defaults, and handling of retained USGS attributes may change
+#' before the package's first stable release.
+#'
 #' @details
 #' This function uses [nhdplusTools::get_3dhp()] to query the 3DHP web service.
 #' USGS is transitioning `nhdplusTools` to its new name, `hydrogeofetch`, while
@@ -46,7 +48,7 @@
 #' \dontrun{
 #' pumping_wells <- example_pumping_wells[1, ]
 #'
-#' stream_reaches <- get_usgs_stream_reaches(
+#' stream_reaches <- fetch_usgs_stream_reaches(
 #'   aoi = pumping_wells,
 #'   buffer_distance = units::set_units(10, "km")
 #' )
@@ -57,7 +59,7 @@
 #' }
 #'
 #' @export
-get_usgs_stream_reaches <- function(
+fetch_usgs_stream_reaches <- function(
     aoi,
     buffer_distance = NULL,
     source = "3dhp",
@@ -167,7 +169,7 @@ get_usgs_stream_reaches <- function(
 #'
 #' @return `aoi`, unchanged.
 #'
-#' @keywords internal
+#' @noRd
 .validate_usgs_stream_aoi <- function(aoi, buffer_distance) {
 
   if (!inherits(aoi, "sf")) {
@@ -240,7 +242,7 @@ get_usgs_stream_reaches <- function(
 #'
 #' @return A one-feature `sf` polygon in the CRS of `aoi`.
 #'
-#' @keywords internal
+#' @noRd
 .make_usgs_stream_query_area <- function(aoi, buffer_distance) {
 
   input_crs <- sf::st_crs(aoi)
@@ -285,14 +287,14 @@ get_usgs_stream_reaches <- function(
 #'
 #' @return An `sf` object returned by the USGS `get_3dhp()` function.
 #'
-#' @keywords internal
+#' @noRd
 .fetch_3dhp_flowlines <- function(query_area) {
 
   if (!requireNamespace("nhdplusTools", quietly = TRUE)) {
     stop(
       "Package 'nhdplusTools' is required to retrieve USGS stream data. ",
       "Install it from CRAN before calling ",
-      "get_usgs_stream_reaches()."
+      "fetch_usgs_stream_reaches()."
     )
   }
 

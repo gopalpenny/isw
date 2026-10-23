@@ -4,9 +4,9 @@
 #' for use with analytical response functions.
 #'
 #' @param pumping_schedules A pumping-schedule object accepted by
-#'   [`.validate_pumping_schedules()`].
+#'   `.validate_pumping_schedules()`.
 #' @param pumping_wells A pumping-well object accepted by
-#'   [`.validate_pumping_wells()`].
+#'   `.validate_pumping_wells()`.
 #'
 #' @return A tibble with one row per nonzero change in pumping rate and columns
 #'   `pump_id`, `pumping_time`, and `pumping_rate_change`. Pumping times and
@@ -23,20 +23,21 @@
 #' and negative changes are retained. Pumps with no nonzero changes contribute
 #' no rows to the returned table.
 #'
-#' @keywords internal
+#' @noRd
 .get_pumping_rate_changes <- function(
     pumping_schedules,
     pumping_wells) {
 
   .validate_pumping_schedules(pumping_schedules, pumping_wells)
   normalized_times <- .normalize_time_inputs(pumping_schedules$t)
-  pumping_times <- normalized_times$pumping_times
+  pumping_times <- normalized_times$normalized_schedule_times
 
   pump_ids <- pumping_wells$pump_id
   event_pump_ids <- character()
   event_times <- pumping_times[0]
   event_rate_changes <- pumping_schedules[[pump_ids[[1]]]][0]
 
+  # Convert each pump's scheduled rates into nonzero rate-change events.
   for (pump_id in pump_ids) {
     pumping_rates <- pumping_schedules[[pump_id]]
     previous_rates <- c(
@@ -70,9 +71,9 @@
 #' those changes can affect the modeled response.
 #'
 #' @param pumping_schedules A pumping-schedule object accepted by
-#'   [`.validate_pumping_schedules()`].
+#'   `.validate_pumping_schedules()`.
 #' @param pumping_wells A pumping-well object accepted by
-#'   [`.validate_pumping_wells()`].
+#'   `.validate_pumping_wells()`.
 #' @param evaluation_times Either `NULL`, a `Date` vector, or a `units` vector
 #'   with time dimensions. When `NULL`, `pumping_schedules$t` is used.
 #'
@@ -159,12 +160,13 @@
 #'   evaluation_times = evaluation_times
 #' )
 #'
-#' @keywords internal
+#' @noRd
 .get_pumping_response_times <- function(
     pumping_schedules,
     pumping_wells,
     evaluation_times = NULL) {
 
+  .validate_evaluation_times(evaluation_times, pumping_schedules$t)
   pumping_rate_changes <- .get_pumping_rate_changes(
     pumping_schedules,
     pumping_wells
@@ -175,8 +177,8 @@
     evaluation_times
   )
 
-  normalized_evaluation_times <- normalized_times$evaluation_times
-  output_evaluation_times <- normalized_times$output_evaluation_times
+  normalized_evaluation_times <- normalized_times$normalized_target_times
+  output_evaluation_times <- normalized_times$output_target_times
 
   evaluation_indices_by_event <- lapply(
     seq_len(nrow(pumping_rate_changes)),

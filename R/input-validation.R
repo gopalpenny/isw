@@ -13,7 +13,7 @@
 #' reference system. Every feature must have nonempty `POINT` geometry with
 #' finite horizontal coordinates.
 #'
-#' @keywords internal
+#' @noRd
 .validate_point_sf <- function(x, object_name) {
 
   if (!inherits(x, "sf")) {
@@ -65,15 +65,23 @@
 #' and a defined coordinate reference system. Hydraulic conductivity, aquifer
 #' thickness, and well diameter must retain their physical units. The identifier
 #' `t` is reserved for the pumping-schedule time column and cannot be used as a
-#' `pump_id`.
+#' `pump_id`. `stream_width` is reserved for stream segments and is rejected on
+#' pumping-well objects.
 #'
 #' This function validates inputs but does not transform geometry or add a
 #' default `well_diam` column.
 #'
-#' @keywords internal
+#' @noRd
 .validate_pumping_wells <- function(pumping_wells) {
 
   .validate_point_sf(pumping_wells, "pumping_wells")
+
+  if ("stream_width" %in% names(pumping_wells)) {
+    stop(
+      "pumping_wells cannot contain stream_width; use well_diam for ",
+      "pumping-well radius regularization."
+    )
+  }
 
   required_columns <- c("pump_id", "K", "D", "V")
   missing_columns <- setdiff(required_columns, names(pumping_wells))
@@ -187,7 +195,7 @@
 #'
 #' This function validates inputs but does not transform geometry.
 #'
-#' @keywords internal
+#' @noRd
 .validate_observation_wells <- function(observation_wells) {
 
   if (is.null(observation_wells)) {
@@ -236,19 +244,27 @@
 #' and a defined coordinate reference system. Any defined CRS is accepted;
 #' projection into the model CRS occurs during later spatial preparation.
 #'
-#' Additional attribute columns are permitted but are not required. The
-#' user-supplied `reach_id` identifies the original line geometry. A later
-#' discretization function will divide these geometries into reach segments and
-#' assign a separate `reach_segment_id` to each one.
+#' Additional attribute columns are permitted but are not required, except
+#' `well_diam`, which is reserved for pumping wells. Stream geometry uses
+#' `stream_width`. The user-supplied `reach_id` identifies the original line
+#' geometry. A later discretization function will divide these geometries into
+#' reach segments and assign a separate `reach_segment_id` to each one.
 #'
 #' This function validates inputs but does not transform, split, or otherwise
 #' modify their geometry.
 #'
-#' @keywords internal
+#' @noRd
 .validate_stream_reaches <- function(stream_reaches) {
 
   if (!inherits(stream_reaches, "sf")) {
     stop("stream_reaches must be an sf object.")
+  }
+
+  if ("well_diam" %in% names(stream_reaches)) {
+    stop(
+      "stream_reaches cannot contain well_diam; use stream_width for ",
+      "stream geometry."
+    )
   }
 
   if (nrow(stream_reaches) == 0) {
@@ -333,7 +349,7 @@
 #' This function validates inputs but does not convert dates or time units to
 #' elapsed days.
 #'
-#' @keywords internal
+#' @noRd
 .validate_time_vector <- function(x, object_name) {
 
   if (length(x) == 0) {
@@ -377,7 +393,7 @@
 #'   named `t` and one pumping-rate column per pumping well. Pumping-rate column
 #'   names must match `pumping_wells$pump_id` exactly.
 #' @param pumping_wells A pumping-well object accepted by
-#'   [`.validate_pumping_wells()`].
+#'   `.validate_pumping_wells()`.
 #'
 #' @return The `pumping_schedules` object, unchanged.
 #'
@@ -395,7 +411,7 @@
 #' This function validates inputs but does not normalize time units or convert
 #' pumping rates to changes in pumping rate.
 #'
-#' @keywords internal
+#' @noRd
 .validate_pumping_schedules <- function(pumping_schedules, pumping_wells) {
 
   .validate_pumping_wells(pumping_wells)
@@ -463,6 +479,48 @@
   pumping_schedules
 }
 
+# Validate optional target times against a schedule time axis.
+.validate_target_times <- function(
+    target_times,
+    schedule_times,
+    target_name) {
+
+  .validate_time_vector(schedule_times, "pumping_schedules$t")
+
+  if (is.null(target_times)) {
+    return(NULL)
+  }
+
+  .validate_time_vector(target_times, target_name)
+
+  target_is_date <- inherits(target_times, "Date")
+  schedule_is_date <- inherits(schedule_times, "Date")
+
+  if (target_is_date != schedule_is_date) {
+    stop(
+      target_name, " and pumping_schedules$t must both use Date values ",
+      "or both use units time values."
+    )
+  }
+
+  if (target_is_date) {
+    before_schedule <- target_times < schedule_times[1]
+  } else {
+    target_days <- units::set_units(target_times, "days")
+    schedule_start_days <- units::set_units(schedule_times[1], "days")
+    before_schedule <- target_days < schedule_start_days
+  }
+
+  if (any(before_schedule)) {
+    stop(
+      target_name,
+      " cannot occur before the first pumping-schedule time."
+    )
+  }
+
+  target_times
+}
+
 #' Validate evaluation-time inputs
 #'
 #' Validate optional model evaluation times against the pumping-schedule time
@@ -488,42 +546,13 @@
 #' This function validates inputs but does not apply that default or normalize
 #' time values to elapsed days.
 #'
-#' @keywords internal
+#' @noRd
 .validate_evaluation_times <- function(evaluation_times, schedule_times) {
-
-  .validate_time_vector(schedule_times, "pumping_schedules$t")
-
-  if (is.null(evaluation_times)) {
-    return(NULL)
-  }
-
-  .validate_time_vector(evaluation_times, "evaluation_times")
-
-  evaluation_is_date <- inherits(evaluation_times, "Date")
-  schedule_is_date <- inherits(schedule_times, "Date")
-
-  if (evaluation_is_date != schedule_is_date) {
-    stop(
-      "evaluation_times and pumping_schedules$t must both use Date values ",
-      "or both use units time values."
-    )
-  }
-
-  if (evaluation_is_date) {
-    before_schedule <- evaluation_times < schedule_times[1]
-  } else {
-    evaluation_days <- units::set_units(evaluation_times, "days")
-    schedule_start_days <- units::set_units(schedule_times[1], "days")
-    before_schedule <- evaluation_days < schedule_start_days
-  }
-
-  if (any(before_schedule)) {
-    stop(
-      "evaluation_times cannot occur before the first pumping-schedule time."
-    )
-  }
-
-  evaluation_times
+  .validate_target_times(
+    evaluation_times,
+    schedule_times,
+    "evaluation_times"
+  )
 }
 
 #' Validate optional stream-injection times
@@ -538,40 +567,11 @@
 #' @return `NULL` when `injection_times` is `NULL`; otherwise, the
 #'   `injection_times` vector, unchanged.
 #'
-#' @keywords internal
+#' @noRd
 .validate_injection_times <- function(injection_times, schedule_times) {
-
-  .validate_time_vector(schedule_times, "pumping_schedules$t")
-
-  if (is.null(injection_times)) {
-    return(NULL)
-  }
-
-  .validate_time_vector(injection_times, "injection_times")
-
-  injection_is_date <- inherits(injection_times, "Date")
-  schedule_is_date <- inherits(schedule_times, "Date")
-
-  if (injection_is_date != schedule_is_date) {
-    stop(
-      "injection_times and pumping_schedules$t must both use Date values ",
-      "or both use units time values."
-    )
-  }
-
-  if (injection_is_date) {
-    before_schedule <- injection_times < schedule_times[1]
-  } else {
-    injection_days <- units::set_units(injection_times, "days")
-    schedule_start_days <- units::set_units(schedule_times[1], "days")
-    before_schedule <- injection_days < schedule_start_days
-  }
-
-  if (any(before_schedule)) {
-    stop(
-      "injection_times cannot occur before the first pumping-schedule time."
-    )
-  }
-
-  injection_times
+  .validate_target_times(
+    injection_times,
+    schedule_times,
+    "injection_times"
+  )
 }

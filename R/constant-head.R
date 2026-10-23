@@ -1,9 +1,23 @@
 # Group pumping wells by aquifer-response parameters.
 .get_aquifer_groups <- function(
     pumping_wells,
-    allow_many_aquifer_parameter_sets = FALSE) {
+    allow_n_aquifer_parameter_sets = 5) {
 
   .validate_pumping_wells(pumping_wells)
+
+  if (!is.numeric(allow_n_aquifer_parameter_sets) ||
+      length(allow_n_aquifer_parameter_sets) != 1L ||
+      is.na(allow_n_aquifer_parameter_sets) ||
+      allow_n_aquifer_parameter_sets < 1 ||
+      (!is.infinite(allow_n_aquifer_parameter_sets) &&
+       allow_n_aquifer_parameter_sets !=
+         floor(allow_n_aquifer_parameter_sets))) {
+    stop(
+      "allow_n_aquifer_parameter_sets must be a positive whole-number ",
+      "scalar or Inf."
+    )
+  }
+
   normalized_K <- as.numeric(units::set_units(
     pumping_wells$K,
     "m/day",
@@ -53,12 +67,13 @@
 
   number_of_parameter_sets <- length(unique(aquifer_id))
 
-  if (number_of_parameter_sets > 10 &&
-      !isTRUE(allow_many_aquifer_parameter_sets)) {
+  if (number_of_parameter_sets > allow_n_aquifer_parameter_sets) {
     stop(
       "Constant-head injection found ", number_of_parameter_sets,
-      " aquifer parameter sets. More than 10 requires ",
-      "allow_many_aquifer_parameter_sets = TRUE."
+      " aquifer parameter sets, exceeding ",
+      "allow_n_aquifer_parameter_sets = ",
+      allow_n_aquifer_parameter_sets, ". Increase the allowed number to ",
+      "run this calculation."
     )
   }
 
@@ -78,58 +93,26 @@
   )
 }
 
-# Calculate a discrete-well response matrix between stream model points.
-.get_stream_well_response_matrix <- function(
-    stream_points,
-    K,
-    D,
-    V,
-    elapsed_time) {
-
-  number_of_points <- nrow(stream_points)
-  distance_matrix <- sf::st_distance(stream_points, stream_points)
-  distance_vector <- units::set_units(
-    as.numeric(distance_matrix),
-    units::deparse_unit(distance_matrix),
-    mode = "standard"
-  )
-  response <- .theis_aquifer_drawdown_ratio(
-    distance = distance_vector,
-    K = K,
-    D = D,
-    V = V,
-    t = elapsed_time,
-    well_diam = rep(stream_points$well_diam, each = number_of_points)
-  )
-  response <- units::set_units(
-    response,
-    "days/m^2",
-    mode = "standard"
-  )
-
-  matrix(
-    as.numeric(response),
-    nrow = number_of_points,
-    ncol = number_of_points
-  )
-}
-
 # Calculate pump-specific signed head change at stream model points.
 .get_pumping_head_at_stream <- function(
     pumping_well,
     pumping_events,
-    stream_points,
+    stream_collocation_points,
     evaluation_day) {
 
   contributing_rows <- which(pumping_events$pumping_time < evaluation_day)
-  pumping_head <- numeric(nrow(stream_points))
+  pumping_head <- numeric(nrow(stream_collocation_points))
 
   if (length(contributing_rows) == 0) {
     return(pumping_head)
   }
 
-  pump_distances <- sf::st_distance(pumping_well, stream_points)[1, ]
+  pump_distances <- sf::st_distance(
+    pumping_well,
+    stream_collocation_points
+  )[1, ]
 
+  # Sum the head response from every earlier pumping-rate change for this pump.
   for (event_row in contributing_rows) {
     response <- .theis_aquifer_drawdown_ratio(
       distance = pump_distances,
@@ -162,12 +145,13 @@
     pumping_schedules,
     stream_segments,
     time_grid,
-    allow_many_aquifer_parameter_sets = FALSE) {
+    allow_n_aquifer_parameter_sets = 5,
+    quadrature_order = 16L) {
 
   .validate_stream_segments(stream_segments)
   aquifer_groups <- .get_aquifer_groups(
     pumping_wells,
-    allow_many_aquifer_parameter_sets
+    allow_n_aquifer_parameter_sets = allow_n_aquifer_parameter_sets
   )
   analysis_crs <- sf::st_crs(stream_segments)
   prepared_pumping_wells <- sf::st_transform(
@@ -184,17 +168,27 @@
   }
 
   prepared_pumping_wells$aquifer_id <- aquifer_groups$aquifer_id
-  stream_points <- sf::st_sf(
+  # Use each segment's model point as the collocation location where the
+  # constant-head solver enforces zero head change.
+  stream_collocation_points <- sf::st_sf(
     reach_id = stream_segments$reach_id,
     reach_segment_id = stream_segments$reach_segment_id,
-    well_diam = stream_segments$well_diam,
     geometry = sf::st_transform(stream_segments$model_point, analysis_crs)
+  )
+  # Represent each stream segment by weighted Gauss--Legendre source points
+  # used to integrate its finite-line injection response.
+  line_elements <- .prepare_line_elements(stream_segments, quadrature_order)
+  # Precompute distances from every stream collocation point to those source
+  # points so the geometry can be reused across response times and aquifers.
+  boundary_response_operator <- .prepare_line_response_operator(
+    stream_collocation_points,
+    line_elements
   )
   pumping_events <- .get_pumping_rate_changes(
     pumping_schedules,
     pumping_wells
   )
-  time_nodes <- time_grid$injection_days
+  time_nodes <- time_grid$boundary_days
   number_of_intervals <- length(time_nodes) - 1L
   output_rate_unit <- units::deparse_unit(
     pumping_schedules[[pumping_wells$pump_id[[1]]]]
@@ -206,8 +200,8 @@
       aquifer_id = character(),
       reach_id = character(),
       reach_segment_id = character(),
-      interval_start = time_grid$injection_times[0],
-      interval_end = time_grid$injection_times[0],
+      interval_start = time_grid$schedule_boundaries[0],
+      interval_end = time_grid$schedule_boundaries[0],
       injection_rate = units::set_units(
         numeric(), output_rate_unit, mode = "standard"
       ),
@@ -220,11 +214,13 @@
   condition_diagnostics <- list()
   output_index <- 0L
 
+  # Solve separately for each aquifer-parameter group so pumps with identical
+  # K, D, and V can share response matrices and their matrix factorizations.
   for (aquifer_id in unique(aquifer_groups$aquifer_id)) {
     pump_rows <- which(prepared_pumping_wells$aquifer_id == aquifer_id)
     group_pumps <- prepared_pumping_wells[pump_rows, , drop = FALSE]
     number_of_pumps <- nrow(group_pumps)
-    number_of_segments <- nrow(stream_points)
+    number_of_segments <- nrow(stream_collocation_points)
     solved_rates <- array(
       0,
       dim = c(number_of_segments, number_of_pumps, number_of_intervals)
@@ -232,33 +228,26 @@
     response_cache <- new.env(parent = emptyenv())
     factor_cache <- new.env(parent = emptyenv())
 
+    # Retrieve a cached units-bearing response matrix, then explicitly remove
+    # its normalized units at the numerical-algebra boundary used by QR.
     get_response_matrix <- function(elapsed_time) {
-      cache_key <- format(
-        as.numeric(units::set_units(
-          elapsed_time,
-          "days",
-          mode = "standard"
-        )),
-        digits = 17
+      response_with_units <- .get_cached_line_response_matrix(
+        response_operator = boundary_response_operator,
+        response_cache = response_cache,
+        K = group_pumps$K[[1]],
+        D = group_pumps$D[[1]],
+        V = group_pumps$V[[1]],
+        elapsed_time = elapsed_time
       )
-
-      if (!exists(cache_key, envir = response_cache, inherits = FALSE)) {
-        assign(
-          cache_key,
-          .get_stream_well_response_matrix(
-            stream_points,
-            group_pumps$K[[1]],
-            group_pumps$D[[1]],
-            group_pumps$V[[1]],
-            elapsed_time
-          ),
-          envir = response_cache
-        )
-      }
-
-      get(cache_key, envir = response_cache, inherits = FALSE)
+      units::drop_units(units::set_units(
+        response_with_units,
+        "days/m^2",
+        mode = "standard"
+      ))
     }
 
+    # Step through the schedule intervals and solve the segment injection rates
+    # needed to restore constant head at the end of each interval.
     for (interval_index in seq_len(number_of_intervals)) {
       interval_start <- time_nodes[[interval_index]]
       interval_end <- time_nodes[[interval_index + 1L]]
@@ -270,6 +259,8 @@
       )
       historical_head <- pumping_head
 
+      # Calculate direct pumping head at every stream collocation point for
+      # each pump in this aquifer group.
       for (group_pump_index in seq_len(number_of_pumps)) {
         pump_id <- group_pumps$pump_id[[group_pump_index]]
         pump_events <- pumping_events[
@@ -280,12 +271,14 @@
         pumping_head[, group_pump_index] <- .get_pumping_head_at_stream(
           group_pumps[group_pump_index, , drop = FALSE],
           pump_events,
-          stream_points,
+          stream_collocation_points,
           interval_end
         )
       }
 
       if (interval_index > 1L) {
+        # Accumulate the head response remaining from injection rates solved
+        # for all preceding intervals.
         for (previous_index in seq_len(interval_index - 1L)) {
           pulse_response <-
             get_response_matrix(
@@ -300,6 +293,10 @@
       }
 
       response_matrix <- get_response_matrix(interval_duration)
+
+      # Key the QR factorization by normalized interval duration. Within this
+      # aquifer group, equal durations have identical response matrices and can
+      # reuse the same factorization and condition number.
       factor_key <- format(
         as.numeric(units::set_units(
           interval_duration,
@@ -319,19 +316,28 @@
         )
       }
 
+      # Retrieve the cached QR decomposition and condition number. The same
+      # decomposition solves the separate right-hand side for every pump.
       factorization <- get(
         factor_key,
         envir = factor_cache,
         inherits = FALSE
       )
+
+      # Current injection must offset the combined head change from pumping
+      # and injection during all preceding intervals.
       right_hand_side <- -(pumping_head + historical_head)
+      # Use the QR decomposition to solve for the segment injection rates that
+      # produce the required head correction at every collocation point.
       interval_rates <- tryCatch(
         qr.coef(factorization$qr, right_hand_side),
         error = function(error) {
           stop(
             "The constant-head response matrix could not be solved for ",
             "aquifer_id ", aquifer_id, " and interval ending at ",
-            as.character(time_grid$injection_times[[interval_index + 1L]]),
+            as.character(
+              time_grid$schedule_boundaries[[interval_index + 1L]]
+            ),
             ": ", conditionMessage(error),
             call. = FALSE
           )
@@ -346,16 +352,20 @@
         )
       }
 
+      # Retain these rates for later intervals, calculate the remaining head
+      # error after current injection, and record the matrix diagnostic.
       solved_rates[, , interval_index] <- interval_rates
       residual <- pumping_head + historical_head +
         response_matrix %*% interval_rates
       condition_diagnostics[[length(condition_diagnostics) + 1L]] <-
         tibble::tibble(
           aquifer_id = aquifer_id,
-          interval_end = time_grid$injection_times[[interval_index + 1L]],
+          interval_end =
+            time_grid$schedule_boundaries[[interval_index + 1L]],
           matrix_condition_number = factorization$condition_number
         )
 
+      # Store the solved segment rates and boundary residuals for each pump.
       for (group_pump_index in seq_len(number_of_pumps)) {
         output_index <- output_index + 1L
         solved_rate_units <- units::set_units(
@@ -369,8 +379,8 @@
             number_of_segments
           ),
           aquifer_id = rep(aquifer_id, number_of_segments),
-          reach_id = stream_points$reach_id,
-          reach_segment_id = stream_points$reach_segment_id,
+          reach_id = stream_collocation_points$reach_id,
+          reach_segment_id = stream_collocation_points$reach_segment_id,
           interval_start = rep(
             interval_start,
             number_of_segments
@@ -380,7 +390,7 @@
             number_of_segments
           ),
           injection_rate = units::set_units(
-            solved_rate_units,
+            -solved_rate_units,
             output_rate_unit,
             mode = "standard"
           ),
@@ -412,7 +422,7 @@
       format(max(affected$matrix_condition_number), digits = 5),
       "; affected aquifer_id values: ",
       paste(unique(affected$aquifer_id), collapse = ", "),
-      ". Inspect stream spacing and well_diam values.",
+      ". Inspect stream spacing and stream_width values.",
       call. = FALSE
     )
   }

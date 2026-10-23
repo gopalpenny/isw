@@ -26,17 +26,17 @@ test_that("point queries require a length-units buffer", {
   point_aoi <- make_usgs_test_point()
 
   expect_error(
-    get_usgs_stream_reaches(point_aoi),
+    fetch_usgs_stream_reaches(point_aoi),
     "buffer_distance is required"
   )
 
   expect_error(
-    get_usgs_stream_reaches(point_aoi, buffer_distance = 1000),
+    fetch_usgs_stream_reaches(point_aoi, buffer_distance = 1000),
     "scalar units object"
   )
 
   expect_error(
-    get_usgs_stream_reaches(
+    fetch_usgs_stream_reaches(
       point_aoi,
       buffer_distance = units::set_units(1, "day")
     ),
@@ -44,7 +44,7 @@ test_that("point queries require a length-units buffer", {
   )
 
   expect_error(
-    get_usgs_stream_reaches(
+    fetch_usgs_stream_reaches(
       point_aoi,
       buffer_distance = units::set_units(0, "m")
     ),
@@ -61,7 +61,7 @@ test_that("polygon queries cannot also specify a buffer", {
   )
 
   expect_error(
-    get_usgs_stream_reaches(
+    fetch_usgs_stream_reaches(
       polygon_aoi,
       buffer_distance = units::set_units(1, "km")
     ),
@@ -78,7 +78,7 @@ test_that("point queries return validated and clipped stream reaches", {
     .package = "isw"
   )
 
-  result <- get_usgs_stream_reaches(
+  result <- fetch_usgs_stream_reaches(
     point_aoi,
     buffer_distance = units::set_units(1, "km")
   )
@@ -103,7 +103,7 @@ test_that("USGS attributes can be omitted", {
     .package = "isw"
   )
 
-  result <- get_usgs_stream_reaches(
+  result <- fetch_usgs_stream_reaches(
     point_aoi,
     buffer_distance = units::set_units(1, "km"),
     clip = FALSE,
@@ -125,7 +125,7 @@ test_that("USGS service responses must contain unique 3DHP identifiers", {
   )
 
   expect_error(
-    get_usgs_stream_reaches(
+    fetch_usgs_stream_reaches(
       point_aoi,
       buffer_distance = units::set_units(1, "km"),
       clip = FALSE
@@ -136,7 +136,7 @@ test_that("USGS service responses must contain unique 3DHP identifiers", {
 
 test_that("only the current 3DHP source is accepted", {
   expect_error(
-    get_usgs_stream_reaches(
+    fetch_usgs_stream_reaches(
       make_usgs_test_point(),
       buffer_distance = units::set_units(1, "km"),
       source = "nhdplus_hr"
