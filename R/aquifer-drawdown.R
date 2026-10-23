@@ -455,12 +455,13 @@
     time_nodes <- boundary_days
   }
 
-  pump_output <- character()
-  reach_output <- character()
-  segment_output <- character()
-  interval_start_output <- time_nodes[0]
-  interval_end_output <- time_nodes[0]
-  rate_output <- depletion_at_schedule_boundaries$stream_depletion_rate[0]
+  result_pump_ids <- character()
+  result_reach_ids <- character()
+  result_segment_ids <- character()
+  result_interval_starts <- time_nodes[0]
+  result_interval_ends <- time_nodes[0]
+  result_injection_rates <-
+    depletion_at_schedule_boundaries$stream_depletion_rate[0]
   pair_keys <- unique(paste(
     depletion_at_schedule_boundaries$pump_id,
     depletion_at_schedule_boundaries$reach_segment_id,
@@ -473,6 +474,8 @@
     key_parts <- strsplit(pair_key, "\r", fixed = TRUE)[[1]]
     pump_id <- key_parts[[1]]
     reach_segment_id <- key_parts[[2]]
+    # Select the boundary rows for this pump-segment pair and place them in
+    # chronological order.
     pair_rows <- which(
       depletion_at_schedule_boundaries$pump_id == pump_id &
         depletion_at_schedule_boundaries$reach_segment_id == reach_segment_id
@@ -480,6 +483,7 @@
     pair_rows <- pair_rows[order(as.numeric(
       depletion_at_schedule_boundaries$schedule_boundary[pair_rows]
     ))]
+    # Extract the depletion rate at each time boundary for this pump-segment pair.
     endpoint_rates <-
       depletion_at_schedule_boundaries$stream_depletion_rate[pair_rows]
 
@@ -491,38 +495,43 @@
       next
     }
 
+    # Average each pair of adjacent endpoint rates to obtain the constant rate
+    # assigned to the interval between them.
     interval_rates <- (
       endpoint_rates[-length(endpoint_rates)] + endpoint_rates[-1]
     ) / 2
     number_of_intervals <- length(interval_rates)
 
-    pump_output <- c(pump_output, rep(pump_id, number_of_intervals))
-    reach_output <- c(
-      reach_output,
+    result_pump_ids <- c(
+      result_pump_ids,
+      rep(pump_id, number_of_intervals)
+    )
+    result_reach_ids <- c(
+      result_reach_ids,
       rep(
         depletion_at_schedule_boundaries$reach_id[pair_rows[[1]]],
         number_of_intervals
       )
     )
-    segment_output <- c(
-      segment_output,
+    result_segment_ids <- c(
+      result_segment_ids,
       rep(reach_segment_id, number_of_intervals)
     )
-    interval_start_output <- c(
-      interval_start_output,
+    result_interval_starts <- c(
+      result_interval_starts,
       time_nodes[-length(time_nodes)]
     )
-    interval_end_output <- c(interval_end_output, time_nodes[-1])
-    rate_output <- c(rate_output, interval_rates)
+    result_interval_ends <- c(result_interval_ends, time_nodes[-1])
+    result_injection_rates <- c(result_injection_rates, interval_rates)
   }
 
   tibble::tibble(
-    pump_id = pump_output,
-    reach_id = reach_output,
-    reach_segment_id = segment_output,
-    interval_start = interval_start_output,
-    interval_end = interval_end_output,
-    injection_rate = rate_output
+    pump_id = result_pump_ids,
+    reach_id = result_reach_ids,
+    reach_segment_id = result_segment_ids,
+    interval_start = result_interval_starts,
+    interval_end = result_interval_ends,
+    injection_rate = result_injection_rates
   )
 }
 
@@ -737,6 +746,9 @@ generate_stream_injection_schedule <- function(
   method <- match.arg(method)
   .validate_pumping_schedules(pumping_schedules, pumping_wells)
   .validate_stream_segments(stream_segments)
+
+  # Combine pumping changes, requested evaluation times, and optional injection
+  # times into boundaries for the piecewise-constant injection intervals.
   time_grid <- .get_stream_injection_times(
     pumping_schedules,
     evaluation_times,
@@ -815,6 +827,8 @@ generate_stream_injection_schedule <- function(
     names(depletion_at_schedule_boundaries)[
       names(depletion_at_schedule_boundaries) == "evaluation_time"
     ] <- "schedule_boundary"
+    # For each pump-segment pair, average depletion rates at adjacent times to
+    # assign one constant injection rate to the interval between them.
     injection_schedule <- .get_interval_average_injection_schedule(
       depletion_at_schedule_boundaries,
       pumping_schedules
@@ -825,6 +839,9 @@ generate_stream_injection_schedule <- function(
         "adf_stream_depletion can only be supplied when method = \"adf\"."
       )
     }
+    # Solve coupled segment injection rates for each interval to maintain zero
+    # head change at stream model points while accounting for pumping and prior
+    # injection.
     injection_schedule <- .get_constant_head_injection_schedule(
       pumping_wells,
       pumping_schedules,
