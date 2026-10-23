@@ -104,11 +104,14 @@ prep_adf_stream_apportionment <- function(
     )[1, ]
     distance_units <- units::deparse_unit(point_distances)
     point_distance_values <- as.numeric(point_distances)
+    # Each sample point represents the surrounding portion of its stream segment.
     sampled_length_values <- as.numeric(units::set_units(
       sample_points$sampled_length,
       distance_units,
       mode = "standard"
     ))
+    # All sample points are eligible unless maximum_distance excludes points
+    # that are too far from this pump.
     eligible <- rep(TRUE, length(point_distances))
 
     if (!is.null(maximum_distance)) {
@@ -127,6 +130,8 @@ prep_adf_stream_apportionment <- function(
       )
     }
 
+    # Weight eligible points by represented stream length divided by distance^p.
+    # If any are colocated with the pump, only those points receive weight.
     raw_weights <- numeric(length(point_distances))
     zero_distance <- eligible & point_distance_values == 0
 
