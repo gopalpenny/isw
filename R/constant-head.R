@@ -97,17 +97,20 @@
 .get_pumping_head_at_stream <- function(
     pumping_well,
     pumping_events,
-    stream_points,
+    stream_collocation_points,
     evaluation_day) {
 
   contributing_rows <- which(pumping_events$pumping_time < evaluation_day)
-  pumping_head <- numeric(nrow(stream_points))
+  pumping_head <- numeric(nrow(stream_collocation_points))
 
   if (length(contributing_rows) == 0) {
     return(pumping_head)
   }
 
-  pump_distances <- sf::st_distance(pumping_well, stream_points)[1, ]
+  pump_distances <- sf::st_distance(
+    pumping_well,
+    stream_collocation_points
+  )[1, ]
 
   # Sum the head response from every earlier pumping-rate change for this pump.
   for (event_row in contributing_rows) {
@@ -165,14 +168,16 @@
   }
 
   prepared_pumping_wells$aquifer_id <- aquifer_groups$aquifer_id
-  stream_points <- sf::st_sf(
+  # Use each segment's model point as the collocation location where the
+  # constant-head solver enforces zero head change.
+  stream_collocation_points <- sf::st_sf(
     reach_id = stream_segments$reach_id,
     reach_segment_id = stream_segments$reach_segment_id,
     geometry = sf::st_transform(stream_segments$model_point, analysis_crs)
   )
   line_elements <- .prepare_line_elements(stream_segments, quadrature_order)
   boundary_response_operator <- .prepare_line_response_operator(
-    stream_points,
+    stream_collocation_points,
     line_elements
   )
   pumping_events <- .get_pumping_rate_changes(
@@ -211,7 +216,7 @@
     pump_rows <- which(prepared_pumping_wells$aquifer_id == aquifer_id)
     group_pumps <- prepared_pumping_wells[pump_rows, , drop = FALSE]
     number_of_pumps <- nrow(group_pumps)
-    number_of_segments <- nrow(stream_points)
+    number_of_segments <- nrow(stream_collocation_points)
     solved_rates <- array(
       0,
       dim = c(number_of_segments, number_of_pumps, number_of_intervals)
@@ -271,7 +276,7 @@
         pumping_head[, group_pump_index] <- .get_pumping_head_at_stream(
           group_pumps[group_pump_index, , drop = FALSE],
           pump_events,
-          stream_points,
+          stream_collocation_points,
           interval_end
         )
       }
@@ -366,8 +371,8 @@
             number_of_segments
           ),
           aquifer_id = rep(aquifer_id, number_of_segments),
-          reach_id = stream_points$reach_id,
-          reach_segment_id = stream_points$reach_segment_id,
+          reach_id = stream_collocation_points$reach_id,
+          reach_segment_id = stream_collocation_points$reach_segment_id,
           interval_start = rep(
             interval_start,
             number_of_segments

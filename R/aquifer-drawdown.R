@@ -833,7 +833,7 @@ generate_stream_injection_schedule <- function(
       depletion_at_schedule_boundaries,
       pumping_schedules
     )
-  } else {
+  } else if (method == "constant_head") {
     if (!is.null(adf_stream_depletion)) {
       stop(
         "adf_stream_depletion can only be supplied when method = \"adf\"."
