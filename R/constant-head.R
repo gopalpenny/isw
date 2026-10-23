@@ -228,45 +228,22 @@
     response_cache <- new.env(parent = emptyenv())
     factor_cache <- new.env(parent = emptyenv())
 
-    # Return the unit-rate response matrix for an elapsed time, with rows for
-    # stream collocation points and columns for injection segments. Evaluate
-    # the prepared geometry using this aquifer group's K, D, and V only once
-    # per distinct elapsed time, then retrieve repeated values from the cache.
+    # Retrieve a cached units-bearing response matrix, then explicitly remove
+    # its normalized units at the numerical-algebra boundary used by QR.
     get_response_matrix <- function(elapsed_time) {
-      cache_key <- format(
-        as.numeric(units::set_units(
-          elapsed_time,
-          "days",
-          mode = "standard"
-        )),
-        digits = 17
+      response_with_units <- .get_cached_line_response_matrix(
+        response_operator = boundary_response_operator,
+        response_cache = response_cache,
+        K = group_pumps$K[[1]],
+        D = group_pumps$D[[1]],
+        V = group_pumps$V[[1]],
+        elapsed_time = elapsed_time
       )
-
-      # If this elapsed time has not been evaluated, calculate its response
-      # matrix and store it under the time-based key for later reuse.
-      if (!exists(cache_key, envir = response_cache, inherits = FALSE)) {
-        response_with_units <- .evaluate_line_response_operator(
-          boundary_response_operator,
-          group_pumps$K[[1]],
-          group_pumps$D[[1]],
-          group_pumps$V[[1]],
-          elapsed_time
-        )
-        # QR calculations use canonical numeric values; explicitly normalize
-        # the units before removing them at this numerical-algebra boundary.
-        numeric_response <- units::drop_units(units::set_units(
-          response_with_units,
-          "days/m^2",
-          mode = "standard"
-        ))
-        assign(
-          cache_key,
-          numeric_response,
-          envir = response_cache
-        )
-      }
-
-      get(cache_key, envir = response_cache, inherits = FALSE)
+      units::drop_units(units::set_units(
+        response_with_units,
+        "days/m^2",
+        mode = "standard"
+      ))
     }
 
     # Step through the schedule intervals and solve the segment injection rates

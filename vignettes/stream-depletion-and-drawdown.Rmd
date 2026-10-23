@@ -412,6 +412,7 @@ timing that would have otherwise been required if the schedule were calculated
 here.
 
 ```{r calculate-water-levels}
+library(dplyr)
 adf_water_levels <- model_aquifer_water_level_change(
   pumping_wells = pumping_wells,
   pumping_schedules = pumping_schedules,

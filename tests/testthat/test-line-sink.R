@@ -429,6 +429,87 @@ test_that("prepared geometry and distances are reusable across evaluations", {
   )
 })
 
+test_that("cached line responses support injection-event extraction", {
+  segments <- make_line_sink_segments(c(-50, 0, 50, 0))
+  target <- sf::st_as_sf(
+    data.frame(x = 20, y = 30), coords = c("x", "y"), crs = 32615
+  )
+  operator <- isw:::.prepare_line_response_operator(
+    target,
+    isw:::.prepare_line_elements(segments, quadrature_order = 8)
+  )
+  response_cache <- new.env(parent = emptyenv())
+  hydraulics <- list(
+    K = units::set_units(10, "m/day"),
+    D = units::set_units(20, "m"),
+    V = 0.15
+  )
+
+  first_response <- isw:::.get_cached_line_response_matrix(
+    response_operator = operator,
+    response_cache = response_cache,
+    K = hydraulics$K,
+    D = hydraulics$D,
+    V = hydraulics$V,
+    elapsed_time = units::set_units(1, "day")
+  )
+  repeated_response <- isw:::.get_cached_line_response_matrix(
+    response_operator = operator,
+    response_cache = response_cache,
+    K = hydraulics$K,
+    D = hydraulics$D,
+    V = hydraulics$V,
+    elapsed_time = units::set_units(1, "day")
+  )
+
+  expect_equal(repeated_response, first_response)
+  expect_length(ls(envir = response_cache, all.names = TRUE), 1)
+
+  other_operator <- isw:::.prepare_line_response_operator(
+    sf::st_as_sf(
+      data.frame(x = 25, y = 30), coords = c("x", "y"), crs = 32615
+    ),
+    isw:::.prepare_line_elements(segments, quadrature_order = 8)
+  )
+  expect_error(
+    isw:::.get_cached_line_response_matrix(
+      response_operator = other_operator,
+      response_cache = response_cache,
+      K = hydraulics$K,
+      D = hydraulics$D,
+      V = hydraulics$V,
+      elapsed_time = units::set_units(1, "day")
+    ),
+    "cannot be reused with a different response_operator"
+  )
+
+  response_ratios <- isw:::.get_response_ratios_for_injection_events(
+    response_operator = operator,
+    response_cache = response_cache,
+    K = hydraulics$K,
+    D = hydraulics$D,
+    V = hydraulics$V,
+    observation_well_index = 1L,
+    elapsed_times = units::set_units(c(10, 1, 10), "days"),
+    segment_columns = c(1L, 1L, 1L)
+  )
+  late_response <- isw:::.get_cached_line_response_matrix(
+    response_operator = operator,
+    response_cache = response_cache,
+    K = hydraulics$K,
+    D = hydraulics$D,
+    V = hydraulics$V,
+    elapsed_time = units::set_units(10, "days")
+  )
+
+  expect_s3_class(response_ratios, "units")
+  expect_equal(
+    response_ratios,
+    c(late_response[[1]], first_response[[1]], late_response[[1]])
+  )
+  expect_length(ls(envir = response_cache, all.names = TRUE), 2)
+})
+
 test_that("response operators reject invalid target points", {
   segments <- make_line_sink_segments(c(-50, 0, 50, 0))
   elements <- isw:::.prepare_line_elements(segments)

@@ -333,8 +333,7 @@ test_that("apportioned drawdown reuses a supplied injection schedule", {
     inputs$observation_wells,
     inputs$stream_segments,
     inputs$evaluation_times,
-    stream_injection_schedule = injection_schedule,
-    stream_apportionment = inputs$stream_apportionment
+    stream_injection_schedule = injection_schedule
   )
 
   expect_equal(supplied_result, internal_result)

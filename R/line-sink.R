@@ -335,3 +335,74 @@
   dimnames(response) <- list(NULL, operator$segment_ids)
   units::set_units(response, "days/m^2", mode = "standard")
 }
+
+# Retrieve or calculate a units-bearing line-response matrix for one aquifer
+# parameter set and elapsed time. response_operator is prepared once by
+# .prepare_line_response_operator(). Its distances matrix has one row per
+# target point and one column per stream quadrature point. The parallel
+# weights and stream_width vectors describe those quadrature points, while
+# segment_index maps them into the segment columns named by segment_ids;
+# number_of_targets and number_of_segments define the output dimensions.
+# K (hydraulic conductivity), D (aquifer thickness), and V (drainable porosity)
+# determine the hydraulic response. Cache entries are indexed by K, D, V, and
+# elapsed_time. The cache is also bound to its first operator so entries cannot
+# be reused with another set of targets, stream elements, or quadrature rules.
+.get_cached_line_response_matrix <- function(
+    response_operator,
+    response_cache,
+    K,
+    D,
+    V,
+    elapsed_time) {
+
+  if (!is.environment(response_cache)) {
+    stop("response_cache must be an environment.")
+  }
+  if (!inherits(response_operator, "isw_line_response_operator")) {
+    stop(
+      "response_operator must be returned by ",
+      ".prepare_line_response_operator()."
+    )
+  }
+
+  cached_operator <- attr(
+    response_cache,
+    "isw_line_response_operator",
+    exact = TRUE
+  )
+  if (is.null(cached_operator)) {
+    attr(response_cache, "isw_line_response_operator") <- response_operator
+  } else if (!identical(response_operator, cached_operator)) {
+    stop("response_cache cannot be reused with a different response_operator.")
+  }
+
+  parameter_key <- paste(
+    format(as.numeric(units::set_units(
+      K, "m/day", mode = "standard"
+    )), digits = 17),
+    format(as.numeric(units::set_units(
+      D, "m", mode = "standard"
+    )), digits = 17),
+    format(V, digits = 17),
+    format(as.numeric(units::set_units(
+      elapsed_time, "days", mode = "standard"
+    )), digits = 17),
+    sep = "\r"
+  )
+
+  if (!exists(parameter_key, envir = response_cache, inherits = FALSE)) {
+    assign(
+      parameter_key,
+      .evaluate_line_response_operator(
+        response_operator,
+        K = K,
+        D = D,
+        V = V,
+        elapsed_time = elapsed_time
+      ),
+      envir = response_cache
+    )
+  }
+
+  get(parameter_key, envir = response_cache, inherits = FALSE)
+}
