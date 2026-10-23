@@ -32,7 +32,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">isw</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0</span>
       </span>
     </div>
 
@@ -425,7 +425,7 @@ depletion response attributed to each pump.</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 3</span></span></span>
 <span><span class="co">#&gt;   maximum_absolute_boundary_resi…¹ maximum_matrix_condi…² number_of_aquifer_fa…³</span></span>
 <span><span class="co">#&gt;                              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>                         4.16<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span>                   1.44                      2</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>                         6.94<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span>                   1.44                      2</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ abbreviated names: ¹​maximum_absolute_boundary_residual_m,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   ²​maximum_matrix_condition_number, ³​number_of_aquifer_factorizations</span></span></span></code></pre></div>
 </div>
@@ -560,7 +560,8 @@ function checks to make sure that the timing of the provided schedule
 match the timing that would have otherwise been required if the schedule
 were calculated here.</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">adf_water_levels</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/model_aquifer_water_level_change.html">model_aquifer_water_level_change</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
+<span><span class="va">adf_water_levels</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/model_aquifer_water_level_change.html">model_aquifer_water_level_change</a></span><span class="op">(</span></span>
 <span>  pumping_wells <span class="op">=</span> <span class="va">pumping_wells</span>,</span>
 <span>  pumping_schedules <span class="op">=</span> <span class="va">pumping_schedules</span>,</span>
 <span>  observation_wells <span class="op">=</span> <span class="va">observation_wells</span>,</span>
@@ -783,7 +784,7 @@ condition is imposed.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> ADF           Sample point  -<span style="color: #BB0000;">1.83</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>             4.75<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span> -<span style="color: #BB0000;">1.58</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 1</span>  3.69<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> ADF           Segment mode… -<span style="color: #BB0000;">2.11</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>             4.37<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span> -<span style="color: #BB0000;">1.19</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 1</span>  5.50<span style="color: #949494;">e</span><span style="color: #BB0000;">- 3</span></span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Constant head Sample point   5.63<span style="color: #949494;">e</span><span style="color: #BB0000;">- 3</span>             3.49<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span> -<span style="color: #BB0000;">7.95</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>  1.29<span style="color: #949494;">e</span><span style="color: #BB0000;">- 1</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> Constant head Segment mode… -<span style="color: #BB0000;">7.14</span><span style="color: #949494;">e</span><span style="color: #BB0000;">-19</span>             1.30<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span> -<span style="color: #BB0000;">2.78</span><span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span>  1.39<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span></span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> Constant head Segment mode… -<span style="color: #BB0000;">4.09</span><span style="color: #949494;">e</span><span style="color: #BB0000;">-18</span>             2.31<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span> -<span style="color: #BB0000;">5.55</span><span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span>  1.04<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span></span></span></code></pre></div>
 </div>
   </div>
 

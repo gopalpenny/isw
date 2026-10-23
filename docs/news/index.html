@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">isw</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0</span>
       </span>
     </div>
 
@@ -59,9 +59,9 @@
     </div>
 
     <div class="section level2">
-<h2 class="page-header" data-toc-text="0.1.0.9000" id="isw-0109000">isw 0.1.0.9000<a class="anchor" aria-label="anchor" href="#isw-0109000"></a></h2>
+<h2 class="page-header" data-toc-text="0.1.0" id="isw-010">isw 0.1.0<a class="anchor" aria-label="anchor" href="#isw-010"></a></h2>
 <div class="section level3">
-<h3 id="stream-injection-and-water-level-response-0-1-0-9000">Stream injection and water-level response<a class="anchor" aria-label="anchor" href="#stream-injection-and-water-level-response-0-1-0-9000"></a></h3>
+<h3 id="stream-injection-and-water-level-response-0-1-0">Stream injection and water-level response<a class="anchor" aria-label="anchor" href="#stream-injection-and-water-level-response-0-1-0"></a></h3>
 <ul><li>Replaced the internal Gauss–Legendre eigendecomposition with <code><a href="https://rdrr.io/pkg/statmod/man/gauss.quad.html" class="external-link">statmod::gauss.quad()</a></code> and retained the normalized <code>[-1/2, 1/2]</code> rule used for finite-line integration.</li>
 <li>Clarified internal time terminology: user-requested <code>evaluation_times</code> and public <code>evaluation_time</code> outputs are unchanged, while the combined injection grid now uses <code>schedule_boundaries</code>, <code>boundary_days</code>, and an internal <code>schedule_boundary</code> column. The general time-normalization helper now uses <code>target_times</code> terminology.</li>
 <li>Exported the existing stream-sampling helper as <code><a href="../reference/prep_stream_sample_points.html">prep_stream_sample_points()</a></code> for spatial inspection and water-level evaluation along stream segments.</li>

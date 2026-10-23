@@ -1,7 +1,7 @@
 Package: isw
 Type: Package
 Title: Model Stream Depletion and Aquifer Drawdown
-Version: 0.1.0.9000
+Version: 0.1.0
 Authors@R: person("Gopal", "Penny", email = "gopalpenny@gmail.com",
     role = c("aut", "cre"))
 Description: Prepares stream networks and models transient stream depletion,
