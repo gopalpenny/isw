@@ -265,7 +265,9 @@
   )
 }
 
-# Evaluate a prepared target-by-line response matrix.
+# Evaluate a prepared target-by-line response matrix. Hydraulic inputs may use
+# any compatible units; the returned matrix retains units normalized to
+# days/m^2.
 .evaluate_line_response_operator <- function(operator, K, D, V, elapsed_time) {
   if (!inherits(operator, "isw_line_response_operator")) {
     stop("operator must be returned by .prepare_line_response_operator().")
@@ -331,5 +333,5 @@
   }
 
   dimnames(response) <- list(NULL, operator$segment_ids)
-  response
+  units::set_units(response, "days/m^2", mode = "standard")
 }

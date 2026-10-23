@@ -212,7 +212,9 @@ test_that("prepared straight-line operator matches the local-coordinate kernel",
     quadrature_order = 16
   )
 
-  expect_equal(operator_response[[1]], as.numeric(local_response))
+  expect_s3_class(operator_response, "units")
+  expect_equal(units::deparse_unit(operator_response), "d m-2")
+  expect_equal(operator_response[[1]], local_response)
 })
 
 test_that("finite-line responses are invariant to equivalent input units", {

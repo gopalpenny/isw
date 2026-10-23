@@ -531,7 +531,12 @@ benchmark_segment_count <- function(number_of_segments) {
     )
   })
   factor_and_solve_seconds <- elapsed({
-    response_qr <- qr(response_matrix)
+    numeric_response_matrix <- units::drop_units(units::set_units(
+      response_matrix,
+      "days/m^2",
+      mode = "standard"
+    ))
+    response_qr <- qr(numeric_response_matrix)
     condition_number <- kappa(response_qr, exact = FALSE)
     solved_rates <- qr.coef(
       response_qr,

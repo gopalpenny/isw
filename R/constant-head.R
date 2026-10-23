@@ -245,15 +245,23 @@
       # If this elapsed time has not been evaluated, calculate its response
       # matrix and store it under the time-based key for later reuse.
       if (!exists(cache_key, envir = response_cache, inherits = FALSE)) {
+        response_with_units <- .evaluate_line_response_operator(
+          boundary_response_operator,
+          group_pumps$K[[1]],
+          group_pumps$D[[1]],
+          group_pumps$V[[1]],
+          elapsed_time
+        )
+        # QR calculations use canonical numeric values; explicitly normalize
+        # the units before removing them at this numerical-algebra boundary.
+        numeric_response <- units::drop_units(units::set_units(
+          response_with_units,
+          "days/m^2",
+          mode = "standard"
+        ))
         assign(
           cache_key,
-          .evaluate_line_response_operator(
-            boundary_response_operator,
-            group_pumps$K[[1]],
-            group_pumps$D[[1]],
-            group_pumps$V[[1]],
-            elapsed_time
-          ),
+          numeric_response,
           envir = response_cache
         )
       }
