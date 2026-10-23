@@ -158,8 +158,9 @@
   segment_index <- integer()
   point_index <- 0L
 
-  # Expand each stream segment into physical quadrature points, processing
-  # every straight edge in segments that contain bends.
+  # A stream segment may contain multiple straight sections between vertices.
+  # Place `quadrature_order` points along each positive-length straight section
+  # and scale their weights by the section's share of the total segment length.
   for (index in seq_len(nrow(stream_segments))) {
     coordinates <- sf::st_coordinates(geometry[[index]])[, 1:2, drop = FALSE]
     starts <- coordinates[-nrow(coordinates), , drop = FALSE]
@@ -201,6 +202,8 @@
     }
   }
 
+  # Convert the stored coordinates to point geometries, then create an `sf`
+  # object linking each point to its parent segment, weight, and stream width.
   quadrature_geometry <- sf::st_sfc(
     lapply(quadrature_coordinates, sf::st_point),
     crs = sf::st_crs(stream_segments)

@@ -175,7 +175,11 @@
     reach_segment_id = stream_segments$reach_segment_id,
     geometry = sf::st_transform(stream_segments$model_point, analysis_crs)
   )
+  # Represent each stream segment by weighted Gauss--Legendre source points
+  # used to integrate its finite-line injection response.
   line_elements <- .prepare_line_elements(stream_segments, quadrature_order)
+  # Precompute distances from every stream collocation point to those source
+  # points so the geometry can be reused across response times and aquifers.
   boundary_response_operator <- .prepare_line_response_operator(
     stream_collocation_points,
     line_elements
@@ -224,6 +228,10 @@
     response_cache <- new.env(parent = emptyenv())
     factor_cache <- new.env(parent = emptyenv())
 
+    # Return the unit-rate response matrix for an elapsed time, with rows for
+    # stream collocation points and columns for injection segments. Evaluate
+    # the prepared geometry using this aquifer group's K, D, and V only once
+    # per distinct elapsed time, then retrieve repeated values from the cache.
     get_response_matrix <- function(elapsed_time) {
       cache_key <- format(
         as.numeric(units::set_units(
@@ -234,6 +242,8 @@
         digits = 17
       )
 
+      # If this elapsed time has not been evaluated, calculate its response
+      # matrix and store it under the time-based key for later reuse.
       if (!exists(cache_key, envir = response_cache, inherits = FALSE)) {
         assign(
           cache_key,
@@ -264,8 +274,8 @@
       )
       historical_head <- pumping_head
 
-      # Calculate direct pumping head at every stream model point for each pump
-      # in this aquifer group.
+      # Calculate direct pumping head at every stream collocation point for
+      # each pump in this aquifer group.
       for (group_pump_index in seq_len(number_of_pumps)) {
         pump_id <- group_pumps$pump_id[[group_pump_index]]
         pump_events <- pumping_events[
@@ -298,6 +308,10 @@
       }
 
       response_matrix <- get_response_matrix(interval_duration)
+
+      # Key the QR factorization by normalized interval duration. Within this
+      # aquifer group, equal durations have identical response matrices and can
+      # reuse the same factorization and condition number.
       factor_key <- format(
         as.numeric(units::set_units(
           interval_duration,
@@ -317,12 +331,19 @@
         )
       }
 
+      # Retrieve the cached QR decomposition and condition number. The same
+      # decomposition solves the separate right-hand side for every pump.
       factorization <- get(
         factor_key,
         envir = factor_cache,
         inherits = FALSE
       )
+
+      # Current injection must offset the combined head change from pumping
+      # and injection during all preceding intervals.
       right_hand_side <- -(pumping_head + historical_head)
+      # Use the QR decomposition to solve for the segment injection rates that
+      # produce the required head correction at every collocation point.
       interval_rates <- tryCatch(
         qr.coef(factorization$qr, right_hand_side),
         error = function(error) {
@@ -346,6 +367,8 @@
         )
       }
 
+      # Retain these rates for later intervals, calculate the remaining head
+      # error after current injection, and record the matrix diagnostic.
       solved_rates[, , interval_index] <- interval_rates
       residual <- pumping_head + historical_head +
         response_matrix %*% interval_rates
