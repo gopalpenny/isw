@@ -1,6 +1,3 @@
-# TODO: Before finalizing this public interface, review the source options,
-# buffering and clipping defaults, and retained USGS attributes.
-
 #' Retrieve USGS stream reaches
 #'
 #' Retrieve stream-flowline geometry from the U.S. Geological Survey 3D
@@ -25,6 +22,11 @@
 #'   first column, `reach_id`, contains the character 3DHP identifier for each
 #'   flowline. Remaining USGS attributes are retained when `keep_attributes`
 #'   is `TRUE`.
+#'
+#' @section Development status:
+#' This interface is provisional. Its supported hydrography sources, buffering
+#' and clipping defaults, and handling of retained USGS attributes may change
+#' before the package's first stable release.
 #'
 #' @details
 #' This function uses [nhdplusTools::get_3dhp()] to query the 3DHP web service.

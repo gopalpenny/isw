@@ -58,6 +58,13 @@ touch the boundary at a point, along with empty or zero-length results, are
 removed. The original 3DHP identifier is retained as \code{reach_id} for each
 remaining feature.
 }
+\section{Development status}{
+
+This interface is provisional. Its supported hydrography sources, buffering
+and clipping defaults, and handling of retained USGS attributes may change
+before the package's first stable release.
+}
+
 \examples{
 \dontrun{
 pumping_wells <- example_pumping_wells[1, ]

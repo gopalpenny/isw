@@ -1,12 +1,3 @@
-# TODO: Before finalizing apportioned aquifer drawdown, review the
-# interval-average temporal approximation, finite line-element convergence
-# with reach, quadrature, and evaluation-time spacing,
-# and the pump-specific output structure.
-# TODO: Review the optional stream_injection_schedule interface, including its
-# continuous-coverage validation, whether externally supplied schedules should
-# permit additional metadata, and opportunities to cache or reuse internally
-# calculated stream-depletion responses.
-
 # Read a valid quadrature order recorded on a constant-head schedule.
 .get_schedule_quadrature_order <- function(stream_injection_schedule) {
   metadata <- attr(
