@@ -13,7 +13,7 @@
   a minimum distance of half the width. Physical pumping wells continue to use
   `well_diam`.
 
-## Breaking API changes
+## Function names and argument changes
 
 * Renamed the main workflow functions to distinguish input preparation, schedule
   generation, and response modeling:
