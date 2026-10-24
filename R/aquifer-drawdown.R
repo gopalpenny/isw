@@ -680,9 +680,10 @@
 #'   constant-head calculation. The default is 5. Use `Inf` to impose no
 #'   limit.
 #' @param adf_stream_depletion Optional output from
-#'   [model_adf_stream_depletion()] that includes every schedule boundary. When
-#'   supplied with `method = "adf"`, these rates are reused instead of being
-#'   recalculated; results at additional times are ignored.
+#'   [model_adf_stream_depletion()]. When supplied with `method = "adf"`, rates
+#'   at required schedule boundaries are reused and results at additional times
+#'   are ignored. If required boundaries are missing, a warning is issued and
+#'   depletion is calculated internally only for the missing times.
 #' @param quadrature_order Positive integer number of Gauss--Legendre points
 #'   used per straight edge of each finite line element. The default is 16.
 #'
@@ -705,6 +706,11 @@
 #' With `method = "adf"`, [model_adf_stream_depletion()] evaluates stream
 #' depletion at every schedule boundary. The arithmetic mean of adjacent
 #' endpoint rates is applied over each interval.
+#' To precompute a complete `adf_stream_depletion` input, evaluate depletion at
+#' every `evaluation_times` value and at every `pumping_schedules$t` and
+#' `injection_times` value through the final evaluation time. A supplied table
+#' that omits required boundaries is reused where possible, but generates a
+#' warning while the missing values are calculated internally.
 #'
 #' With `method = "constant_head"`, segment model points are constant-head
 #' collocation points and the segment lines are finite injection elements. One
@@ -810,10 +816,37 @@ generate_stream_injection_schedule <- function(
           mode = "standard"
         ))
       }
-      if (!all(required_day_values %in% supplied_day_values)) {
-        stop(
-          "adf_stream_depletion must contain results at every stream-",
-          "depletion schedule boundary."
+      missing_time_indices <- which(
+        !(required_day_values %in% supplied_day_values)
+      )
+      if (length(missing_time_indices) > 0) {
+        missing_times <- required_times[missing_time_indices]
+        missing_time_labels <- trimws(format(missing_times))
+        displayed_time_labels <- head(missing_time_labels, 5L)
+        missing_time_summary <- paste(displayed_time_labels, collapse = ", ")
+        if (length(missing_time_labels) > length(displayed_time_labels)) {
+          missing_time_summary <- paste0(missing_time_summary, ", ...")
+        }
+
+        warning(
+          "adf_stream_depletion is missing ",
+          length(missing_times),
+          " required schedule ",
+          if (length(missing_times) == 1L) "boundary" else "boundaries",
+          " (", missing_time_summary, "). Depletion at missing times will ",
+          "be calculated internally.",
+          call. = FALSE
+        )
+
+        missing_depletion <- model_adf_stream_depletion(
+          pumping_wells,
+          pumping_schedules,
+          stream_apportionment,
+          missing_times
+        )
+        internal_depletion <- rbind(
+          internal_depletion,
+          missing_depletion
         )
       }
       row_day_values <- if (inherits(

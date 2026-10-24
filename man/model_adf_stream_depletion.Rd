@@ -26,7 +26,9 @@ volume-per-time units.}
 \code{\link[=prep_adf_stream_apportionment]{prep_adf_stream_apportionment()}}.}
 
 \item{evaluation_times}{Either \code{NULL}, a \code{Date} vector, or a \code{units} time
-vector. When \code{NULL}, \code{pumping_schedules$t} is used.}
+vector. When \code{NULL}, \code{pumping_schedules$t} is used. When supplied, only
+these requested times are returned; pumping-schedule times are not added
+automatically.}
 }
 \value{
 A tibble with one row for every requested \code{pump_id},

@@ -555,7 +555,9 @@ prep_adf_stream_apportionment <- function(
 #' @param stream_apportionment A normalized relationship table returned by
 #'   [prep_adf_stream_apportionment()].
 #' @param evaluation_times Either `NULL`, a `Date` vector, or a `units` time
-#'   vector. When `NULL`, `pumping_schedules$t` is used.
+#'   vector. When `NULL`, `pumping_schedules$t` is used. When supplied, only
+#'   these requested times are returned; pumping-schedule times are not added
+#'   automatically.
 #'
 #' @return A tibble with one row for every requested `pump_id`,
 #'   `evaluation_time`, and `reach_segment_id` combination. Columns are

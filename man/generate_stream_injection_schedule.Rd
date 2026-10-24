@@ -49,9 +49,10 @@ constant-head calculation. The default is 5. Use \code{Inf} to impose no
 limit.}
 
 \item{adf_stream_depletion}{Optional output from
-\code{\link[=model_adf_stream_depletion]{model_adf_stream_depletion()}} that includes every schedule boundary. When
-supplied with \code{method = "adf"}, these rates are reused instead of being
-recalculated; results at additional times are ignored.}
+\code{\link[=model_adf_stream_depletion]{model_adf_stream_depletion()}}. When supplied with \code{method = "adf"}, rates
+at required schedule boundaries are reused and results at additional times
+are ignored. If required boundaries are missing, a warning is issued and
+depletion is calculated internally only for the missing times.}
 
 \item{quadrature_order}{Positive integer number of Gauss--Legendre points
 used per straight edge of each finite line element. The default is 16.}
@@ -80,6 +81,11 @@ refinement boundaries; they never remove pumping-schedule boundaries.
 With \code{method = "adf"}, \code{\link[=model_adf_stream_depletion]{model_adf_stream_depletion()}} evaluates stream
 depletion at every schedule boundary. The arithmetic mean of adjacent
 endpoint rates is applied over each interval.
+To precompute a complete \code{adf_stream_depletion} input, evaluate depletion at
+every \code{evaluation_times} value and at every \code{pumping_schedules$t} and
+\code{injection_times} value through the final evaluation time. A supplied table
+that omits required boundaries is reused where possible, but generates a
+warning while the missing values are calculated internally.
 
 With \code{method = "constant_head"}, segment model points are constant-head
 collocation points and the segment lines are finite injection elements. One

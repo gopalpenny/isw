@@ -333,8 +333,8 @@ test_that("ADF remains the default injection method", {
 
   expect_equal(reused_schedule, explicit_schedule)
 
-  expect_error(
-    generate_stream_injection_schedule(
+  expect_warning(
+    completed_schedule <- generate_stream_injection_schedule(
       inputs$pumping_wells,
       inputs$pumping_schedules,
       inputs$stream_segments,
@@ -346,7 +346,44 @@ test_that("ADF remains the default injection method", {
         evaluation_time != units::set_units(20, "days")
       )
     ),
-    "every stream-depletion schedule boundary"
+    "missing 1 required schedule boundary"
+  )
+  expect_equal(completed_schedule, explicit_schedule)
+
+  nonmatching_pumping_schedules <- tibble::tibble(
+    t = units::set_units(c(0, 7, 14), "days"),
+    pump_1 = units::set_units(c(100, 100, 0), "m^3/day")
+  )
+  nonmatching_evaluation_times <- units::set_units(c(0, 10, 20), "days")
+  evaluation_only_depletion <- model_adf_stream_depletion(
+    inputs$pumping_wells,
+    nonmatching_pumping_schedules,
+    stream_apportionment,
+    nonmatching_evaluation_times
+  )
+  complete_nonmatching_schedule <- generate_stream_injection_schedule(
+    inputs$pumping_wells,
+    nonmatching_pumping_schedules,
+    inputs$stream_segments,
+    nonmatching_evaluation_times,
+    method = "adf",
+    stream_apportionment = stream_apportionment
+  )
+  expect_warning(
+    completed_nonmatching_schedule <- generate_stream_injection_schedule(
+      inputs$pumping_wells,
+      nonmatching_pumping_schedules,
+      inputs$stream_segments,
+      nonmatching_evaluation_times,
+      method = "adf",
+      stream_apportionment = stream_apportionment,
+      adf_stream_depletion = evaluation_only_depletion
+    ),
+    "missing 2 required schedule boundaries.*7 \\[d\\].*14 \\[d\\]"
+  )
+  expect_equal(
+    completed_nonmatching_schedule,
+    complete_nonmatching_schedule
   )
 
   expect_error(
