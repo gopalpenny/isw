@@ -92,7 +92,7 @@ model segment.</p></dd>
 
 <dt id="arg-analysis-crs">analysis_crs<a class="anchor" aria-label="anchor" href="#arg-analysis-crs"></a></dt>
 <dd><p>Either <code>NULL</code> or a projected coordinate reference
-system accepted by <code><a href="https://rdrr.io/pkg/sf/man/st_crs.html" class="external-link">sf::st_crs()</a></code>. When <code>NULL</code>, an existing projected
+system accepted by <code><a href="https://r-spatial.github.io/sf/reference/st_crs.html" class="external-link">sf::st_crs()</a></code>. When <code>NULL</code>, an existing projected
 stream CRS is retained; geographic streams are transformed to a local UTM
 CRS selected from their extent.</p></dd>
 
@@ -127,7 +127,7 @@ stream-reach or stream-segment inputs.</p>
     <h2>Examples</h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">stream_segments</span> <span class="op">&lt;-</span> <span class="fu">prep_stream_segments</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="va">example_stream_reaches</span>,</span></span>
-<span class="r-in"><span>  reach_spacing <span class="op">=</span> <span class="fu">units</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/units/man/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">100</span>, <span class="st">"m"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  reach_spacing <span class="op">=</span> <span class="fu">units</span><span class="fu">::</span><span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">100</span>, <span class="st">"m"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">stream_segments</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="st">"reach_id"</span>, <span class="st">"reach_segment_id"</span>, <span class="st">"represented_length"</span>, <span class="st">"stream_width"</span></span></span>
