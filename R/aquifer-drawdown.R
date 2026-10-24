@@ -744,6 +744,7 @@
 #'   stream_apportionment = stream_apportionment
 #' )
 #'
+#' @importFrom utils head
 #' @export
 generate_stream_injection_schedule <- function(
     pumping_wells,

@@ -25,6 +25,7 @@ library(units)
 library(tibble)
 library(dplyr)
 library(ggplot2)
+library(patchwork)
 library(sf)
 ```
 
@@ -54,7 +55,7 @@ pumping_wells <- example_pumping_wells
 stream_reaches <- example_stream_reaches
 observation_wells <- example_observation_wells
 
-ggplot() +
+spatial_inputs_plot <- ggplot() +
   geom_sf(data = stream_reaches, color = "grey65", linewidth = 1.2) +
   geom_sf(data = pumping_wells, color = "firebrick", shape = 8, size = 3) +
   geom_sf(data = observation_wells, color = "#0072B2", shape = 17, size = 3) +
@@ -66,6 +67,8 @@ ggplot() +
   ) +
   labs(x = NULL, y = NULL) +
   theme_minimal()
+
+spatial_inputs_plot
 ```
 
 See the
@@ -116,6 +119,29 @@ stream_segments[c(
 )]
 ```
 
+The map below shows the resulting model geometry. Each colored line is one
+stream segment, and the white circles mark the segment midpoint collocation
+points where the constant-head boundary condition is imposed.
+
+```{r plot-stream-segments}
+spatial_inputs_plot +
+  geom_sf(
+    data = stream_segments,
+    aes(color = reach_segment_id),
+    linewidth = 2,
+    show.legend = FALSE
+  ) +
+  geom_sf(
+    data = stream_segments,
+    aes(geometry = model_point),
+    shape = 21,
+    fill = "white",
+    color = "black",
+    size = 2.5,
+    stroke = 0.7
+  )
+```
+
 ## Define pumping and model times
 
 `pumping_schedules` is a wide tibble, with pumping provided as `units` objects.
@@ -148,10 +174,13 @@ approximation to continuously changing ADF depletion, but it increases
 computation for both methods. Constant-head rates are solved to satisfy the
 boundary at each interval end. Very short intervals can therefore require large
 corrective rates, especially when a regular refinement grid is combined with
-nearby evaluation or pumping times. This example leaves `injection_times` as
-`NULL` and uses monthly evaluation boundaries for a stable, readily interpreted
-comparison. Applications that add refinement times should inspect sensitivity
-to the resulting interval lengths.
+nearby evaluation or pumping times. This example uses monthly evaluation times
+and adds refinement times 5, 10, and 15 days after each pumping-schedule change.
+Applications that add refinement times should inspect sensitivity to the
+resulting interval lengths.
+The `quadrature_order` sets the number of Gauss--Legendre evaluation points on
+each positive-length straight section of a stream segment; this example uses
+four throughout.
 
 ```{r model-times}
 evaluation_times <- seq.Date(
@@ -160,7 +189,13 @@ evaluation_times <- seq.Date(
   by = "month"
 )
 
-injection_times <- NULL
+injection_times <- sort(c(
+  pumping_schedules$t + 5,
+  pumping_schedules$t + 10,
+  pumping_schedules$t + 15
+))
+
+quadrature_order <- 4
 ```
 
 See the
@@ -208,7 +243,7 @@ adf_depletion <- model_adf_stream_depletion(
   pumping_wells = pumping_wells,
   pumping_schedules = pumping_schedules,
   stream_apportionment = stream_apportionment,
-  evaluation_times = c(evaluation_times, injection_times)
+  evaluation_times = evaluation_times
 )
 
 adf_depletion_totals <- adf_depletion |>
@@ -234,12 +269,14 @@ time grid. With `method = "adf"`, `generate_stream_injection_schedule()` calls
 at adjacent boundaries. It reports the resulting `injection_rate` as positive
 when water moves from the stream to the aquifer. This rate is the stream-
 depletion rate applied over the interval.
-If ADF depletion has already been calculated at every schedule boundary, it can
-be supplied through the `adf_stream_depletion` argument to avoid recalculation.
-The supplied result must include all pumping, evaluation, and optional
-refinement boundaries used by the schedule.
+Precalculated ADF depletion can be supplied through the
+`adf_stream_depletion` argument to avoid recalculation. Here, the supplied
+result contains only the monthly evaluation times and omits the optional
+refinement boundaries. `generate_stream_injection_schedule()` issues a
+warning to make the mismatch explicit, reuses the supplied values, and
+fills in the missing times by calculating them within the function.
 
-```{r adf-injection-schedule}
+```{r adf-injection-schedule, warning = TRUE}
 adf_schedule <- generate_stream_injection_schedule(
   pumping_wells = pumping_wells,
   pumping_schedules = pumping_schedules,
@@ -263,7 +300,8 @@ constant_head_schedule <- generate_stream_injection_schedule(
   stream_segments = stream_segments,
   evaluation_times = evaluation_times,
   injection_times = injection_times,
-  method = "constant_head"
+  method = "constant_head",
+  quadrature_order = quadrature_order
 )
 ```
 
@@ -319,7 +357,23 @@ In addition to differences between the ADF and constant-head approaches,
 the direct ADF result at an interval end can differ from the average
 rate applied during that interval.
 
-```{r plot-stream-depletion}
+```{r plot-stream-depletion, fig.height = 8}
+pumping_schedule_plot_data <- pumping_schedules |>
+  tidyr::pivot_longer(
+    cols = -t,
+    names_to = "pump_id",
+    values_to = "pumping_rate"
+  )
+
+pumping_schedule_plot_data <- bind_rows(
+  pumping_schedule_plot_data,
+  pumping_schedule_plot_data |>
+    group_by(pump_id) |>
+    slice_tail(n = 1) |>
+    mutate(t = max(evaluation_times)) |>
+    ungroup()
+)
+
 adf_depletion_plot <- adf_depletion_totals |>
   transmute(
     pump_id,
@@ -328,7 +382,21 @@ adf_depletion_plot <- adf_depletion_totals |>
     method = "ADF at requested time"
   )
 
-ggplot() +
+pumping_schedule_plot <- ggplot(
+  pumping_schedule_plot_data,
+  aes(t, pumping_rate)
+) +
+  geom_step(color = "firebrick", linewidth = 1) +
+  facet_wrap(~pump_id, nrow = 1) +
+  scale_x_date(limits = range(evaluation_times)) +
+  labs(x = NULL, y = "Pumping rate") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  )
+
+stream_depletion_plot <- ggplot() +
   geom_step(
     data = stream_depletion,
     aes(interval_start, stream_depletion_rate, color = method),
@@ -346,12 +414,16 @@ ggplot() +
     size = 2
   ) +
   facet_wrap(~pump_id, nrow = 1) +
+  scale_x_date(limits = range(evaluation_times)) +
   labs(
     x = "Interval end",
     y = "Total stream-depletion rate",
     color = "Method"
   ) +
   theme_minimal()
+
+pumping_schedule_plot / stream_depletion_plot +
+  plot_layout(heights = c(1, 3))
 ```
 
 The following map compares the spatial distribution of the two injection
@@ -419,7 +491,8 @@ adf_water_levels <- model_aquifer_water_level_change(
   observation_wells = observation_wells,
   stream_segments = stream_segments,
   evaluation_times = evaluation_times,
-  stream_injection_schedule = adf_schedule
+  stream_injection_schedule = adf_schedule,
+  quadrature_order = quadrature_order
 ) |>
   mutate(method = "ADF")
 
@@ -429,7 +502,8 @@ constant_head_water_levels <- model_aquifer_water_level_change(
   observation_wells = observation_wells,
   stream_segments = stream_segments,
   evaluation_times = evaluation_times,
-  stream_injection_schedule = constant_head_schedule
+  stream_injection_schedule = constant_head_schedule,
+  quadrature_order = quadrature_order
 ) |>
   mutate(method = "Constant head")
 
@@ -533,7 +607,8 @@ adf_stream_water_levels <- model_aquifer_water_level_change(
   observation_wells = stream_observation_wells,
   stream_segments = stream_segments,
   evaluation_times = stream_map_time,
-  stream_injection_schedule = adf_schedule
+  stream_injection_schedule = adf_schedule,
+  quadrature_order = quadrature_order
 ) |>
   mutate(method = "ADF")
 
@@ -543,7 +618,8 @@ constant_head_stream_water_levels <- model_aquifer_water_level_change(
   observation_wells = stream_observation_wells,
   stream_segments = stream_segments,
   evaluation_times = stream_map_time,
-  stream_injection_schedule = constant_head_schedule
+  stream_injection_schedule = constant_head_schedule,
+  quadrature_order = quadrature_order
 ) |>
   mutate(method = "Constant head")
 

@@ -132,9 +132,10 @@ limit.</p></dd>
 
 <dt id="arg-adf-stream-depletion">adf_stream_depletion<a class="anchor" aria-label="anchor" href="#arg-adf-stream-depletion"></a></dt>
 <dd><p>Optional output from
-<code><a href="model_adf_stream_depletion.html">model_adf_stream_depletion()</a></code> that includes every schedule boundary. When
-supplied with <code>method = "adf"</code>, these rates are reused instead of being
-recalculated; results at additional times are ignored.</p></dd>
+<code><a href="model_adf_stream_depletion.html">model_adf_stream_depletion()</a></code>. When supplied with <code>method = "adf"</code>, rates
+at required schedule boundaries are reused and results at additional times
+are ignored. If required boundaries are missing, a warning is issued and
+depletion is calculated internally only for the missing times.</p></dd>
 
 
 <dt id="arg-quadrature-order">quadrature_order<a class="anchor" aria-label="anchor" href="#arg-quadrature-order"></a></dt>
@@ -162,7 +163,12 @@ requested result is an interval boundary. Optional <code>injection_times</code> 
 refinement boundaries; they never remove pumping-schedule boundaries.</p>
 <p>With <code>method = "adf"</code>, <code><a href="model_adf_stream_depletion.html">model_adf_stream_depletion()</a></code> evaluates stream
 depletion at every schedule boundary. The arithmetic mean of adjacent
-endpoint rates is applied over each interval.</p>
+endpoint rates is applied over each interval.
+To precompute a complete <code>adf_stream_depletion</code> input, evaluate depletion at
+every <code>evaluation_times</code> value and at every <code>pumping_schedules$t</code> and
+<code>injection_times</code> value through the final evaluation time. A supplied table
+that omits required boundaries is reused where possible, but generates a
+warning while the missing values are calculated internally.</p>
 <p>With <code>method = "constant_head"</code>, segment model points are constant-head
 collocation points and the segment lines are finite injection elements. One
 coupled response matrix is factored for each aquifer parameter set and
@@ -176,24 +182,24 @@ each interval endpoint after accounting for all preceding injection.</p>
     <h2>Examples</h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">pumping_wells</span> <span class="op">&lt;-</span> <span class="va">example_pumping_wells</span></span></span>
 <span class="r-in"><span><span class="va">stream_reaches</span> <span class="op">&lt;-</span> <span class="va">example_stream_reaches</span></span></span>
-<span class="r-in"><span><span class="va">pumping_schedules</span> <span class="op">&lt;-</span> <span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span></span>
-<span class="r-in"><span>  t <span class="op">=</span> <span class="fu">units</span><span class="fu">::</span><span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span>, <span class="fl">20</span><span class="op">)</span>, <span class="st">"days"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  pump_1 <span class="op">=</span> <span class="fu">units</span><span class="fu">::</span><span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">100</span>, <span class="fl">100</span>, <span class="fl">0</span><span class="op">)</span>, <span class="st">"m^3/day"</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  pump_2 <span class="op">=</span> <span class="fu">units</span><span class="fu">::</span><span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">75</span>, <span class="fl">0</span><span class="op">)</span>, <span class="st">"m^3/day"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">pumping_schedules</span> <span class="op">&lt;-</span> <span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/tibble/man/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  t <span class="op">=</span> <span class="fu">units</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/units/man/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span>, <span class="fl">20</span><span class="op">)</span>, <span class="st">"days"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  pump_1 <span class="op">=</span> <span class="fu">units</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/units/man/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">100</span>, <span class="fl">100</span>, <span class="fl">0</span><span class="op">)</span>, <span class="st">"m^3/day"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  pump_2 <span class="op">=</span> <span class="fu">units</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/units/man/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">75</span>, <span class="fl">0</span><span class="op">)</span>, <span class="st">"m^3/day"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">stream_segments</span> <span class="op">&lt;-</span> <span class="fu"><a href="prep_stream_segments.html">prep_stream_segments</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="va">stream_reaches</span>,</span></span>
-<span class="r-in"><span>  reach_spacing <span class="op">=</span> <span class="fu">units</span><span class="fu">::</span><span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">100</span>, <span class="st">"m"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  reach_spacing <span class="op">=</span> <span class="fu">units</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/units/man/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">100</span>, <span class="st">"m"</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  analysis_crs <span class="op">=</span> <span class="fl">32615</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">stream_apportionment</span> <span class="op">&lt;-</span> <span class="fu"><a href="prep_adf_stream_apportionment.html">prep_adf_stream_apportionment</a></span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="va">pumping_wells</span>,</span></span>
 <span class="r-in"><span>  <span class="va">stream_segments</span>,</span></span>
-<span class="r-in"><span>  sample_spacing <span class="op">=</span> <span class="fu">units</span><span class="fu">::</span><span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">25</span>, <span class="st">"m"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  sample_spacing <span class="op">=</span> <span class="fu">units</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/units/man/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">25</span>, <span class="st">"m"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">generate_stream_injection_schedule</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="va">pumping_wells</span>, <span class="va">pumping_schedules</span>, <span class="va">stream_segments</span>,</span></span>
-<span class="r-in"><span>  evaluation_times <span class="op">=</span> <span class="fu">units</span><span class="fu">::</span><span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">30</span>, <span class="st">"days"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  evaluation_times <span class="op">=</span> <span class="fu">units</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/units/man/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">30</span>, <span class="st">"days"</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  stream_apportionment <span class="op">=</span> <span class="va">stream_apportionment</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #949494;"># A tibble: 168 × 6</span></span>

@@ -95,6 +95,7 @@
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tibble.tidyverse.org/" class="external-link">tibble</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://patchwork.data-imaginist.com" class="external-link">patchwork</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-spatial.github.io/sf/" class="external-link">sf</a></span><span class="op">)</span></span></code></pre></div>
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
@@ -127,18 +128,20 @@ wells, three connected stream reaches, and two observation wells, all as
 <span><span class="va">stream_reaches</span> <span class="op">&lt;-</span> <span class="va">example_stream_reaches</span></span>
 <span><span class="va">observation_wells</span> <span class="op">&lt;-</span> <span class="va">example_observation_wells</span></span>
 <span></span>
-<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">stream_reaches</span>, color <span class="op">=</span> <span class="st">"grey65"</span>, linewidth <span class="op">=</span> <span class="fl">1.2</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">pumping_wells</span>, color <span class="op">=</span> <span class="st">"firebrick"</span>, shape <span class="op">=</span> <span class="fl">8</span>, size <span class="op">=</span> <span class="fl">3</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">observation_wells</span>, color <span class="op">=</span> <span class="st">"#0072B2"</span>, shape <span class="op">=</span> <span class="fl">17</span>, size <span class="op">=</span> <span class="fl">3</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf_text</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">pumping_wells</span>, <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>label <span class="op">=</span> <span class="va">pump_id</span><span class="op">)</span>, nudge_y <span class="op">=</span> <span class="fl">100</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf_text</a></span><span class="op">(</span></span>
+<span><span class="va">spatial_inputs_plot</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">stream_reaches</span>, color <span class="op">=</span> <span class="st">"grey65"</span>, linewidth <span class="op">=</span> <span class="fl">1.2</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">pumping_wells</span>, color <span class="op">=</span> <span class="st">"firebrick"</span>, shape <span class="op">=</span> <span class="fl">8</span>, size <span class="op">=</span> <span class="fl">3</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">observation_wells</span>, color <span class="op">=</span> <span class="st">"#0072B2"</span>, shape <span class="op">=</span> <span class="fl">17</span>, size <span class="op">=</span> <span class="fl">3</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggsf.html" class="external-link">geom_sf_text</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">pumping_wells</span>, <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/aes.html" class="external-link">aes</a></span><span class="op">(</span>label <span class="op">=</span> <span class="va">pump_id</span><span class="op">)</span>, nudge_y <span class="op">=</span> <span class="fl">100</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggsf.html" class="external-link">geom_sf_text</a></span><span class="op">(</span></span>
 <span>    data <span class="op">=</span> <span class="va">observation_wells</span>,</span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>label <span class="op">=</span> <span class="va">observation_id</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/aes.html" class="external-link">aes</a></span><span class="op">(</span>label <span class="op">=</span> <span class="va">observation_id</span><span class="op">)</span>,</span>
 <span>    nudge_y <span class="op">=</span> <span class="op">-</span><span class="fl">100</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="cn">NULL</span>, y <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="cn">NULL</span>, y <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">spatial_inputs_plot</span></span></code></pre></div>
 <p><img src="stream-depletion-and-drawdown_files/figure-html/spatial-inputs-1.png" class="r-plt" alt="" width="100%" style="display: block; margin: auto;"></p>
 <p>See the <a href="https://gopalpenny.github.io/isw/reference/prep_stream_segments.html"><code>prep_stream_segments()</code>
 reference</a> for CRS requirements, coordinate transformations, and
@@ -206,7 +209,7 @@ water level on or near the stream.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stream_segments</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_stream_segments.html">prep_stream_segments</a></span><span class="op">(</span></span>
 <span>  <span class="va">stream_reaches</span>,</span>
-<span>  reach_spacing <span class="op">=</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">400</span>, <span class="st">"m"</span><span class="op">)</span></span>
+<span>  reach_spacing <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/units/man/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">400</span>, <span class="st">"m"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">stream_segments</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
@@ -236,6 +239,28 @@ water level on or near the stream.</p>
 <span><span class="co">#&gt; 5 LINESTRING (5e+05 4980000, ...</span></span>
 <span><span class="co">#&gt; 6 LINESTRING (500360 4979880,...</span></span>
 <span><span class="co">#&gt; 7 LINESTRING (500720 4979760,...</span></span></code></pre></div>
+<p>The map below shows the resulting model geometry. Each colored line
+is one stream segment, and the white circles mark the segment midpoint
+collocation points where the constant-head boundary condition is
+imposed.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">spatial_inputs_plot</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span></span>
+<span>    data <span class="op">=</span> <span class="va">stream_segments</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/aes.html" class="external-link">aes</a></span><span class="op">(</span>color <span class="op">=</span> <span class="va">reach_segment_id</span><span class="op">)</span>,</span>
+<span>    linewidth <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>    show.legend <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  <span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span></span>
+<span>    data <span class="op">=</span> <span class="va">stream_segments</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/aes.html" class="external-link">aes</a></span><span class="op">(</span>geometry <span class="op">=</span> <span class="va">model_point</span><span class="op">)</span>,</span>
+<span>    shape <span class="op">=</span> <span class="fl">21</span>,</span>
+<span>    fill <span class="op">=</span> <span class="st">"white"</span>,</span>
+<span>    color <span class="op">=</span> <span class="st">"black"</span>,</span>
+<span>    size <span class="op">=</span> <span class="fl">2.5</span>,</span>
+<span>    stroke <span class="op">=</span> <span class="fl">0.7</span></span>
+<span>  <span class="op">)</span></span></code></pre></div>
+<p><img src="stream-depletion-and-drawdown_files/figure-html/plot-stream-segments-1.png" class="r-plt" alt="" width="100%" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level2">
 <h2 id="define-pumping-and-model-times">Define pumping and model times<a class="anchor" aria-label="anchor" href="#define-pumping-and-model-times"></a>
@@ -246,11 +271,11 @@ provided as <code>units</code> objects. Its first column,
 column is named for a <code>pump_id</code> and contains that well’s
 rate. Rates continue until the next schedule row, so a shutdown at the
 end must be represented by a row that sets the rate to zero.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">pumping_schedules</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">pumping_schedules</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/tibble/man/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
 <span>  t <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2025-01-01"</span>, <span class="st">"2025-02-01"</span>, <span class="st">"2025-03-01"</span>, <span class="st">"2025-04-01"</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  pump_1 <span class="op">=</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">500</span>, <span class="fl">500</span>, <span class="fl">300</span>, <span class="fl">0</span><span class="op">)</span>, <span class="st">"m^3/day"</span><span class="op">)</span>,</span>
-<span>  pump_2 <span class="op">=</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">250</span>, <span class="fl">250</span>, <span class="fl">0</span><span class="op">)</span>, <span class="st">"m^3/day"</span><span class="op">)</span></span>
+<span>  pump_1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/units/man/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">500</span>, <span class="fl">500</span>, <span class="fl">300</span>, <span class="fl">0</span><span class="op">)</span>, <span class="st">"m^3/day"</span><span class="op">)</span>,</span>
+<span>  pump_2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/units/man/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">250</span>, <span class="fl">250</span>, <span class="fl">0</span><span class="op">)</span>, <span class="st">"m^3/day"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">pumping_schedules</span></span>
@@ -275,18 +300,27 @@ depletion, but it increases computation for both methods. Constant-head
 rates are solved to satisfy the boundary at each interval end. Very
 short intervals can therefore require large corrective rates, especially
 when a regular refinement grid is combined with nearby evaluation or
-pumping times. This example leaves <code>injection_times</code> as
-<code>NULL</code> and uses monthly evaluation boundaries for a stable,
-readily interpreted comparison. Applications that add refinement times
-should inspect sensitivity to the resulting interval lengths.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+pumping times. This example uses monthly evaluation times and adds
+refinement times 5, 10, and 15 days after each pumping-schedule change.
+Applications that add refinement times should inspect sensitivity to the
+resulting interval lengths. The <code>quadrature_order</code> sets the
+number of Gauss–Legendre evaluation points on each positive-length
+straight section of a stream segment; this example uses four
+throughout.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">evaluation_times</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.Date.html" class="external-link">seq.Date</a></span><span class="op">(</span></span>
 <span>  from <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="st">"2025-01-01"</span><span class="op">)</span>,</span>
 <span>  to <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="st">"2026-01-01"</span><span class="op">)</span>,</span>
 <span>  by <span class="op">=</span> <span class="st">"month"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">injection_times</span> <span class="op">&lt;-</span> <span class="cn">NULL</span></span></code></pre></div>
+<span><span class="va">injection_times</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  <span class="va">pumping_schedules</span><span class="op">$</span><span class="va">t</span> <span class="op">+</span> <span class="fl">5</span>,</span>
+<span>  <span class="va">pumping_schedules</span><span class="op">$</span><span class="va">t</span> <span class="op">+</span> <span class="fl">10</span>,</span>
+<span>  <span class="va">pumping_schedules</span><span class="op">$</span><span class="va">t</span> <span class="op">+</span> <span class="fl">15</span></span>
+<span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">quadrature_order</span> <span class="op">&lt;-</span> <span class="fl">4</span></span></code></pre></div>
 <p>See the <a href="https://gopalpenny.github.io/isw/reference/generate_stream_injection_schedule.html"><code>generate_stream_injection_schedule()</code>
 reference</a> for the complete input requirements and interval
 construction rules.</p>
@@ -301,21 +335,21 @@ spatially over the stream network.
 weights independently for each pumping well. <code>sample_spacing</code>
 controls how finely curved stream geometries are sampled when the
 segment weights are calculated.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stream_apportionment</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_adf_stream_apportionment.html">prep_adf_stream_apportionment</a></span><span class="op">(</span></span>
 <span>  <span class="va">pumping_wells</span>,</span>
 <span>  <span class="va">stream_segments</span>,</span>
-<span>  sample_spacing <span class="op">=</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">100</span>, <span class="st">"m"</span><span class="op">)</span>,</span>
+<span>  sample_spacing <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/units/man/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">100</span>, <span class="st">"m"</span><span class="op">)</span>,</span>
 <span>  method <span class="op">=</span> <span class="st">"web_squared"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>To confirm the weights, we can sum the weights, or
 <code>apportionment_fraction</code>, over all stream segments for each
 pumping well.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stream_apportionment</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">pump_id</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/sf/man/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">pump_id</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
 <span>    total_apportionment_fraction <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">apportionment_fraction</span><span class="op">)</span>,</span>
 <span>    .groups <span class="op">=</span> <span class="st">"drop"</span></span>
 <span>  <span class="op">)</span></span>
@@ -327,17 +361,17 @@ pumping well.</p>
 <p>Now we can calculate ADF stream depletion directly at the requested
 times. This is the simplest route when only ADF depletion, rather than
 its effect on aquifer water levels, is needed.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">adf_depletion</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/model_adf_stream_depletion.html">model_adf_stream_depletion</a></span><span class="op">(</span></span>
 <span>  pumping_wells <span class="op">=</span> <span class="va">pumping_wells</span>,</span>
 <span>  pumping_schedules <span class="op">=</span> <span class="va">pumping_schedules</span>,</span>
 <span>  stream_apportionment <span class="op">=</span> <span class="va">stream_apportionment</span>,</span>
-<span>  evaluation_times <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">evaluation_times</span>, <span class="va">injection_times</span><span class="op">)</span></span>
+<span>  evaluation_times <span class="op">=</span> <span class="va">evaluation_times</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">adf_depletion_totals</span> <span class="op">&lt;-</span> <span class="va">adf_depletion</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">pump_id</span>, <span class="va">evaluation_time</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">pump_id</span>, <span class="va">evaluation_time</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
 <span>    adf_depletion_at_time <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">stream_depletion_rate</span><span class="op">)</span>,</span>
 <span>    .groups <span class="op">=</span> <span class="st">"drop"</span></span>
 <span>  <span class="op">)</span></span>
@@ -371,12 +405,14 @@ function and time grid. With <code>method = "adf"</code>,
 averages depletion at adjacent boundaries. It reports the resulting
 <code>injection_rate</code> as positive when water moves from the stream
 to the aquifer. This rate is the stream- depletion rate applied over the
-interval. If ADF depletion has already been calculated at every schedule
-boundary, it can be supplied through the
-<code>adf_stream_depletion</code> argument to avoid recalculation. The
-supplied result must include all pumping, evaluation, and optional
-refinement boundaries used by the schedule.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+interval. Precalculated ADF depletion can be supplied through the
+<code>adf_stream_depletion</code> argument to avoid recalculation. Here,
+the supplied result contains only the monthly evaluation times and omits
+the optional refinement boundaries.
+<code><a href="../reference/generate_stream_injection_schedule.html">generate_stream_injection_schedule()</a></code> issues a warning to
+make the mismatch explicit, reuses the supplied values, and fills in the
+missing times by calculating them within the function.</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">adf_schedule</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_stream_injection_schedule.html">generate_stream_injection_schedule</a></span><span class="op">(</span></span>
 <span>  pumping_wells <span class="op">=</span> <span class="va">pumping_wells</span>,</span>
 <span>  pumping_schedules <span class="op">=</span> <span class="va">pumping_schedules</span>,</span>
@@ -386,19 +422,23 @@ refinement boundaries used by the schedule.</p>
 <span>  method <span class="op">=</span> <span class="st">"adf"</span>,</span>
 <span>  stream_apportionment <span class="op">=</span> <span class="va">stream_apportionment</span>,</span>
 <span>  adf_stream_depletion <span class="op">=</span> <span class="va">adf_depletion</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span><span class="op">)</span></span>
+<span><span class="co">#&gt; Warning: adf_stream_depletion is missing 12 required schedule boundaries</span></span>
+<span><span class="co">#&gt; (2025-01-06, 2025-01-11, 2025-01-16, 2025-02-06, 2025-02-11, ...). Depletion at</span></span>
+<span><span class="co">#&gt; missing times will be calculated internally.</span></span></code></pre></div>
 <p>With <code>method = "constant_head"</code>, each interval rate is
 solved to satisfy the constant-head boundary condition on the
 <code>model_point</code> for each stream segment at the end of each time
 interval.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">constant_head_schedule</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_stream_injection_schedule.html">generate_stream_injection_schedule</a></span><span class="op">(</span></span>
 <span>  pumping_wells <span class="op">=</span> <span class="va">pumping_wells</span>,</span>
 <span>  pumping_schedules <span class="op">=</span> <span class="va">pumping_schedules</span>,</span>
 <span>  stream_segments <span class="op">=</span> <span class="va">stream_segments</span>,</span>
 <span>  evaluation_times <span class="op">=</span> <span class="va">evaluation_times</span>,</span>
 <span>  injection_times <span class="op">=</span> <span class="va">injection_times</span>,</span>
-<span>  method <span class="op">=</span> <span class="st">"constant_head"</span></span>
+<span>  method <span class="op">=</span> <span class="st">"constant_head"</span>,</span>
+<span>  quadrature_order <span class="op">=</span> <span class="va">quadrature_order</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>The constant-head result includes two diagnostics.
 <code>boundary_residual</code> is the signed water-level change
@@ -412,20 +452,20 @@ injection of all stream segments. <code>isw</code> factorizes once for
 every aquifer-property combination and reuses the result for each
 associated pumping well. This reduces computation while preserving the
 depletion response attributed to each pump.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">constant_head_schedule</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/sf/man/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
 <span>    maximum_absolute_boundary_residual_m <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span></span>
-<span>      <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="va">boundary_residual</span>, <span class="st">"m"</span><span class="op">)</span></span>
+<span>      <span class="fu"><a href="https://rdrr.io/pkg/units/man/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="va">boundary_residual</span>, <span class="st">"m"</span><span class="op">)</span></span>
 <span>    <span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>    maximum_matrix_condition_number <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">matrix_condition_number</span><span class="op">)</span>,</span>
-<span>    number_of_aquifer_factorizations <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/n_distinct.html" class="external-link">n_distinct</a></span><span class="op">(</span><span class="va">aquifer_id</span><span class="op">)</span></span>
+<span>    number_of_aquifer_factorizations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/n_distinct.html" class="external-link">n_distinct</a></span><span class="op">(</span><span class="va">aquifer_id</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 1 × 3</span></span></span>
 <span><span class="co">#&gt;   maximum_absolute_boundary_resi…¹ maximum_matrix_condi…² number_of_aquifer_fa…³</span></span>
 <span><span class="co">#&gt;                              <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                  <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                  <span style="color: #949494; font-style: italic;">&lt;int&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>                         5.55<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span>                   2.91                      2</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span>                         5.55<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span>                   3.27                      2</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># ℹ abbreviated names: ¹​maximum_absolute_boundary_residual_m,</span></span></span>
 <span><span class="co">#&gt; <span style="color: #949494;">#   ²​maximum_matrix_condition_number, ³​number_of_aquifer_factorizations</span></span></span></code></pre></div>
 </div>
@@ -438,115 +478,149 @@ therefore the injection rate summed across all stream segments.</p>
 <p>For ADF, the injection schedule contains interval-average analytical
 depletion. For constant head, it contains the depletion required to
 impose the stream boundary condition at the interval end.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">stream_depletion</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span><span class="va">adf_schedule</span>, method <span class="op">=</span> <span class="st">"ADF"</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span><span class="va">constant_head_schedule</span>, method <span class="op">=</span> <span class="st">"Constant head"</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">stream_depletion</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/mutate.html" class="external-link">mutate</a></span><span class="op">(</span><span class="va">adf_schedule</span>, method <span class="op">=</span> <span class="st">"ADF"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/mutate.html" class="external-link">mutate</a></span><span class="op">(</span><span class="va">constant_head_schedule</span>, method <span class="op">=</span> <span class="st">"Constant head"</span><span class="op">)</span></span>
 <span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">method</span>, <span class="va">pump_id</span>, <span class="va">interval_start</span>, <span class="va">interval_end</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/sf/man/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">method</span>, <span class="va">pump_id</span>, <span class="va">interval_start</span>, <span class="va">interval_end</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
 <span>    stream_depletion_rate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">injection_rate</span><span class="op">)</span>,</span>
 <span>    .groups <span class="op">=</span> <span class="st">"drop"</span></span>
 <span>  <span class="op">)</span></span>
 <span></span>
 <span><span class="va">stream_depletion</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 48 × 5</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 96 × 5</span></span></span>
 <span><span class="co">#&gt;    method pump_id interval_start interval_end stream_depletion_rate</span></span>
 <span><span class="co">#&gt;    <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;date&gt;</span>                     <span style="color: #949494;">[m^3/d]</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> ADF    pump_1  2025-01-01     2025-02-01                    6.76</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> ADF    pump_1  2025-02-01     2025-03-01                   32.1 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> ADF    pump_1  2025-03-01     2025-04-01                   67.3 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> ADF    pump_1  2025-04-01     2025-05-01                   87.4 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> ADF    pump_1  2025-05-01     2025-06-01                   83.9 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> ADF    pump_1  2025-06-01     2025-07-01                   70.1 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> ADF    pump_1  2025-07-01     2025-08-01                   57.9 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> ADF    pump_1  2025-08-01     2025-09-01                   48.3 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> ADF    pump_1  2025-09-01     2025-10-01                   41.1 </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> ADF    pump_1  2025-10-01     2025-11-01                   35.5 </span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 38 more rows</span></span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 1</span> ADF    pump_1  2025-01-01     2025-01-06               0.000<span style="text-decoration: underline;">041</span>8</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 2</span> ADF    pump_1  2025-01-06     2025-01-11               0.041<span style="text-decoration: underline;">9</span>   </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 3</span> ADF    pump_1  2025-01-11     2025-01-16               0.512    </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 4</span> ADF    pump_1  2025-01-16     2025-02-01               7.23     </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 5</span> ADF    pump_1  2025-02-01     2025-02-06              16.6      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 6</span> ADF    pump_1  2025-02-06     2025-02-11              22.9      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 7</span> ADF    pump_1  2025-02-11     2025-02-16              29.5      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 8</span> ADF    pump_1  2025-02-16     2025-03-01              41.8      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;"> 9</span> ADF    pump_1  2025-03-01     2025-03-06              54.1      </span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">10</span> ADF    pump_1  2025-03-06     2025-03-11              60.6      </span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 86 more rows</span></span></span></code></pre></div>
 <p>In addition to differences between the ADF and constant-head
 approaches, the direct ADF result at an interval end can differ from the
 average rate applied during that interval.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">adf_depletion_plot</span> <span class="op">&lt;-</span> <span class="va">adf_depletion_totals</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/transmute.html" class="external-link">transmute</a></span><span class="op">(</span></span>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">pumping_schedule_plot_data</span> <span class="op">&lt;-</span> <span class="va">pumping_schedules</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">tidyr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/tidyr/man/pivot_longer.html" class="external-link">pivot_longer</a></span><span class="op">(</span></span>
+<span>    cols <span class="op">=</span> <span class="op">-</span><span class="va">t</span>,</span>
+<span>    names_to <span class="op">=</span> <span class="st">"pump_id"</span>,</span>
+<span>    values_to <span class="op">=</span> <span class="st">"pumping_rate"</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span><span class="va">pumping_schedule_plot_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span>
+<span>  <span class="va">pumping_schedule_plot_data</span>,</span>
+<span>  <span class="va">pumping_schedule_plot_data</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">pump_id</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/slice.html" class="external-link">slice_tail</a></span><span class="op">(</span>n <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>t <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">evaluation_times</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/group_by.html" class="external-link">ungroup</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">adf_depletion_plot</span> <span class="op">&lt;-</span> <span class="va">adf_depletion_totals</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/transmute.html" class="external-link">transmute</a></span><span class="op">(</span></span>
 <span>    <span class="va">pump_id</span>,</span>
 <span>    interval_end <span class="op">=</span> <span class="va">evaluation_time</span>,</span>
 <span>    stream_depletion_rate <span class="op">=</span> <span class="va">adf_depletion_at_time</span>,</span>
 <span>    method <span class="op">=</span> <span class="st">"ADF at requested time"</span></span>
 <span>  <span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_step</a></span><span class="op">(</span></span>
+<span><span class="va">pumping_schedule_plot</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span></span>
+<span>  <span class="va">pumping_schedule_plot_data</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">t</span>, <span class="va">pumping_rate</span><span class="op">)</span></span>
+<span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/geom_path.html" class="external-link">geom_step</a></span><span class="op">(</span>color <span class="op">=</span> <span class="st">"firebrick"</span>, linewidth <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">pump_id</span>, nrow <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/scale_date.html" class="external-link">scale_x_date</a></span><span class="op">(</span>limits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">evaluation_times</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="cn">NULL</span>, y <span class="op">=</span> <span class="st">"Pumping rate"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/theme.html" class="external-link">theme</a></span><span class="op">(</span></span>
+<span>    axis.text.x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>    axis.ticks.x <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span><span class="va">stream_depletion_plot</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/geom_path.html" class="external-link">geom_step</a></span><span class="op">(</span></span>
 <span>    data <span class="op">=</span> <span class="va">stream_depletion</span>,</span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">interval_start</span>, <span class="va">stream_depletion_rate</span>, color <span class="op">=</span> <span class="va">method</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">interval_start</span>, <span class="va">stream_depletion_rate</span>, color <span class="op">=</span> <span class="va">method</span><span class="op">)</span>,</span>
 <span>    linewidth <span class="op">=</span> <span class="fl">1</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span></span>
 <span>    data <span class="op">=</span> <span class="va">adf_depletion_plot</span>,</span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">interval_end</span>, <span class="va">stream_depletion_rate</span>, color <span class="op">=</span> <span class="va">method</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">interval_end</span>, <span class="va">stream_depletion_rate</span>, color <span class="op">=</span> <span class="va">method</span><span class="op">)</span>,</span>
 <span>    linewidth <span class="op">=</span> <span class="fl">0.8</span>,</span>
 <span>    linetype <span class="op">=</span> <span class="st">"dashed"</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span></span>
 <span>    data <span class="op">=</span> <span class="va">adf_depletion_plot</span>,</span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">interval_end</span>, <span class="va">stream_depletion_rate</span>, color <span class="op">=</span> <span class="va">method</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">interval_end</span>, <span class="va">stream_depletion_rate</span>, color <span class="op">=</span> <span class="va">method</span><span class="op">)</span>,</span>
 <span>    size <span class="op">=</span> <span class="fl">2</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">pump_id</span>, nrow <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">pump_id</span>, nrow <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/scale_date.html" class="external-link">scale_x_date</a></span><span class="op">(</span>limits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">evaluation_times</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
 <span>    x <span class="op">=</span> <span class="st">"Interval end"</span>,</span>
 <span>    y <span class="op">=</span> <span class="st">"Total stream-depletion rate"</span>,</span>
 <span>    color <span class="op">=</span> <span class="st">"Method"</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">pumping_schedule_plot</span> <span class="op">/</span> <span class="va">stream_depletion_plot</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/patchwork/man/plot_layout.html" class="external-link">plot_layout</a></span><span class="op">(</span>heights <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p><img src="stream-depletion-and-drawdown_files/figure-html/plot-stream-depletion-1.png" class="r-plt" alt="" width="100%" style="display: block; margin: auto;"></p>
 <p>The following map compares the spatial distribution of the two
 injection schedules during May 2025. The positive mapped values
 represent water moving from the stream to the aquifer. Each stream
 segment is colored by its total injection rate for one pumping well and
 one method.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">may_date</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="st">"2025-05-15"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">may_injection_rates</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span><span class="va">adf_schedule</span>, method <span class="op">=</span> <span class="st">"ADF"</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span><span class="va">constant_head_schedule</span>, method <span class="op">=</span> <span class="st">"Constant head"</span><span class="op">)</span></span>
+<span><span class="va">may_injection_rates</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/mutate.html" class="external-link">mutate</a></span><span class="op">(</span><span class="va">adf_schedule</span>, method <span class="op">=</span> <span class="st">"ADF"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/mutate.html" class="external-link">mutate</a></span><span class="op">(</span><span class="va">constant_head_schedule</span>, method <span class="op">=</span> <span class="st">"Constant head"</span><span class="op">)</span></span>
 <span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">interval_start</span> <span class="op">&lt;=</span> <span class="va">may_date</span>, <span class="va">interval_end</span> <span class="op">&gt;</span> <span class="va">may_date</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">method</span>, <span class="va">pump_id</span>, <span class="va">reach_segment_id</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">interval_start</span> <span class="op">&lt;=</span> <span class="va">may_date</span>, <span class="va">interval_end</span> <span class="op">&gt;</span> <span class="va">may_date</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">method</span>, <span class="va">pump_id</span>, <span class="va">reach_segment_id</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
 <span>    injection_rate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">injection_rate</span><span class="op">)</span>,</span>
 <span>    .groups <span class="op">=</span> <span class="st">"drop"</span></span>
 <span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
-<span>    injection_rate_m3_day <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>    injection_rate_m3_day <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/units/man/units.html" class="external-link">set_units</a></span><span class="op">(</span></span>
 <span>      <span class="va">injection_rate</span>,</span>
 <span>      <span class="st">"m^3/day"</span></span>
 <span>    <span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
 <span></span>
 <span><span class="va">injection_segments</span> <span class="op">&lt;-</span> <span class="va">stream_segments</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">reach_segment_id</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span><span class="va">may_injection_rates</span>, by <span class="op">=</span> <span class="st">"reach_segment_id"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">reach_segment_id</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span><span class="va">may_injection_rates</span>, by <span class="op">=</span> <span class="st">"reach_segment_id"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">stream_segments</span>, color <span class="op">=</span> <span class="st">"grey75"</span>, linewidth <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span></span>
+<span><span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">stream_segments</span>, color <span class="op">=</span> <span class="st">"grey75"</span>, linewidth <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span></span>
 <span>    data <span class="op">=</span> <span class="va">injection_segments</span>,</span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>color <span class="op">=</span> <span class="va">injection_rate_m3_day</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/aes.html" class="external-link">aes</a></span><span class="op">(</span>color <span class="op">=</span> <span class="va">injection_rate_m3_day</span><span class="op">)</span>,</span>
 <span>    linewidth <span class="op">=</span> <span class="fl">5</span>,</span>
 <span>    lineend <span class="op">=</span> <span class="st">"round"</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_grid.html" class="external-link">facet_grid</a></span><span class="op">(</span><span class="va">method</span> <span class="op">~</span> <span class="va">pump_id</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_viridis.html" class="external-link">scale_color_viridis_c</a></span><span class="op">(</span>option <span class="op">=</span> <span class="st">"C"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/facet_grid.html" class="external-link">facet_grid</a></span><span class="op">(</span><span class="va">method</span> <span class="op">~</span> <span class="va">pump_id</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/scale_viridis.html" class="external-link">scale_color_viridis_c</a></span><span class="op">(</span>option <span class="op">=</span> <span class="st">"C"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
 <span>    x <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>    y <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>    color <span class="op">=</span> <span class="st">"Injection rate\n(m³/day)"</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><img src="stream-depletion-and-drawdown_files/figure-html/map-may-injection-rates-1.png" class="r-plt" alt="" width="100%" style="display: block; margin: auto;"></p>
 </div>
 <div class="section level2">
@@ -559,7 +633,7 @@ schedule avoids recalculating the injection rates. Internally, the
 function checks to make sure that the timing of the provided schedule
 match the timing that would have otherwise been required if the schedule
 were calculated here.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
 <span><span class="va">adf_water_levels</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/model_aquifer_water_level_change.html">model_aquifer_water_level_change</a></span><span class="op">(</span></span>
 <span>  pumping_wells <span class="op">=</span> <span class="va">pumping_wells</span>,</span>
@@ -567,9 +641,10 @@ were calculated here.</p>
 <span>  observation_wells <span class="op">=</span> <span class="va">observation_wells</span>,</span>
 <span>  stream_segments <span class="op">=</span> <span class="va">stream_segments</span>,</span>
 <span>  evaluation_times <span class="op">=</span> <span class="va">evaluation_times</span>,</span>
-<span>  stream_injection_schedule <span class="op">=</span> <span class="va">adf_schedule</span></span>
+<span>  stream_injection_schedule <span class="op">=</span> <span class="va">adf_schedule</span>,</span>
+<span>  quadrature_order <span class="op">=</span> <span class="va">quadrature_order</span></span>
 <span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"ADF"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"ADF"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">constant_head_water_levels</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/model_aquifer_water_level_change.html">model_aquifer_water_level_change</a></span><span class="op">(</span></span>
 <span>  pumping_wells <span class="op">=</span> <span class="va">pumping_wells</span>,</span>
@@ -577,15 +652,16 @@ were calculated here.</p>
 <span>  observation_wells <span class="op">=</span> <span class="va">observation_wells</span>,</span>
 <span>  stream_segments <span class="op">=</span> <span class="va">stream_segments</span>,</span>
 <span>  evaluation_times <span class="op">=</span> <span class="va">evaluation_times</span>,</span>
-<span>  stream_injection_schedule <span class="op">=</span> <span class="va">constant_head_schedule</span></span>
+<span>  stream_injection_schedule <span class="op">=</span> <span class="va">constant_head_schedule</span>,</span>
+<span>  quadrature_order <span class="op">=</span> <span class="va">quadrature_order</span></span>
 <span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"Constant head"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"Constant head"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">water_levels</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="va">adf_water_levels</span>, <span class="va">constant_head_water_levels</span><span class="op">)</span></span>
+<span><span class="va">water_levels</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span><span class="va">adf_water_levels</span>, <span class="va">constant_head_water_levels</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">water_levels</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/sf/man/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/select.html" class="external-link">select</a></span><span class="op">(</span></span>
 <span>    <span class="va">method</span>,</span>
 <span>    <span class="va">pump_id</span>,</span>
 <span>    <span class="va">observation_id</span>,</span>
@@ -615,31 +691,31 @@ is their signed net effect: negative values indicate a decline and
 positive values indicate a rise in the water table.</p>
 <p>We can obtain the water-level change associated with each pump, over
 time, as follows.</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">water_level_totals</span> <span class="op">&lt;-</span> <span class="va">water_levels</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">method</span>, <span class="va">pump_id</span>, <span class="va">observation_id</span>, <span class="va">evaluation_time</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
-<span>    water_level_change_m <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/sf/man/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">method</span>, <span class="va">pump_id</span>, <span class="va">observation_id</span>, <span class="va">evaluation_time</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
+<span>    water_level_change_m <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/units/man/units.html" class="external-link">set_units</a></span><span class="op">(</span></span>
 <span>      <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">water_level_change</span><span class="op">)</span>,</span>
 <span>      <span class="st">"m"</span></span>
 <span>    <span class="op">)</span><span class="op">)</span>,</span>
 <span>    .groups <span class="op">=</span> <span class="st">"drop"</span></span>
 <span>  <span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span></span>
+<span><span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span></span>
 <span>  <span class="va">water_level_totals</span>,</span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">evaluation_time</span>, <span class="va">water_level_change_m</span>, color <span class="op">=</span> <span class="va">method</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">evaluation_time</span>, <span class="va">water_level_change_m</span>, color <span class="op">=</span> <span class="va">method</span><span class="op">)</span></span>
 <span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_abline.html" class="external-link">geom_hline</a></span><span class="op">(</span>yintercept <span class="op">=</span> <span class="fl">0</span>, color <span class="op">=</span> <span class="st">"grey70"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span>linewidth <span class="op">=</span> <span class="fl">1</span>, alpha <span class="op">=</span> <span class="fl">0.8</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_grid.html" class="external-link">facet_grid</a></span><span class="op">(</span><span class="va">observation_id</span> <span class="op">~</span> <span class="va">pump_id</span>, scales <span class="op">=</span> <span class="st">"fixed"</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/geom_abline.html" class="external-link">geom_hline</a></span><span class="op">(</span>yintercept <span class="op">=</span> <span class="fl">0</span>, color <span class="op">=</span> <span class="st">"grey70"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span>linewidth <span class="op">=</span> <span class="fl">1</span>, alpha <span class="op">=</span> <span class="fl">0.8</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/facet_grid.html" class="external-link">facet_grid</a></span><span class="op">(</span><span class="va">observation_id</span> <span class="op">~</span> <span class="va">pump_id</span>, scales <span class="op">=</span> <span class="st">"fixed"</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
 <span>    x <span class="op">=</span> <span class="st">"Evaluation time"</span>,</span>
 <span>    y <span class="op">=</span> <span class="st">"Net water-level change (m)"</span>,</span>
 <span>    color <span class="op">=</span> <span class="st">"Method"</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><img src="stream-depletion-and-drawdown_files/figure-html/plot-water-levels-1.png" class="r-plt" alt="" width="100%" style="display: block; margin: auto;"></p>
 <p>The <a href="https://gopalpenny.github.io/isw/reference/model_aquifer_water_level_change.html"><code>model_aquifer_water_level_change()</code>
 reference</a> documents the returned pumping, recovery, and net
@@ -657,8 +733,8 @@ model points, <code><a href="../reference/prep_stream_sample_points.html">prep_s
 additional points along each segment. The constant-head condition is
 imposed only at model points, so water-level changes at the sample
 points are more likely to deviate.</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">stream_model_points</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://r-spatial.github.io/sf/reference/sf.html" class="external-link">st_sf</a></span><span class="op">(</span></span>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">stream_model_points</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/sf/man/sf.html" class="external-link">st_sf</a></span><span class="op">(</span></span>
 <span>  observation_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span></span>
 <span>    <span class="st">"model_"</span>,</span>
 <span>    <span class="va">stream_segments</span><span class="op">$</span><span class="va">reach_segment_id</span></span>
@@ -669,21 +745,21 @@ points are more likely to deviate.</p>
 <span></span>
 <span><span class="va">stream_sample_points</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prep_stream_sample_points.html">prep_stream_sample_points</a></span><span class="op">(</span></span>
 <span>  <span class="va">stream_segments</span>,</span>
-<span>  sample_spacing <span class="op">=</span> <span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">100</span>, <span class="st">"m"</span><span class="op">)</span></span>
+<span>  sample_spacing <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/pkg/units/man/units.html" class="external-link">set_units</a></span><span class="op">(</span><span class="fl">100</span>, <span class="st">"m"</span><span class="op">)</span></span>
 <span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/transmute.html" class="external-link">transmute</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/transmute.html" class="external-link">transmute</a></span><span class="op">(</span></span>
 <span>    observation_id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"sample_"</span>, <span class="va">sample_point_id</span><span class="op">)</span>,</span>
 <span>    point_type <span class="op">=</span> <span class="st">"Sample point"</span></span>
 <span>  <span class="op">)</span></span>
 <span></span>
-<span><span class="va">stream_observation_wells</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span>
+<span><span class="va">stream_observation_wells</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span>
 <span>  <span class="va">stream_sample_points</span>,</span>
 <span>  <span class="va">stream_model_points</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>In the figure below, negative values indicate a decline from the
 initial condition. The following calculation sums the two pump-specific
 responses at each observation point on May 1, 2025.</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stream_map_time</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="st">"2025-05-01"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">adf_stream_water_levels</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/model_aquifer_water_level_change.html">model_aquifer_water_level_change</a></span><span class="op">(</span></span>
@@ -692,9 +768,10 @@ responses at each observation point on May 1, 2025.</p>
 <span>  observation_wells <span class="op">=</span> <span class="va">stream_observation_wells</span>,</span>
 <span>  stream_segments <span class="op">=</span> <span class="va">stream_segments</span>,</span>
 <span>  evaluation_times <span class="op">=</span> <span class="va">stream_map_time</span>,</span>
-<span>  stream_injection_schedule <span class="op">=</span> <span class="va">adf_schedule</span></span>
+<span>  stream_injection_schedule <span class="op">=</span> <span class="va">adf_schedule</span>,</span>
+<span>  quadrature_order <span class="op">=</span> <span class="va">quadrature_order</span></span>
 <span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"ADF"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"ADF"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">constant_head_stream_water_levels</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/model_aquifer_water_level_change.html">model_aquifer_water_level_change</a></span><span class="op">(</span></span>
 <span>  pumping_wells <span class="op">=</span> <span class="va">pumping_wells</span>,</span>
@@ -702,38 +779,39 @@ responses at each observation point on May 1, 2025.</p>
 <span>  observation_wells <span class="op">=</span> <span class="va">stream_observation_wells</span>,</span>
 <span>  stream_segments <span class="op">=</span> <span class="va">stream_segments</span>,</span>
 <span>  evaluation_times <span class="op">=</span> <span class="va">stream_map_time</span>,</span>
-<span>  stream_injection_schedule <span class="op">=</span> <span class="va">constant_head_schedule</span></span>
+<span>  stream_injection_schedule <span class="op">=</span> <span class="va">constant_head_schedule</span>,</span>
+<span>  quadrature_order <span class="op">=</span> <span class="va">quadrature_order</span></span>
 <span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"Constant head"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>method <span class="op">=</span> <span class="st">"Constant head"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">stream_water_level_map</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span>
+<span><span class="va">stream_water_level_map</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/bind_rows.html" class="external-link">bind_rows</a></span><span class="op">(</span></span>
 <span>  <span class="va">adf_stream_water_levels</span>,</span>
 <span>  <span class="va">constant_head_stream_water_levels</span></span>
 <span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">method</span>, <span class="va">observation_id</span>, <span class="va">evaluation_time</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
-<span>    water_level_change_m <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://r-quantities.github.io/units/reference/units.html" class="external-link">set_units</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/sf/man/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">method</span>, <span class="va">observation_id</span>, <span class="va">evaluation_time</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
+<span>    water_level_change_m <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/units/man/units.html" class="external-link">set_units</a></span><span class="op">(</span></span>
 <span>      <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">water_level_change</span><span class="op">)</span>,</span>
 <span>      <span class="st">"m"</span></span>
 <span>    <span class="op">)</span><span class="op">)</span>,</span>
 <span>    .groups <span class="op">=</span> <span class="st">"drop"</span></span>
 <span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span></span>
 <span>    <span class="va">stream_observation_wells</span>,</span>
 <span>    by <span class="op">=</span> <span class="st">"observation_id"</span></span>
 <span>  <span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_as_sf.html" class="external-link">st_as_sf</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/sf/man/st_as_sf.html" class="external-link">st_as_sf</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">water_level_limit</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span></span>
 <span>  <span class="va">stream_water_level_map</span><span class="op">$</span><span class="va">water_level_change_m</span></span>
 <span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">stream_segments</span>, color <span class="op">=</span> <span class="st">"grey75"</span>, linewidth <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span></span>
+<span><span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">stream_segments</span>, color <span class="op">=</span> <span class="st">"grey75"</span>, linewidth <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggsf.html" class="external-link">geom_sf</a></span><span class="op">(</span></span>
 <span>    data <span class="op">=</span> <span class="va">stream_water_level_map</span>,</span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/aes.html" class="external-link">aes</a></span><span class="op">(</span></span>
 <span>      fill <span class="op">=</span> <span class="va">water_level_change_m</span>,</span>
 <span>      shape <span class="op">=</span> <span class="va">point_type</span></span>
 <span>    <span class="op">)</span>,</span>
@@ -741,35 +819,35 @@ responses at each observation point on May 1, 2025.</p>
 <span>    size <span class="op">=</span> <span class="fl">4.5</span>,</span>
 <span>    stroke <span class="op">=</span> <span class="fl">0.35</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">method</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_gradient.html" class="external-link">scale_fill_gradient2</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">method</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/scale_gradient.html" class="external-link">scale_fill_gradient2</a></span><span class="op">(</span></span>
 <span>    low <span class="op">=</span> <span class="st">"#B2182B"</span>,</span>
 <span>    mid <span class="op">=</span> <span class="st">"white"</span>,</span>
 <span>    high <span class="op">=</span> <span class="st">"#2166AC"</span>,</span>
 <span>    midpoint <span class="op">=</span> <span class="fl">0</span>,</span>
 <span>    limits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="va">water_level_limit</span>, <span class="va">water_level_limit</span><span class="op">)</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_manual.html" class="external-link">scale_shape_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/scale_manual.html" class="external-link">scale_shape_manual</a></span><span class="op">(</span>values <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
 <span>    <span class="st">"Sample point"</span> <span class="op">=</span> <span class="fl">21</span>,</span>
 <span>    <span class="st">"Segment model point"</span> <span class="op">=</span> <span class="fl">23</span></span>
 <span>  <span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/labs.html" class="external-link">labs</a></span><span class="op">(</span></span>
 <span>    x <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>    y <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>    fill <span class="op">=</span> <span class="st">"Net water-level\nchange (m)"</span>,</span>
 <span>    shape <span class="op">=</span> <span class="st">"Observation type"</span></span>
 <span>  <span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/ggplot2/man/ggtheme.html" class="external-link">theme_minimal</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><img src="stream-depletion-and-drawdown_files/figure-html/map-stream-water-levels-1.png" class="r-plt" alt="" width="100%" style="display: block; margin: auto;"></p>
 <p>Finally, we can summarize the distribution of hydraulic-head change
 by method and observation type to compare the residuals between model
 points with those at the segment model points, where the constant-head
 condition is imposed.</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stream_water_level_summary</span> <span class="op">&lt;-</span> <span class="va">stream_water_level_map</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">method</span>, <span class="va">point_type</span><span class="op">)</span> <span class="op">|&gt;</span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/sf/man/st_geometry.html" class="external-link">st_drop_geometry</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">method</span>, <span class="va">point_type</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/pkg/dplyr/man/summarise.html" class="external-link">summarize</a></span><span class="op">(</span></span>
 <span>    mean_m <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">water_level_change_m</span><span class="op">)</span>,</span>
 <span>    standard_deviation_m <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">water_level_change_m</span><span class="op">)</span>,</span>
 <span>    minimum_m <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">water_level_change_m</span><span class="op">)</span>,</span>
@@ -781,10 +859,10 @@ condition is imposed.</p>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 4 × 6</span></span></span>
 <span><span class="co">#&gt;   method        point_type       mean_m standard_deviation_m minimum_m maximum_m</span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>             <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>                <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>     <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> ADF           Sample point  -<span style="color: #BB0000;">1.57</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>             1.69<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span> -<span style="color: #BB0000;">5.14</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>  5.64<span style="color: #949494;">e</span><span style="color: #BB0000;">- 3</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> ADF           Segment mode… -<span style="color: #BB0000;">1.87</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>             1.47<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span> -<span style="color: #BB0000;">3.45</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>  2.64<span style="color: #949494;">e</span><span style="color: #BB0000;">- 3</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Constant head Sample point   3.13<span style="color: #949494;">e</span><span style="color: #BB0000;">- 3</span>             9.81<span style="color: #949494;">e</span><span style="color: #BB0000;">- 3</span> -<span style="color: #BB0000;">1.36</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>  3.00<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> Constant head Segment mode…  1.38<span style="color: #949494;">e</span><span style="color: #BB0000;">-18</span>             2.18<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span> -<span style="color: #BB0000;">4.51</span><span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span>  2.08<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span></span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> ADF           Sample point  -<span style="color: #BB0000;">1.63</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>             1.83<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span> -<span style="color: #BB0000;">5.80</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>  1.01<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> ADF           Segment mode… -<span style="color: #BB0000;">2.20</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>             1.80<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span> -<span style="color: #BB0000;">4.61</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>  2.31<span style="color: #949494;">e</span><span style="color: #BB0000;">- 3</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> Constant head Sample point   5.98<span style="color: #949494;">e</span><span style="color: #BB0000;">- 3</span>             1.02<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span> -<span style="color: #BB0000;">1.45</span><span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span>  2.55<span style="color: #949494;">e</span><span style="color: #BB0000;">- 2</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> Constant head Segment mode…  1.34<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span>             2.80<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span> -<span style="color: #BB0000;">2.08</span><span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span>  5.55<span style="color: #949494;">e</span><span style="color: #BB0000;">-17</span></span></span></code></pre></div>
 </div>
   </div>
 
