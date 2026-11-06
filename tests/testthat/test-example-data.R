@@ -58,7 +58,7 @@ test_that("packaged apportionment example inputs are valid", {
     matrix(c(500279, 4979907), nrow = 1)
   )
 
-  reach_segments <- isw:::.discretize_stream_reaches(
+  reach_segments <- prep_stream_segments(
     example_stream_reaches,
     units::set_units(400, "m")
   )

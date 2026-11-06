@@ -71,6 +71,7 @@
   # Validated numeric inputs use m, m/day, day and m3/day; returns signed head in m.
   contributing_rows <- which(pumping_events$pumping_time_day < evaluation_time_day)
   pumping_head_m <- numeric(length(pump_distances_m))
+  # Sum the signed head response from every earlier rate change for this pump.
   for (event_row in contributing_rows) {
     response_day_per_m2 <- .theis_aquifer_drawdown_ratio(
       distance_m = pump_distances_m,
@@ -153,7 +154,7 @@
     factor_cache <- new.env(parent = emptyenv())
 
     get_response_matrix <- function(elapsed_time_day) {
-      # Cached numeric line responses have units day/m2.
+      # Retrieve cached numeric day/m2 responses directly for the QR algebra.
       .get_cached_line_response_matrix(
         response_operator = boundary_response_operator,
         response_cache = response_cache,

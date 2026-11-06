@@ -4,7 +4,7 @@ Design document for branch `performance`. The tables below inventory the 61
 named, top-level functions present before the refactor; proposed helpers are
 identified separately.
 
-## Implementation status: stages 1 through 6
+## Implementation status: stages 1 through 7
 
 The first implementation stage adds validated numeric preparation to all ten
 public entry points. Physical inputs are converted before stripping, numeric
@@ -93,7 +93,26 @@ The stage 6 full suite reports 571 passed expectations, zero failed expectations
 and 7 blocks with errors (six in aquifer workflow tests and one older direct
 spatial-helper fixture). The aquifer test errors also include a supplied-schedule
 fixture whose interval coverage must be corrected. This is still an intentionally
-incomplete package result. Aquifer observation superposition is the next stage.
+incomplete package result. Stage 6 was committed as `d36088b`.
+
+Stage 7 restores aquifer observation superposition with numeric prepared wells,
+events, injection schedules and evaluation days. The private coordinator calls
+the private schedule generator; no internal public-boundary validation repeats.
+Observation line operators and pump-to-observation distances are prepared once,
+event selections are reused across observations, and output head arrays are
+preallocated. Numeric meter heads and numeric day times are restored to the
+caller's original length units and time representation at the public exit.
+Supplied schedule metadata/quadrature and coverage checks remain at that boundary.
+
+Independent comparisons match the pre-refactor results for both injection methods,
+dates/hours, imperial rates, shared/separate aquifer groups and generated/supplied
+schedules. Added regressions cover mixed spatial CRSs, feet/hour inputs, Date/hour
+outputs, collocated observations with well-diameter regularization and zero events.
+Two older fixtures now use the proper coverage horizon and public spatial entry.
+The full stage 7 suite passes: 170 test blocks, 619 expectations, zero failures
+and zero errors. This does not yet include R CMD check or vignette execution.
+The validation/output audit is the next stage; vignette/manual migration and
+package build checks remain pending.
 
 ## Internal contract
 
@@ -136,6 +155,10 @@ such as `x_m` and `y_m`. Public API names remain unchanged.
 
 Every function must document its unit contract in the code. Keep comments brief
 and avoid repeating a comment on each variable or arithmetic operation.
+Preserve existing explanations of algorithms, matrix dimensions, event alignment
+and sign conventions, updating them for the new interfaces. Move comments with
+their responsibilities when validation or unit handling moves to a boundary;
+remove comments only when their subject no longer applies or is redundant.
 
 - At boundary validation, identify the block checking physical dimensions.
 - At conversion/stripping, state that inputs are normalized to package-standard
@@ -369,8 +392,8 @@ numerical implementations.
 | 4. Time and pumping events | Numeric day/rate tables, event changes, evaluation indices, shared Date origin, aquifer groups | Implemented and tested. Prepared schedules retain reusable events/pairs; grouping uses normalized properties with boundary diagnostics. |
 | 5. ADF workflow | Migrate fraction lookup, event superposition, interval averaging and private schedule coordinator | Implemented and tested. Public depletion/schedule outputs retain shapes, dates, units and missing-time completion behavior; match the pre-refactor implementation. |
 | 6. Constant-head workflow | Numeric response/cache keys, precomputed pump-to-stream distances, numeric history accumulation; retain QR/factorization reuse | Implemented and tested. Matches baseline schedules; geometry and event preparation stay outside interval loops. Numeric units, QR reuse and solver diagnostics retained. |
-| 7. Aquifer workflow | Numeric direct pumping and injection superposition; reuse prepared geometry, events and response matrices | Next. Full public wrapper and supplied-schedule paths must work; observations should no longer trigger repeated spatial preparation in time loops. |
-| 8. Validation and output audit | Verify every independent public route is protected; remove repeated input checks only from migrated helpers; complete output formatting | Ongoing per stage, final audit pending. Keep checks of newly supplied data and numerical/service diagnostics. |
+| 7. Aquifer workflow | Numeric direct pumping and injection superposition; reuse prepared geometry, events and response matrices | Implemented and tested. Both injection methods and supplied schedules match baseline results; geometry/operators and event selections are reused, and public output units/times are restored. |
+| 8. Validation and output audit | Verify every independent public route is protected; remove repeated input checks only from migrated helpers; complete output formatting | Next. Audit all public routes, remove remaining repeated boundary preparation, and retain checks of newly supplied data and numerical/service diagnostics. |
 | 9. Documentation and package checks | Update both vignettes, internal contracts/comments, manual analyses, public-invalid-input tests and private numeric fixtures | Pending. Tests and R CMD check pass; rendered examples reflect actual behavior. |
 | 10. Measure and optimize further | Repeat comparable unprofiled timings and profiles; inspect memory and larger workloads; consider further batching/chunking | Pending. Report measured gains separately from later algorithmic changes; no promised speedup or solver replacement. |
 

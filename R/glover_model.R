@@ -156,7 +156,9 @@ calc_straight_stream_depletion_fraction <- function(
   evaluate_response <- dimensionless_time <= 700
   well_function <- numeric(length(dimensionless_time))
 
-  # E1(700) is approximately 1.4e-307; skip larger arguments to avoid underflow.
+  # E1(700) is approximately 1.4e-307, effectively zero for model outputs.
+  # expint() warns near 701.9; skipping larger arguments also avoids repeated
+  # warning handling during large response-matrix evaluations.
   well_function[evaluate_response] <- -0.5 * expint(
     dimensionless_time[evaluate_response]
   )

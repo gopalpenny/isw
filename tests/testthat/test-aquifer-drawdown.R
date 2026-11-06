@@ -269,7 +269,7 @@ test_that("stream injection uses finite-line geometry and stream width", {
   )
   injection_events <- isw:::.get_injection_rate_changes(isw:::.prepare_numeric_injection(
     injection_schedule, inputs$pumping_wells, inputs$pumping_schedules,
-    inputs$stream_segments, inputs$evaluation_times, NULL
+    inputs$stream_segments, evaluation_time, NULL
   ))
 
   result <- model_aquifer_water_level_change(
@@ -427,4 +427,64 @@ test_that("optional injection times refine the schedule", {
     unique(injection_schedule$interval_end),
     units::set_units(c(5, 10, 15, 20), "days")
   )
+})
+
+test_that("aquifer workflows preserve dates, alternate units and mixed spatial CRSs", {
+  inputs <- make_drawdown_test_inputs()
+  for (method in c("adf", "constant_head")) {
+    run_model <- function(wells, schedules, observations, evaluation_times) {
+      model_aquifer_water_level_change(
+        wells, schedules, observations, inputs$stream_segments, evaluation_times,
+        injection_method = method, stream_apportionment = inputs$stream_apportionment
+      )
+    }
+    baseline <- run_model(inputs$pumping_wells, inputs$pumping_schedules,
+                          inputs$observation_wells, inputs$evaluation_times)
+    wells <- inputs$pumping_wells
+    wells$D <- units::set_units(wells$D, "ft")
+    wells$K <- units::set_units(wells$K, "ft/hour")
+    schedules <- inputs$pumping_schedules
+    schedules$pump_1 <- units::set_units(schedules$pump_1, "ft^3/hour")
+    observations <- sf::st_transform(inputs$observation_wells, 4326)
+    for (dates in c(FALSE, TRUE)) {
+      schedules$t <- if (dates) as.Date("2025-01-01") + c(0, 10) else {
+        units::set_units(inputs$pumping_schedules$t, "hours")
+      }
+      evaluation_times <- if (dates) as.Date("2025-01-01") + c(0, 10, 20) else {
+        units::set_units(inputs$evaluation_times, "hours")
+      }
+      converted <- run_model(wells, schedules, observations, evaluation_times)
+      expect_identical(converted$evaluation_time, evaluation_times)
+      for (column in c("pumping_drawdown", "stream_recovery", "water_level_change")) {
+        expect_identical(units::deparse_unit(converted[[column]]), "ft")
+        expect_equal(units::set_units(converted[[column]], "m"),
+                     baseline[[column]], tolerance = 1e-7)
+      }
+    }
+  }
+})
+
+test_that("aquifer numeric superposition regularizes collocated wells and zero events", {
+  inputs <- make_drawdown_test_inputs()
+  wells <- inputs$pumping_wells
+  wells$well_diam <- units::set_units(1, "m")
+  observations <- sf::st_sf(observation_id = "at_pump", geometry = sf::st_geometry(wells))
+  schedule <- make_injection_schedule(
+    wells, inputs$pumping_schedules, inputs$stream_segments, inputs$evaluation_times,
+    stream_apportionment = inputs$stream_apportionment
+  )
+  schedule$injection_rate[] <- units::set_units(0, "m^3/day")
+  run_model <- function(pumping_schedules) model_aquifer_water_level_change(
+    wells, pumping_schedules, observations, inputs$stream_segments,
+    inputs$evaluation_times, stream_injection_schedule = schedule
+  )
+  result <- run_model(inputs$pumping_schedules)
+  expect_true(all(is.finite(as.numeric(result$water_level_change))))
+  expect_equal(as.numeric(result$stream_recovery), c(0, 0, 0))
+  expect_equal(result$water_level_change, -result$pumping_drawdown)
+  expect_equal(as.numeric(result$pumping_drawdown[1]), 0)
+  zero_schedule <- inputs$pumping_schedules
+  zero_schedule$pump_1[] <- units::set_units(0, "m^3/day")
+  zero <- run_model(zero_schedule)
+  expect_equal(as.numeric(zero$water_level_change), c(0, 0, 0))
 })

@@ -1,6 +1,7 @@
 # Construct nonzero rate-change events from a prepared numeric schedule.
 .get_pumping_rate_changes <- function(pumping_schedules, pump_ids) {
   # Validated numeric schedule: t_day and pump columns suffixed _m3_per_day.
+  # Convert each pump's scheduled rates into nonzero rate-change events.
   parts <- lapply(pump_ids, function(pump_id) {
     rate_m3_per_day <- pumping_schedules[[paste0(pump_id, "_m3_per_day")]]
     change_m3_per_day <- diff(c(0, rate_m3_per_day))

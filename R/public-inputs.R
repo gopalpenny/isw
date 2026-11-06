@@ -371,3 +371,20 @@
 
   invisible(stream_segments)
 }
+
+.restore_aquifer_output <- function(x, times, length_units) {
+  # Reattach caller time/length units only after numeric m/day calculations finish.
+  if (!"evaluation_time_day" %in% names(x)) return(x)
+  x$evaluation_time_day <- .restore_time_values(
+    x$evaluation_time_day, times$output_evaluation_times, times$time_origin
+  )
+  names(x)[names(x) == "evaluation_time_day"] <- "evaluation_time"
+  for (column in c("pumping_drawdown", "stream_recovery", "water_level_change")) {
+    numeric_column <- paste0(column, "_m")
+    x[[numeric_column]] <- units::set_units(
+      units::set_units(x[[numeric_column]], "m"), length_units, mode = "standard"
+    )
+    names(x)[names(x) == numeric_column] <- column
+  }
+  x
+}

@@ -193,6 +193,8 @@
 
 .evaluate_line_response_operator <- function(operator, K_m_per_day, D_m, V, elapsed_time_day) {
   # Prepared numeric distances are m, conductivity m/day, time day; returns day/m^2.
+  # Evaluate the source quadrature points, then sum their weighted responses
+  # into one response column for each finite-line segment.
   point_response_day_per_m2 <- matrix(.theis_response_at_distance(
     as.numeric(operator$effective_distances_m), K_m_per_day, D_m, V, elapsed_time_day
   ), nrow = operator$number_of_targets)
@@ -208,6 +210,11 @@
 }
 
 # Cache numeric day/m^2 matrices by prepared hydraulic parameters and elapsed days.
+# The operator's target-by-quadrature-point distances, weights, widths and segment
+# indices define the fixed spatial problem; matrices have target rows and segment
+# columns. K_m_per_day, D_m and dimensionless V determine the hydraulic response.
+# Bind each cache to its first operator so entries cannot be reused with different
+# targets, stream elements or quadrature rules.
 .get_cached_line_response_matrix <- function(
     response_operator, response_cache, K_m_per_day, D_m, V, elapsed_time_day) {
   # Prepared numeric inputs use m, m/day and day; retain cache-ownership diagnostics.
