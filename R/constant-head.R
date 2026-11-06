@@ -137,6 +137,11 @@
   schedule_parts <- list()
   condition_diagnostics <- list()
   output_index <- 0L
+  # These positive ages are exactly those requested by current/past interval
+  # responses. Prepare keys once rather than formatting parameters on cache hits.
+  response_elapsed_times_day <- unique(unlist(lapply(seq_len(number_of_intervals), function(index) {
+    time_nodes_day[[index + 1L]] - time_nodes_day[seq_len(index)]
+  }), use.names = FALSE))
 
   # Solve separately for each aquifer-parameter group so pumps with identical
   # K, D, and V can share response matrices and their matrix factorizations.
@@ -151,6 +156,10 @@
     )
     response_cache <- new.env(parent = emptyenv())
     factor_cache <- new.env(parent = emptyenv())
+    prepared_response_keys <- .prepare_line_response_keys(
+      group_pumps$K_m_per_day[[1]], group_pumps$D_m[[1]],
+      group_pumps$V[[1]], response_elapsed_times_day
+    )
 
     get_response_matrix <- function(elapsed_time_day) {
       # Retrieve cached numeric day/m2 responses directly for the QR algebra.
@@ -159,7 +168,10 @@
         response_cache = response_cache,
         K_m_per_day = group_pumps$K_m_per_day[[1]],
         D_m = group_pumps$D_m[[1]], V = group_pumps$V[[1]],
-        elapsed_time_day = elapsed_time_day
+        elapsed_time_day = elapsed_time_day,
+        response_key = prepared_response_keys$response_keys[[match(
+          elapsed_time_day, prepared_response_keys$elapsed_times_day
+        )]]
       )
     }
 

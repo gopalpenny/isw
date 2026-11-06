@@ -316,6 +316,20 @@ test_that("prepared geometry and distances are reusable across evaluations", {
   )
 })
 
+test_that("prepared response keys preserve scalar precision and distinct ages", {
+  elapsed_times_day <- c(0.1, 0.1 + .Machine$double.eps, 10, 1e-8, 1e8, 0.1)
+  prepared <- isw:::.prepare_line_response_keys(10, 20, 0.15, elapsed_times_day)
+  expected_keys <- vapply(unique(elapsed_times_day), function(age_day) {
+    paste(format(10, digits = 17), format(20, digits = 17),
+          format(0.15, digits = 17), format(age_day, digits = 17), sep = "\r")
+  }, character(1))
+  expect_identical(prepared$elapsed_times_day, unique(elapsed_times_day))
+  expect_identical(prepared$response_keys, expected_keys)
+  expect_length(unique(prepared$response_keys), length(unique(elapsed_times_day)))
+  expect_identical(isw:::.prepare_line_response_keys(10, 20, 0.15, numeric())$response_keys,
+                   character())
+})
+
 test_that("cached line responses support injection-event extraction", {
   segments <- make_line_sink_segments(c(-50, 0, 50, 0))
   target <- sf::st_as_sf(
@@ -395,6 +409,19 @@ test_that("cached line responses support injection-event extraction", {
     c(late_response[[1]], first_response[[1]], late_response[[1]])
   )
   expect_length(ls(envir = response_cache, all.names = TRUE), 2)
+
+  prepared <- isw:::.prepare_line_response_keys(10, 20, 0.15, c(10, 1))
+  prepared_ratios <- isw:::.get_response_ratios_for_injection_events(
+    operator, response_cache, 10, 20, 0.15, 1L, c(10, 1, 10), c(1L, 1L, 1L),
+    prepared_response_keys = prepared
+  )
+  expect_identical(prepared_ratios, response_ratios)
+  # Prepared keys and the scalar fallback address the same existing entries.
+  expect_length(ls(envir = response_cache, all.names = TRUE), 2)
+  expect_error(isw:::.get_cached_line_response_matrix(
+    other_operator, response_cache, 10, 20, 0.15, 10,
+    response_key = prepared$response_keys[[1]]
+  ), "cannot be reused with a different response_operator")
 })
 
 test_that("target boundary validation rejects invalid geometries", {

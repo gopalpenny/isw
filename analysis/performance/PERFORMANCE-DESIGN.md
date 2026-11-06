@@ -159,8 +159,16 @@ render successfully. The profiling helper runs for ADF and constant-head with
 input preparation enabled and disabled. Source build and full R CMD check,
 including tests, examples, vignette rebuilding and the PDF manual, pass; the
 installed-package suite reports 638 expectations with no failures or warnings.
-These checks do not measure speedup. Stage 10 is next: comparable timings and
-profiles, followed by any separately justified optimization.
+These checks do not measure speedup.
+
+Stage 10 now has an initial reproducible timing/profile study, documented in
+`PERFORMANCE-RESULTS.md`. Five alternating timing pairs per case compare the
+original `9956c8c` implementation with package code at `49d11ae`; all twelve
+model-output comparisons agree. Across the controlled cases, median speedups
+range from 2.1x to 32.8x. Four separate current-code profiles and untimed
+allocation/call-count inspections identify repeated response-cache key formatting
+and observation-specific extraction as the next targets. No further package
+optimization has been applied; proposed batching/cache changes await review.
 
 ### Boundary validation ownership after the audit
 
@@ -460,7 +468,7 @@ numerical implementations.
 | 7. Aquifer workflow | Numeric direct pumping and injection superposition; reuse prepared geometry, events and response matrices | Implemented and tested. Both injection methods and supplied schedules match baseline results; geometry/operators and event selections are reused, and user-facing output units/times are restored. |
 | 8. Validation and output audit | Verify every independent user-facing route is protected; remove repeated input checks only from migrated helpers; complete output formatting | Implemented and tested. User-facing routes validate context once; new supplied data and numerical/service diagnostics retain their checks. |
 | 9. Documentation and package checks | Update both vignettes, internal contracts/comments, manual analyses, user-facing-invalid-input tests and private numeric fixtures | Implemented and verified. Current workflow documents render, profiling helper works, and full R CMD check passes. |
-| 10. Measure and optimize further | Repeat comparable unprofiled timings and profiles; inspect memory and larger workloads; consider further batching/chunking | Next. Report measured gains separately from later algorithmic changes; no promised speedup or solver replacement. |
+| 10. Measure and optimize further | Repeat comparable unprofiled timings and profiles; inspect memory and larger workloads; consider further batching/chunking | Initial measurements and cache-key preparation comparison complete. Five-pair medians show about 49–52% lower model runtime in the larger observation case, with equivalent outputs. Observation batching remains a proposal. See PERFORMANCE-RESULTS.md for workload limits and profile details. |
 
 For each migration: update its direct callers and unit-suffixed argument names,
 add meaningful regression coverage, remove only now-redundant internal input

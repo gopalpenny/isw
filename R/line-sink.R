@@ -209,6 +209,19 @@
   response_day_per_m2
 }
 
+# Prepare exact cache keys once for an aquifer and its distinct response ages.
+.prepare_line_response_keys <- function(K_m_per_day, D_m, V, elapsed_times_day) {
+  # Validated numeric inputs use m/day, m and day; keys are dimensionless identifiers.
+  elapsed_times_day <- unique(elapsed_times_day)
+  aquifer_key <- paste(format(K_m_per_day, digits = 17), format(D_m, digits = 17),
+                       format(V, digits = 17), sep = "\r")
+  # Format ages individually to preserve the existing scalar key representation,
+  # including full precision and independence from vector-wide formatting choices.
+  age_keys <- vapply(elapsed_times_day, function(age_day) format(age_day, digits = 17), character(1))
+  response_keys <- if (length(age_keys)) paste(aquifer_key, age_keys, sep = "\r") else character()
+  list(elapsed_times_day = elapsed_times_day, response_keys = response_keys)
+}
+
 # Cache numeric day/m^2 matrices by prepared hydraulic parameters and elapsed days.
 # The operator's target-by-quadrature-point distances, weights, widths and segment
 # indices define the fixed spatial problem; matrices have target rows and segment
@@ -216,7 +229,8 @@
 # Bind each cache to its first operator so entries cannot be reused with different
 # targets, stream elements or quadrature rules.
 .get_cached_line_response_matrix <- function(
-    response_operator, response_cache, K_m_per_day, D_m, V, elapsed_time_day) {
+    response_operator, response_cache, K_m_per_day, D_m, V, elapsed_time_day,
+    response_key = NULL) {
   # Prepared numeric inputs use m, m/day and day; retain cache-ownership diagnostics.
   cached_operator <- attr(response_cache, "isw_line_response_operator", exact = TRUE)
   if (is.null(cached_operator)) {
@@ -224,12 +238,16 @@
   } else if (!identical(response_operator, cached_operator)) {
     stop("response_cache cannot be reused with a different response_operator.")
   }
-  parameter_key <- paste(format(K_m_per_day, digits = 17), format(D_m, digits = 17),
-                         format(V, digits = 17), format(elapsed_time_day, digits = 17), sep = "\r")
-  if (!exists(parameter_key, envir = response_cache, inherits = FALSE)) {
-    assign(parameter_key, .evaluate_line_response_operator(
+  # Model coordinators supply prepared keys; independent private callers retain
+  # the same scalar formatting fallback. Cache ownership checks still apply.
+  if (is.null(response_key)) {
+    response_key <- paste(format(K_m_per_day, digits = 17), format(D_m, digits = 17),
+                          format(V, digits = 17), format(elapsed_time_day, digits = 17), sep = "\r")
+  }
+  if (!exists(response_key, envir = response_cache, inherits = FALSE)) {
+    assign(response_key, .evaluate_line_response_operator(
       response_operator, K_m_per_day, D_m, V, elapsed_time_day
     ), envir = response_cache)
   }
-  get(parameter_key, envir = response_cache, inherits = FALSE)
+  get(response_key, envir = response_cache, inherits = FALSE)
 }

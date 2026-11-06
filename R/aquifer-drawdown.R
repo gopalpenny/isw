@@ -679,14 +679,21 @@ generate_stream_injection_schedule <- function(
 # the corresponding injection-rate changes in m^3/day.
 .get_response_ratios_for_injection_events <- function(
     response_operator, response_cache, K_m_per_day, D_m, V,
-    observation_well_index, elapsed_times_day, segment_columns) {
+    observation_well_index, elapsed_times_day, segment_columns,
+    prepared_response_keys = NULL) {
   # Validated event indices and numeric m/day, m, day inputs; returns numeric day/m^2.
   response_ratios_day_per_m2 <- numeric(length(elapsed_times_day))
   # Simultaneous changes on different segments share an age and response matrix.
   for (elapsed_time_day in unique(elapsed_times_day)) {
     event_indices <- which(elapsed_times_day == elapsed_time_day)
+    response_key <- if (!is.null(prepared_response_keys)) {
+      prepared_response_keys$response_keys[[match(
+        elapsed_time_day, prepared_response_keys$elapsed_times_day
+      )]]
+    } else NULL
     response_matrix_day_per_m2 <- .get_cached_line_response_matrix(
-      response_operator, response_cache, K_m_per_day, D_m, V, elapsed_time_day
+      response_operator, response_cache, K_m_per_day, D_m, V, elapsed_time_day,
+      response_key = response_key
     )
     # Index [observation row, segment column] for each event, placing responses
     # back into the original event positions.
@@ -732,6 +739,15 @@ generate_stream_injection_schedule <- function(
     injection_rows <- lapply(evaluation_time_day, function(time_day) {
       which(injection_events$pump_id == pump_id & injection_events$injection_time_day < time_day)
     })
+    # Prepare string keys before stepping through observations; keep the existing
+    # event selection, response matrices and observation-wise calculation unchanged.
+    injection_elapsed_times_day <- unlist(lapply(seq_len(number_of_times), function(index) {
+      evaluation_time_day[[index]] - injection_events$injection_time_day[injection_rows[[index]]]
+    }), use.names = FALSE)
+    prepared_response_keys <- .prepare_line_response_keys(
+      pumping_wells$K_m_per_day[[pump_row]], pumping_wells$D_m[[pump_row]],
+      pumping_wells$V[[pump_row]], injection_elapsed_times_day
+    )
     for (observation_index in seq_len(number_of_observations)) {
       for (time_index in seq_len(number_of_times)) {
         result_index <- ((pump_row - 1L) * number_of_observations +
@@ -759,7 +775,7 @@ generate_stream_injection_schedule <- function(
             pumping_wells$K_m_per_day[[pump_row]], pumping_wells$D_m[[pump_row]],
             pumping_wells$V[[pump_row]], observation_index,
             evaluation_time_day[[time_index]] - injection_events$injection_time_day[injection_event_rows],
-            segment_columns[injection_event_rows]
+            segment_columns[injection_event_rows], prepared_response_keys
           )
           # Sum event-specific rate changes times their current response ratios.
           stream_recovery_m[[result_index]] <- sum(
