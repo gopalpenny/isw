@@ -45,6 +45,11 @@ The focus here is how to prepare the inputs and connect the main functions.
 For more detail on ADF calculations, see the
 [ADF modeling internals](https://gopalpenny.github.io/isw/articles/adf-modeling-internals.html).
 
+User-facing functions check inputs and accept compatible physical units. Internally,
+`isw` converts hydraulic calculations to numeric meters and days, then restores
+the documented output units and original Date/time representation. Spatial
+objects retain their `sf` geometry and a shared meter-based UTM CRS throughout.
+
 ## Load the spatial inputs
 
 The package includes a synthetic example domain with two pumping wells, three
@@ -77,9 +82,9 @@ for CRS requirements, coordinate transformations, and automatic selection of
 a projected analysis CRS.
 
 Required identifiers for spatial inputs are `reach_id` (for stream reaches), `pump_id` (for pumping wells), and `observation_id` (for observation wells), respectively.
-Pumping wells must also provide aquifer properties as `units` vectors including:
-hydraulic conductivity `K`, aquifer thickness `D`, and
-drainable porosity `V`. The optional `well_diam` prevents a point-well
+Pumping wells must also provide hydraulic conductivity `K` and aquifer thickness
+`D` as `units` vectors, and dimensionless numeric drainable porosity `V`.
+The optional `well_diam` prevents a point-well
 singularity when a response is evaluated inside the well radius.
 
 The individual objects and their columns can be inspected directly.
@@ -445,7 +450,7 @@ may_injection_rates <- bind_rows(
     .groups = "drop"
   ) |>
   mutate(
-    injection_rate_m3_day = as.numeric(set_units(
+    injection_rate_m3_per_day = as.numeric(set_units(
       injection_rate,
       "m^3/day"
     ))
@@ -459,7 +464,7 @@ ggplot() +
   geom_sf(data = stream_segments, color = "grey75", linewidth = 1) +
   geom_sf(
     data = injection_segments,
-    aes(color = injection_rate_m3_day),
+    aes(color = injection_rate_m3_per_day),
     linewidth = 5,
     lineend = "round"
   ) +

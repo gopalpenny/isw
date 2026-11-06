@@ -1,5 +1,5 @@
 make_boundary_inputs <- function(dates = FALSE) {
-  # Public fixtures retain units and CRS metadata; no modeling calls are needed.
+  # User-facing fixtures retain units and CRS metadata; no modeling calls are needed.
   reaches <- sf::st_sf(
     reach_id = "stream", geometry = sf::st_sfc(
       sf::st_linestring(matrix(c(100, -50, 100, 50), ncol = 2, byrow = TRUE)),
@@ -42,7 +42,7 @@ make_boundary_inputs <- function(dates = FALSE) {
        injection = injection)
 }
 
-test_that("public workflows validate each context object once", {
+test_that("user-facing workflows validate each context object once", {
   inputs <- make_boundary_inputs()
   depletion <- model_adf_stream_depletion(
     inputs$wells, inputs$schedules, inputs$apportionment, inputs$evaluation_times
@@ -100,7 +100,7 @@ test_that("public workflows validate each context object once", {
   }
 })
 
-test_that("public boundaries reject invalid values before unchecked calculations", {
+test_that("user-facing boundaries reject invalid values before unchecked calculations", {
   inputs <- make_boundary_inputs()
   run_model <- function(observations = inputs$observations, schedules = inputs$schedules,
                         injection = inputs$injection, quadrature_order = 16L) {
@@ -194,7 +194,7 @@ test_that("prepared aquifer coordinators do not call boundary validators", {
   }
 })
 
-test_that("analytical public boundaries pass normalized numeric arguments", {
+test_that("analytical user-facing boundaries pass normalized numeric arguments", {
   captured <- NULL
   capture_kernel <- function(...) {
     captured <<- list(...)
@@ -234,7 +234,7 @@ test_that("analytical public boundaries pass normalized numeric arguments", {
                                                       D, 0.2, t), "common length")
 })
 
-test_that("spatial public boundaries strip measurements but preserve CRS", {
+test_that("spatial user-facing boundaries strip measurements but preserve CRS", {
   inputs <- make_boundary_inputs()
   local_mocked_bindings(
     .prep_stream_segments = function(stream_reaches, reach_spacing, ...) {
@@ -270,7 +270,7 @@ test_that("spatial public boundaries strip measurements but preserve CRS", {
   expect_true("K" %in% names(inputs$wells))
 })
 
-test_that("public ADF and injection boundaries prepare numeric tables and times", {
+test_that("user-facing ADF and injection boundaries prepare numeric tables and times", {
   local_mocked_bindings(
     .calculate_adf_stream_depletion = function(pumping_wells, pumping_schedules,
                                                stream_apportionment, evaluation_times) {

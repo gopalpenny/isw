@@ -25,23 +25,18 @@ library(sf)
 
 ## Purpose
 
-The apportioned drawdown model represents stream depletion as injection at
-one point per modeled stream segment. A zero-diameter point well has an
-unbounded analytical response at zero distance and can therefore produce an
-artificially large recovery value at an observation point on the stream.
-
-`get_stream_segments()` regularizes this response by assigning each injection
-well an effective diameter equal to half the segment's actual
-`represented_length`. The response is consequently held constant inside a
-radius of one quarter of that length. This analysis examines the remaining
-sensitivity to stream-segment spacing:
+The apportioned drawdown model represents stream depletion as uniform injection
+along finite stream segments. `stream_width` sets a minimum source-to-target
+distance of half the width during quadrature integration, keeping near-stream
+responses finite. This analysis holds width fixed at the default of 1 m and
+examines sensitivity to stream-segment spacing:
 
 * at several fixed observation points on the stream; and
 * along perpendicular transects extending away from the stream.
 
 The model reports water-level change, not absolute hydraulic head. Therefore,
-`aquifer_drawdown = 0` is the relevant constant-head boundary condition at the
-stream. The effective-diameter approach limits a numerical artifact but does
+`water_level_change = 0` is the relevant constant-head boundary condition at the
+stream. Width regularization limits the near-stream response but does
 not enforce that boundary condition. A nonzero result at the stream is an ADF
 boundary residual. The separate constant-head method solves the injection
 rates as a coupled system; see the analysis of
@@ -136,28 +131,28 @@ ggplot() +
 
 ## Run several stream-segment spacings
 
-The target spacings below create progressively denser injection points.
+The target spacings below create progressively finer finite injection elements.
 `sample_spacing` is kept at one quarter of `reach_spacing` so the stream-web
 apportionment is refined at the same time. The injection time grid is held
 fixed across runs, separating spatial from temporal sensitivity.
 
 ```{r run-spacing-scenarios}
-segment_spacings <- c(200, 100, 50, 20, 10)
+segment_spacings_m <- c(200, 100, 50, 20, 10)
 
 run_spacing <- function(spacing_m) {
-  stream_segments <- get_stream_segments(
+  stream_segments <- prep_stream_segments(
     stream_reaches,
     reach_spacing = set_units(spacing_m, "m"),
     analysis_crs = analysis_crs
   )
-  stream_apportionment <- get_adf_stream_apportionment(
+  stream_apportionment <- prep_adf_stream_apportionment(
     pumping_wells,
     stream_segments,
     sample_spacing = set_units(spacing_m / 4, "m"),
     method = "web_squared"
   )
 
-  drawdown <- get_aquifer_water_level_change(
+  drawdown <- model_aquifer_water_level_change(
     pumping_wells,
     pumping_schedules,
     observation_wells,
@@ -180,7 +175,7 @@ run_spacing <- function(spacing_m) {
     )
 }
 
-sensitivity_results <- bind_rows(lapply(segment_spacings, run_spacing))
+sensitivity_results <- bind_rows(lapply(segment_spacings_m, run_spacing))
 
 sensitivity_results |>
   distinct(segment_spacing_m, number_of_segments)
@@ -267,10 +262,10 @@ sensitivity_results |>
 
 ## Interpretation
 
-The effective injection diameter should be understood as a spatial
-regularization tied to the length represented by each point. It makes values
-at and near an injection point finite and makes the assumed support of the
-point response change consistently with segment density.
+The finite-line support follows each segment's geometry. Its stream width is
+independent of segment length, so refining segmentation does not change the
+assumed physical width. Spatial sensitivity also includes the refined ADF
+apportionment samples and quadrature representation.
 
 The most useful convergence checks are:
 
@@ -282,6 +277,6 @@ The most useful convergence checks are:
 Neither result guarantees a constant-head boundary. Injection rates are still
 assigned from apportioned stream depletion and are not solved simultaneously
 to make net drawdown zero at all stream collocation points. Use
-`method = "constant_head"` in `get_stream_injection_schedule()` when that
+`method = "constant_head"` in `generate_stream_injection_schedule()` when that
 endpoint constraint is required. The residuals calculated here remain useful
 for evaluating the ADF approximation.

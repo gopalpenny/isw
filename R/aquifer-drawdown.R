@@ -83,7 +83,7 @@
     )
   }
 
-  # Context tables were checked at the public boundary; supplied depletion is new.
+  # Context tables were checked at the user-facing boundary; supplied depletion is new.
 
   evaluation_times <- sort(unique(stream_depletion$evaluation_time))
   .validate_evaluation_times(evaluation_times, pumping_schedules$t)
@@ -454,7 +454,7 @@
     rows <- which(injection_schedule$pump_id == keys$pump_id[[index]] &
                   injection_schedule$reach_segment_id == keys$reach_segment_id[[index]])
     rows <- rows[order(injection_schedule$interval_start_day[rows])]
-    # Public injection is positive from stream to aquifer; response kernels use
+    # User-facing injection is positive from stream to aquifer; response kernels use
     # the pumping convention, so injection enters superposition with the opposite sign.
     change_m3_per_day <- diff(c(0, -injection_schedule$injection_rate_m3_per_day[rows]))
     changed <- which(change_m3_per_day != 0)
@@ -620,7 +620,7 @@ generate_stream_injection_schedule <- function(
     prepared_model_times$evaluation_time_day, prepared_model_times$injection_time_day, method,
     prepared_stream_apportionment, allow_n_aquifer_parameter_sets, depletion, quadrature_order
   )
-  # Restore public interval times/rates; warnings use caller-facing time labels.
+  # Restore user-facing interval times/rates; warnings use caller-facing time labels.
   .restore_injection_output(result, prepared_model_times, units::deparse_unit(pumping_schedules[[pumping_wells$pump_id[[1]]]]))
 }
 

@@ -60,7 +60,7 @@ test_that("zone crossings are quiet and downstream preparation reuses the networ
   expect_identical(sf::st_crs(segments)$epsg, 32616L)
 })
 
-test_that("public sampling and apportionment retain equivalent physical input units", {
+test_that("user-facing sampling and apportionment retain equivalent physical input units", {
   reach <- make_spatial_numeric_reach()
   meters <- prep_stream_segments(reach, units::set_units(60, "m"), stream_width = units::set_units(1, "m"))
   feet <- prep_stream_segments(reach, units::set_units(60 / 0.3048, "ft"),

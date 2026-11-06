@@ -113,7 +113,7 @@
 #'   `.validate_stream_reaches()`.
 #' @param observation_wells Either `NULL` or an observation-well object
 #'   accepted by `.validate_observation_wells()`.
-#' @param analysis_crs Either `NULL` or a projected coordinate reference system
+#' @param analysis_crs Either `NULL` or a meter-based UTM coordinate reference system
 #'   accepted by [sf::st_crs()]. When `NULL`, `.select_analysis_crs()` selects
 #'   a local UTM CRS automatically.
 #'
@@ -269,7 +269,7 @@ prep_stream_segments <- function(
     .prepare_numeric_columns(checked_reaches, c(stream_width = "m")),
     reach_spacing_m, selected_crs, NULL
   )
-  # Reattach public length/width units; geometry keeps its UTM CRS.
+  # Reattach user-facing length/width units; geometry keeps its UTM CRS.
   .restore_spatial_columns(result, c(represented_length = "m", stream_width = "m"))
 }
 
@@ -525,19 +525,17 @@ prep_stream_segments <- function(
 #' Divide prepared stream geometries into approximately equal-length reach
 #' segments while retaining their line geometry and parent identifiers.
 #'
-#' @param stream_reaches A projected stream-reach object accepted by
-#'   `.validate_stream_reaches()`, typically the `stream_reaches` element
-#'   returned by `.prepare_spatial_inputs()`.
-#' @param reach_spacing A scalar `units` object with length dimensions giving
-#'   the maximum target length of a reach segment.
+#' @param stream_reaches Validated stream reaches in the shared meter-based UTM
+#'   CRS, with physical attribute columns already prepared as numeric standard
+#'   units by the user-facing stream-segmentation boundary.
+#' @param reach_spacing_m Positive numeric maximum segment length in meters.
 #'
 #' @return An `sf` object with one `LINESTRING` feature per reach segment. The
 #'   following columns are added:
 #' \describe{
 #'   \item{`reach_segment_id`}{Uniquely identifies the discretized reach
 #'     segment within its original `reach_id`.}
-#'   \item{`represented_length`}{The actual length represented by the model
-#'     reach segment, retaining the linear units of the analysis CRS.}
+#'   \item{`represented_length_m`}{The actual numeric segment length in meters.}
 #'   \item{`model_point`}{An `sfc_POINT` column containing the midpoint along
 #'     the reach-segment line. The sliced line remains the active geometry.}
 #' }
@@ -548,10 +546,10 @@ prep_stream_segments <- function(
 #' Components are handled internally and do not receive a separate identifier.
 #'
 #' For each component, the number of reach segments is its length divided by
-#' `reach_spacing` and rounded up. The complete part is then divided into that
+#' `reach_spacing_m` and rounded up. The complete part is then divided into that
 #' number of equal-length segments. Consequently, no reach segment exceeds the
-#' requested spacing, and `represented_length` may be smaller than
-#' `reach_spacing` or differ among components. Segment numbers are sequential
+#' requested spacing, and `represented_length_m` may be smaller than
+#' `reach_spacing_m` or differ among components. Segment numbers are sequential
 #' within each original `reach_id`, including when it contains multiple
 #' components.
 #'
@@ -560,20 +558,26 @@ prep_stream_segments <- function(
 #' stream geometry. Additional input attributes are repeated for every model
 #' reach segment derived from the source feature.
 #'
-#' The names `reach_segment_id`, `represented_length`, and `model_point` are
-#' reserved for values created by this function. The input object is not
-#' modified.
+#' The user-facing boundary checks reserved column names before this helper runs.
+#' This helper creates `reach_segment_id`, `represented_length_m` and
+#' `model_point`; the user-facing exit restores units on `represented_length`.
+#' The input object is not modified.
 #'
 #' @examples
 #' stream_reaches <- example_stream_reaches
+#' isw:::.validate_stream_reaches(stream_reaches)
+#' stream_reaches <- isw:::.set_stream_width(stream_reaches)
+#' prepared_stream_reaches <- isw:::.prepare_numeric_columns(
+#'   stream_reaches, c(stream_width = "m")
+#' )
 #'
 #' reach_segments <- isw:::.discretize_stream_reaches(
-#'   stream_reaches,
-#'   reach_spacing = units::set_units(100, "m")
+#'   prepared_stream_reaches,
+#'   reach_spacing_m = 100
 #' )
 #'
 #' reach_segments[c(
-#'   "reach_id", "reach_segment_id", "represented_length"
+#'   "reach_id", "reach_segment_id", "represented_length_m"
 #' )]
 #' sf::st_coordinates(reach_segments$model_point)
 #'
@@ -811,7 +815,7 @@ prep_stream_sample_points <- function(stream_segments, sample_spacing) {
   result <- .prep_stream_sample_points(
     .prepare_sampling_segments(stream_segments), sample_spacing_m
   )
-  # Reattach public sampled-length units; geometry retains its shared UTM CRS.
+  # Reattach user-facing sampled-length units; geometry retains its shared UTM CRS.
   .restore_spatial_columns(result, c(sampled_length = "m"))
 }
 

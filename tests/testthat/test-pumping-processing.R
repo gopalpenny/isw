@@ -6,7 +6,7 @@ make_processing_pumping_wells <- function() {
 }
 
 prepare_processing_inputs <- function(schedules, wells, evaluation_times = NULL) {
-  # Exercise the public-boundary preparation contract before numeric helper calls.
+  # Exercise the user-facing boundary preparation contract before numeric helper calls.
   times <- isw:::.prepare_numeric_model_times(schedules, evaluation_times)
   isw:::.prepare_numeric_schedule(schedules, wells, times)
 }

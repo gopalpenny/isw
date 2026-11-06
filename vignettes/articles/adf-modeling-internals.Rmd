@@ -54,6 +54,31 @@ recovery.
 The [main vignette](stream-depletion-and-drawdown.html) also demonstrates
 the constant-head alternative.
 
+### Internal units and validation
+
+Each user-facing entry point validates its inputs before calling private calculations.
+Those calculations assume prepared numeric hydraulic data in the following units:
+
+| Quantity | Internal units | Example name |
+|---|---|---|
+| Length or distance | meters | `D_m` |
+| Time or event age | days | `elapsed_time_day` |
+| Hydraulic conductivity | meters/day | `K_m_per_day` |
+| Transmissivity or diffusivity | meters squared/day | `diffusivity_m2_per_day` |
+| Pumping, depletion or injection rate | meters cubed/day | `injection_rate_m3_per_day` |
+| Head response divided by rate | days/meters squared | `response_day_per_m2` |
+
+Porosity, fractions and quadrature weights are dimensionless. Bare physical
+numbers carry unit suffixes; `sf` coordinates keep their CRS metadata. Geometry
+and CRS remain available for spatial operations, and measured distances are
+converted to numeric meters once before repeated hydraulic evaluations.
+
+Private kernels do not revalidate these prepared inputs. Supplied intermediate
+tables are validated at the user-facing boundary before conversion. User-facing output
+formatters reattach physical units and restore the original time representation.
+For Dates, `time_origin` is the first pumping-schedule date; numeric days are
+offsets from it. Unit-bearing relative times are converted to days without shifting.
+
 ## Load the example spatial inputs
 
 This walkthrough uses the same two pumping wells, three connected stream
@@ -103,7 +128,7 @@ do not need to begin in the same CRS because the modeling functions transform
 copies to a common projected analysis CRS.
 
 ```{r inspect-observation-wells}
-stream_reaches
+observation_wells
 ```
 
 ## Define pumping schedules and evaluation times
@@ -177,9 +202,9 @@ stream_apportionment[c(
 #### 1. Prepare a common analysis CRS
 
 `prep_stream_segments()` validates the reaches and transforms the input to a
-projected analysis CRS. By default, an existing projected stream CRS is retained,
-or, a local UTM CRS is automatically determined from the `stream_reaches`
-extent. A desired `analysis_crs` can also be specified. Pumping wells are
+meter-based UTM CRS. An existing meter-based UTM stream CRS is retained;
+otherwise a local UTM CRS is selected from the `stream_reaches` extent.
+An explicit `analysis_crs` must also be meter-based UTM. Pumping wells are
 transformed to the `analysis_crs` CRS inside `prep_adf_stream_apportionment()`.
 
 ```{r prepare-spatial-inputs}
@@ -195,10 +220,11 @@ spatial_inputs$analysis_crs$Name
 spatial_inputs$pumping_wells$well_diam
 ```
 
-Use `analysis_crs` in the top-level call when a particular projected CRS is
-required. This can be important when inputs span UTM zones or must align with
-another analysis. A geographic longitude-latitude CRS is not accepted because
-the model requires linear distances.
+Use `analysis_crs` in the top-level call to select a particular UTM zone.
+The study area may straddle a zone boundary: all objects use the same analysis
+CRS, with locally small distance distortion. CRS metadata is retained throughout.
+The geometry-only adapter above preserves hydraulic units; the numeric model
+preparation demonstrated below also converts hydraulic fields.
 
 #### 2. Discretize each input reach
 
@@ -409,10 +435,31 @@ scheduled rate is treated as a change from zero pumping, and each later rate is
 compared with the preceding rate. Events with no change in pumping rate are
 omitted.
 
+The user-facing wrapper checks the wells, schedule and apportionment once, then
+prepares numeric tables. The following code makes that boundary explicit:
+
+```{r prepare-numeric-model-inputs}
+prepared_pumping_wells <- isw:::.prepare_numeric_pumping_wells(
+  pumping_wells, st_crs(stream_segments)
+)
+isw:::.validate_pumping_schedules(pumping_schedules, pumping_wells)
+isw:::.validate_stream_depletion_apportionment(stream_apportionment, pumping_wells)
+prepared_model_times <- isw:::.prepare_numeric_model_times(
+  pumping_schedules, evaluation_times
+)
+prepared_pumping_schedules <- isw:::.prepare_numeric_schedule(
+  pumping_schedules, pumping_wells, prepared_model_times
+)
+prepared_stream_apportionment <- isw:::.prepare_numeric_apportionment(
+  stream_apportionment, pumping_wells
+)
+prepared_stream_segments <- isw:::.prepare_numeric_segments(stream_segments)
+```
+
 ```{r pumping-rate-changes}
 pumping_rate_changes <- isw:::.get_pumping_rate_changes(
-  pumping_schedules,
-  pumping_wells
+  prepared_pumping_schedules,
+  prepared_pumping_wells$pump_id
 )
 
 pumping_rate_changes
@@ -428,9 +475,8 @@ rate-change event.
 
 ```{r pumping-response-times}
 pumping_response_times <- isw:::.get_pumping_response_times(
-  pumping_schedules,
-  pumping_wells,
-  evaluation_times
+  pumping_rate_changes,
+  prepared_model_times$evaluation_time_day
 )
 
 head(pumping_response_times)
@@ -445,9 +491,9 @@ the result for repeated event rows.
 
 ```{r depletion-fraction-lookup}
 depletion_fraction_lookup <- isw:::.get_stream_depletion_fraction_lookup(
-  pumping_wells,
+  prepared_pumping_wells,
   pumping_response_times,
-  stream_apportionment
+  prepared_stream_apportionment
 )
 
 head(depletion_fraction_lookup)
@@ -460,7 +506,7 @@ For event \(e\), pump \(p\), and segment \(s\), the contribution to stream deple
 \]
 
 where \(\Delta Q\) is the signed pumping-rate change, \(F\) is the analytical
-depletion fraction at elapsed time \(\t\) for the event, and \(A\) is the static apportionment fraction. Earlier
+depletion fraction at elapsed time \(t_e\) for the event, and \(A\) is the static apportionment fraction. Earlier
 event contributions are summed (based on superposition) such that the output retains single
 rows for every pump, evaluation time, and reach segment, including explicit
 zeroes where no earlier event contributes.
@@ -573,23 +619,23 @@ pumping-schedule times, requested evaluation times (optional), and injection tim
 (optional) through the final evaluation.
 
 `.get_stream_injection_times()` returns `schedule_grid`, a list containing
-`schedule_boundaries` and the same boundaries converted to elapsed
-`boundary_days`. These boundaries, rather than the user-requested evaluation
-times alone, define the intervals used below.
+numeric `boundary_time_day`, `interval_start_day`, `interval_end_day` and
+`interval_duration_day` vectors. These boundaries, rather than the requested
+evaluation times alone, define the intervals used below.
 
 ```{r injection-time-grid}
 schedule_grid <- isw:::.get_stream_injection_times(
-  pumping_schedules,
-  evaluation_times,
-  injection_times = NULL
+  prepared_pumping_schedules,
+  prepared_model_times$evaluation_time_day,
+  injection_time_day = NULL
 )
 
 tibble(
   component = names(schedule_grid),
   number_of_times = lengths(schedule_grid)
 )
-head(schedule_grid$schedule_boundaries)
-tail(schedule_grid$schedule_boundaries)
+head(schedule_grid$boundary_time_day)
+tail(schedule_grid$boundary_time_day)
 ```
 
 #### 2. Approximate continuously changing depletion by intervals
@@ -602,31 +648,43 @@ The arithmetic mean of those two rates defines the depletion magnitude for that 
 The following code reproduces the internal calculation of these rates:
 
 ```{r internal-injection-schedule}
-depletion_at_schedule_boundaries <- model_adf_stream_depletion(
-  pumping_wells,
-  pumping_schedules,
-  stream_apportionment,
-  evaluation_times = schedule_grid$schedule_boundaries
+depletion_at_schedule_boundaries <- isw:::.calculate_adf_stream_depletion(
+  prepared_pumping_wells,
+  prepared_pumping_schedules,
+  prepared_stream_apportionment,
+  evaluation_time_day = schedule_grid$boundary_time_day
 ) |>
-  rename(schedule_boundary = evaluation_time)
+  rename(schedule_boundary_day = evaluation_time_day)
 
 head(depletion_at_schedule_boundaries)
 
 internal_injection_schedule <-
   isw:::.get_interval_average_injection_schedule(
     depletion_at_schedule_boundaries,
-    pumping_schedules
+    prepared_pumping_schedules
   )
 
 head(internal_injection_schedule)
+
+restored_internal_schedule <- isw:::.restore_injection_output(
+  internal_injection_schedule, prepared_model_times,
+  units::deparse_unit(pumping_schedules$pump_1)
+)
+stopifnot(identical(names(restored_internal_schedule), names(stream_injection_schedule)))
+for (column in names(stream_injection_schedule)) {
+  stopifnot(isTRUE(all.equal(
+    restored_internal_schedule[[column]], stream_injection_schedule[[column]]
+  )))
+}
 ```
 
 `depletion_at_schedule_boundaries` contains the segment-level depletion rates at the
-start and end of each interval. The public depletion function returns its time
-column as `evaluation_time`; the internal copy is renamed `schedule_boundary`
-to make its role here explicit. `.get_interval_average_injection_schedule()`
-converts depletion at those boundaries to the average, positive injection
-rates returned by `generate_stream_injection_schedule()`.
+start and end of each interval. The user-facing depletion function returns its time
+column as `evaluation_time`; the numeric calculation uses `evaluation_time_day`,
+renamed `schedule_boundary_day` for interval averaging. The internal schedule
+has numeric day boundaries and `injection_rate_m3_per_day` values. The user-facing
+formatter restores the time representation and pumping-rate units in
+`generate_stream_injection_schedule()`.
 
 Optional `injection_times` add times at which new intervals start, creating a
 finer piecewise-constant approximation. They do not change `evaluation_times`.
@@ -680,8 +738,6 @@ inspected directly:
 
 ```{r prepare-drawdown-geometries}
 drawdown_crs <- st_crs(stream_segments)
-prepared_pumping_wells <- pumping_wells |>
-  st_transform(drawdown_crs)
 prepared_observation_wells <- observation_wells |>
   st_transform(drawdown_crs)
 
@@ -691,7 +747,7 @@ pump_to_observation_distances <- st_distance(
 )
 
 line_elements <- isw:::.prepare_line_elements(
-  stream_segments
+  prepared_stream_segments
 )
 line_response_operator <- isw:::.prepare_line_response_operator(
   prepared_observation_wells,
@@ -700,7 +756,7 @@ line_response_operator <- isw:::.prepare_line_response_operator(
 
 pump_to_observation_distances
 print(line_elements$quadrature_points, n = 17)
-dim(line_response_operator$distances)
+dim(line_response_operator$distances_m)
 ```
 
 #### 2. Convert pumping and injection schedules to events
@@ -712,8 +768,8 @@ supplies `stream_injection_schedule`, the function validates and reuses it
 rather than calculating depletion again.
 
 Two helper functions return different forms of event data.
-`.get_pumping_response_times()` converts the pumping schedule to rate changes,
-pairs each change with every later evaluation time, and calculates the elapsed
+`.get_pumping_rate_changes()` extracts numeric changes from the prepared schedule.
+`.get_pumping_response_times()` pairs each change with later evaluations and calculates the elapsed
 response time for each pair. `.get_injection_rate_changes()` converts the
 interval injection schedule to signed rate changes. Note that there is one
 event series for every pump and
@@ -731,12 +787,15 @@ times occurs.
 
 ```{r inspect-drawdown-events}
 physical_pumping_events <- isw:::.get_pumping_response_times(
-  pumping_schedules,
-  pumping_wells,
-  evaluation_times
+  pumping_rate_changes,
+  prepared_model_times$evaluation_time_day
+)
+prepared_injection_schedule <- isw:::.prepare_numeric_injection(
+  stream_injection_schedule, pumping_wells, pumping_schedules, stream_segments,
+  evaluation_times, prepared_model_times$time_origin
 )
 stream_injection_events <- isw:::.get_injection_rate_changes(
-  stream_injection_schedule
+  prepared_injection_schedule
 )
 
 head(physical_pumping_events)

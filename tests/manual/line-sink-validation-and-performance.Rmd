@@ -70,25 +70,28 @@ adaptive_line_response <- function(
     elapsed_time,
     stream_width) {
 
-  x <- drop_units(set_units(along_distance, "m"))
-  y <- drop_units(set_units(perpendicular_distance, "m"))
-  line_length <- drop_units(set_units(line_length, "m"))
-  K <- drop_units(set_units(K, "m/day"))
-  D <- drop_units(set_units(D, "m"))
-  elapsed_time <- drop_units(set_units(elapsed_time, "day"))
-  minimum_radius <- drop_units(set_units(stream_width, "m")) / 2
-  diffusivity <- K * D / V
+  # Normalize unit-bearing reference inputs before numeric meter/day integration.
+  along_distance_m <- drop_units(set_units(along_distance, "m"))
+  perpendicular_distance_m <- drop_units(set_units(perpendicular_distance, "m"))
+  line_length_m <- drop_units(set_units(line_length, "m"))
+  K_m_per_day <- drop_units(set_units(K, "m/day"))
+  D_m <- drop_units(set_units(D, "m"))
+  elapsed_time_day <- drop_units(set_units(elapsed_time, "day"))
+  minimum_radius_m <- drop_units(set_units(stream_width, "m")) / 2
+  diffusivity_m2_per_day <- K_m_per_day * D_m / V
 
   integrand <- function(line_fraction) {
-    distance <- sqrt((x - line_length * line_fraction)^2 + y^2)
-    effective_distance <- pmax(distance, minimum_radius)
-    dimensionless_time <- effective_distance^2 /
-      (4 * diffusivity * elapsed_time)
+    # Numeric geometry uses meters, elapsed time days; return day/m2 responses.
+    distance_m <- sqrt((along_distance_m - line_length_m * line_fraction)^2 +
+                        perpendicular_distance_m^2)
+    effective_distance_m <- pmax(distance_m, minimum_radius_m)
+    dimensionless_time <- effective_distance_m^2 /
+      (4 * diffusivity_m2_per_day * elapsed_time_day)
 
-    -expint::expint_E1(dimensionless_time) / (4 * pi * K * D)
+    -expint::expint_E1(dimensionless_time) / (4 * pi * K_m_per_day * D_m)
   }
 
-  reference <- stats::integrate(
+  reference_day_per_m2 <- stats::integrate(
     integrand,
     lower = -0.5,
     upper = 0.5,
@@ -97,7 +100,8 @@ adaptive_line_response <- function(
     stop.on.error = TRUE
   )$value
 
-  set_units(reference, "day/m^2")
+  # Reattach response units for comparison with the reference's user-facing inputs.
+  set_units(reference_day_per_m2, "day/m^2")
 }
 ```
 
@@ -521,7 +525,7 @@ benchmark_segment_count <- function(number_of_segments) {
     )
   })
   response_seconds <- elapsed({
-    response_matrix <- isw:::.evaluate_line_response_operator(
+    response_matrix_day_per_m2 <- isw:::.evaluate_line_response_operator(
       response_operator,
       K_m_per_day = as.numeric(set_units(K, "m/day")),
       D_m = as.numeric(set_units(D, "m")),
@@ -530,32 +534,33 @@ benchmark_segment_count <- function(number_of_segments) {
     )
   })
   factor_and_solve_seconds <- elapsed({
-    numeric_response_matrix <- response_matrix
-    response_qr <- qr(numeric_response_matrix)
+    response_qr <- qr(response_matrix_day_per_m2)
     condition_number <- kappa(response_qr, exact = FALSE)
-    solved_rates <- qr.coef(
+    # A one-meter correction at each target gives solved total rates in m3/day.
+    head_correction_m <- matrix(1, nrow = number_of_segments, ncol = 1)
+    solved_rates_m3_per_day <- qr.coef(
       response_qr,
-      matrix(1, nrow = number_of_segments, ncol = 1)
+      head_correction_m
     )
   })
 
   stopifnot(
-    all(is.finite(response_matrix)),
-    all(is.finite(solved_rates)),
+    all(is.finite(response_matrix_day_per_m2)),
+    all(is.finite(solved_rates_m3_per_day)),
     is.finite(condition_number)
   )
 
   tibble(
     segments = number_of_segments,
     quadrature_points = nrow(line_elements$quadrature_points),
-    distance_values = length(response_operator$distances),
+    distance_values = length(response_operator$distances_m),
     prepare_seconds,
     distance_seconds,
     response_seconds,
     factor_and_solve_seconds,
     line_elements_mib = object_mib(line_elements),
     response_operator_mib = object_mib(response_operator),
-    response_matrix_mib = object_mib(response_matrix),
+    response_matrix_mib = object_mib(response_matrix_day_per_m2),
     qr_factorization_mib = object_mib(response_qr),
     matrix_condition_number = condition_number
   )

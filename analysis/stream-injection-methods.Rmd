@@ -461,7 +461,7 @@ segment_injection_snapshots <- bind_rows(lapply(
           paste("Day", as.numeric(snapshot)),
           levels = paste("Day", as.numeric(injection_snapshots))
         ),
-        injection_rate_m3_day = as.numeric(set_units(
+        injection_rate_m3_per_day = as.numeric(set_units(
           injection_rate,
           "m^3/day"
         ))
@@ -484,7 +484,7 @@ ggplot(
     plot_x,
     plot_y,
     group = reach_segment_id,
-    color = injection_rate_m3_day
+    color = injection_rate_m3_per_day
   )
 ) +
   geom_path(linewidth = 4, lineend = "butt") +
@@ -611,7 +611,7 @@ from the boundary. At day 90, the center transect can also be compared with
 the analytical image-well solution for a straight, constant-head stream.
 
 The analytical response functions use positive rates for pumping and negative
-rates for injection. Public stream-injection schedules instead report positive
+rates for injection. User-facing stream-injection schedules instead report positive
 `injection_rate` values for water entering the aquifer.
 `calc_straight_stream_drawdown_ratio()` returns the signed ratio
 \(\Delta h / Q\), which is negative. Multiplying

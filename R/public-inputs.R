@@ -1,4 +1,4 @@
-# Public-boundary validation and preparation for standard numeric internals.
+# User-facing boundary validation and preparation for standard numeric internals.
 
 .numeric_in_standard_units <- function(x, standard_unit, variable_name) {
   # Dimensions were checked by the boundary validator; normalize, then strip units.
@@ -59,7 +59,7 @@
 }
 
 .restore_spatial_columns <- function(x, column_units) {
-  # Reattach physical units at public exits; spatial geometry and CRS remain intact.
+  # Reattach physical units at user-facing exits; spatial geometry and CRS remain intact.
   suffixes <- c("m" = "m")
   for (column in names(column_units)) {
     numeric_column <- paste0(column, "_", suffixes[[column_units[[column]]]])
@@ -72,7 +72,7 @@
 }
 
 .prepare_numeric_apportionment <- function(stream_apportionment, pumping_wells) {
-  # The public boundary checked this table; strip distances after meter conversion.
+  # The user-facing boundary checked this table; strip distances after meter conversion.
   .prepare_numeric_columns(
     stream_apportionment, c(pump_to_reach_distance = "m")
   )
@@ -103,7 +103,7 @@
 }
 
 .prepare_numeric_schedule <- function(pumping_schedules, pumping_wells, times) {
-  # The public boundary checked rates/times; normalize to numeric m^3/day and days.
+  # The user-facing boundary checked rates/times; normalize to numeric m^3/day and days.
   pumping_schedules <- .prepare_numeric_columns(
     pumping_schedules,
     stats::setNames(rep("m^3/day", nrow(pumping_wells)), pumping_wells$pump_id)
@@ -127,7 +127,7 @@
 }
 
 .restore_adf_output <- function(x, times, rate_units) {
-  # Restore public times and rate units from numeric day and m^3/day columns.
+  # Restore user-facing times and rate units from numeric day and m^3/day columns.
   if (!all(c("evaluation_time_day", "stream_depletion_rate_m3_per_day") %in% names(x))) return(x)
   x$evaluation_time_day <- .restore_time_values(
     x$evaluation_time_day, times$output_evaluation_times, times$time_origin
@@ -141,7 +141,7 @@
 }
 
 .restore_injection_output <- function(x, times, rate_units) {
-  # Restore public interval times and rates; numeric internals use day and m^3/day.
+  # Restore user-facing interval times and rates; numeric internals use day and m^3/day.
   if (!"interval_start_day" %in% names(x)) return(x)
   missing_time_day <- attr(x, "isw_missing_time_day")
   if (length(missing_time_day)) {
@@ -274,7 +274,7 @@
   if (!is.null(well_diam)) {
     prepared$well_diam_m <- .numeric_in_standard_units(well_diam, "m", "well_diam")
   }
-  # Preserve the existing public response units for reattachment at the boundary.
+  # Preserve the existing user-facing response units for reattachment at the boundary.
   prepared$output_response_units <- units::deparse_unit(1 / (K * D))
   prepared
 }

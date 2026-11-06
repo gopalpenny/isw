@@ -413,12 +413,12 @@
 #'
 #' This function validates inputs but does not normalize time units or convert
 #' pumping rates to changes in pumping rate.
-#' Pumping wells must already have been validated by the public boundary.
+#' Pumping wells must already have been validated by the user-facing boundary.
 #'
 #' @noRd
 .validate_pumping_schedules <- function(pumping_schedules, pumping_wells) {
 
-  # The public boundary validates wells once before checking this related table.
+  # The user-facing boundary validates wells once before checking this related table.
 
   if (!is.data.frame(pumping_schedules)) {
     stop("pumping_schedules must be a data frame or tibble.")

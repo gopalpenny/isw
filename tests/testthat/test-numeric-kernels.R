@@ -1,4 +1,4 @@
-test_that("public analytical functions are invariant to compatible input units", {
+test_that("user-facing analytical functions are invariant to compatible input units", {
   distance <- units::set_units(c(10, 100, 1000), "m")
   K <- units::set_units(c(5, 10, 20), "m/day")
   D <- units::set_units(20, "m")
@@ -31,7 +31,7 @@ test_that("public analytical functions are invariant to compatible input units",
   expect_equal(metric_image, convert(imperial_image, "day/m^2"), tolerance = 1e-12)
 })
 
-test_that("straight-stream public response is the real well minus its image", {
+test_that("straight-stream user-facing response is the real well minus its image", {
   K <- units::set_units(10, "m/day")
   D <- units::set_units(20, "m")
   t <- units::set_units(10, "day")

@@ -1,5 +1,19 @@
 # isw 0.1.0
 
+## Numeric internal calculations
+
+* User-facing functions validate inputs and normalize hydraulic calculations to
+  numeric meters and days. Internal helpers use unit-suffixed numeric fields;
+  user-facing outputs retain their documented physical units and time representations.
+* Spatial objects retain `sf` geometry and CRS metadata. Analysis uses one
+  meter-based UTM CRS, retaining an existing compatible stream CRS or selecting
+  a local zone. Explicit `analysis_crs` values must be meter-based UTM; study
+  areas may cross zone boundaries.
+* Pumping events, spatial distances and response matrices are reused during
+  modeling. Repeated context validation is removed from internal calculations;
+  newly supplied intermediate results still receive boundary validation.
+  Speed improvements will be assessed with comparable timings and profiles.
+
 ## Finite-line stream representation
 
 * Stream injection is now distributed uniformly along each stream segment using
@@ -27,7 +41,7 @@
   | `get_aquifer_water_level_change()` | `model_aquifer_water_level_change()` | Replaces `allow_many_aquifer_parameter_sets = FALSE` with `allow_n_aquifer_parameter_sets = 5`; adds `quadrature_order = 16L`. |
   | `generate_segment_sample_points()` | `prep_stream_sample_points()` | None. |
 
-* Reversed the public `injection_rate` sign convention: positive values now
+* Reversed the user-facing `injection_rate` sign convention: positive values now
   represent water moving from the stream into the aquifer. Calculate total
   stream depletion with `sum(injection_rate)` rather than
   `-sum(injection_rate)`. The `water_level_change` sign convention remains

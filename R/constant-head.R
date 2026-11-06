@@ -1,4 +1,4 @@
-# Validate public aquifer-group controls and normalized hydraulic relationships.
+# Validate user-facing aquifer-group controls and normalized hydraulic relationships.
 .prepare_aquifer_groups <- function(pumping_wells, allow_n_aquifer_parameter_sets = 5) {
   # The boundary already prepared numeric m/day and m fields; check group controls/IDs.
   if (!is.numeric(allow_n_aquifer_parameter_sets) ||
@@ -94,7 +94,7 @@
     quadrature_order = 16L) {
 
   # Prepared sf geometry retains its shared meter UTM CRS; hydraulic inputs use
-  # numeric m, m/day, day and m3/day. Public boundaries validate and restore units.
+  # numeric m, m/day, day and m3/day. User-facing boundaries validate and restore units.
   aquifer_groups <- attr(pumping_wells, "isw_aquifer_groups", exact = TRUE)
   prepared_pumping_wells <- pumping_wells
   prepared_pumping_wells$aquifer_id <- aquifer_groups$aquifer_id

@@ -76,7 +76,7 @@ prep_adf_stream_apportionment <- function(
     prepared_stream_segments,
     sample_spacing_m, method, maximum_distance_m
   )
-  # Restore public distance units after numeric apportionment.
+  # Restore user-facing distance units after numeric apportionment.
   .restore_spatial_columns(result, c(pump_to_reach_distance = "m"))
 }
 
@@ -164,7 +164,7 @@ prep_adf_stream_apportionment <- function(
     )
   }
 
-  # Pumping wells were checked by the public boundary; validate this relationship only.
+  # Pumping wells were checked by the user-facing boundary; validate this relationship only.
 
   if (!is.character(stream_apportionment$pump_id) ||
       !is.character(stream_apportionment$reach_id) ||
@@ -330,7 +330,7 @@ prep_adf_stream_apportionment <- function(
   n_evaluations <- length(evaluation_time_day)
   pumping_events <- attr(pumping_schedules, "isw_pumping_events")
   # Pair each nonzero rate change with later evaluations, reusing prepared pairs
-  # when the requested time vector matches the public boundary's preparation.
+  # when the requested time vector matches the user-facing boundary's preparation.
   pumping_response_times <- if (identical(evaluation_time_day, attr(pumping_schedules, "isw_evaluation_time_day"))) {
     attr(pumping_schedules, "isw_pumping_response_times")
   } else .get_pumping_response_times(pumping_events, evaluation_time_day)
@@ -440,6 +440,6 @@ model_adf_stream_depletion <- function(
     .prepare_numeric_apportionment(stream_apportionment, pumping_wells),
     prepared_model_times$evaluation_time_day
   )
-  # Restore public evaluation times and original pumping-rate units.
+  # Restore user-facing evaluation times and original pumping-rate units.
   .restore_adf_output(result, prepared_model_times, units::deparse_unit(pumping_schedules[[pumping_wells$pump_id[[1]]]]))
 }
