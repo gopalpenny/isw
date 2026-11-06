@@ -285,18 +285,18 @@ test_that("intermittent depletion uses elapsed-time fractions and superposition"
 
   segment_distances <- stream_apportionment$pump_to_reach_distance
   fractions_at_10 <- isw:::.glover_stream_depletion_fraction(
-    segment_distances,
-    inputs$pumping_wells$K,
-    inputs$pumping_wells$D,
+    as.numeric(units::set_units(segment_distances, "m")),
+    as.numeric(units::set_units(inputs$pumping_wells$K, "m/day")),
+    as.numeric(units::set_units(inputs$pumping_wells$D, "m")),
     inputs$pumping_wells$V,
-    units::set_units(10, "days")
+    10
   )
   fractions_at_20 <- isw:::.glover_stream_depletion_fraction(
-    segment_distances,
-    inputs$pumping_wells$K,
-    inputs$pumping_wells$D,
+    as.numeric(units::set_units(segment_distances, "m")),
+    as.numeric(units::set_units(inputs$pumping_wells$K, "m/day")),
+    as.numeric(units::set_units(inputs$pumping_wells$D, "m")),
     inputs$pumping_wells$V,
-    units::set_units(20, "days")
+    20
   )
   apportionment_fractions <-
     stream_apportionment$apportionment_fraction

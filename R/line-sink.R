@@ -4,11 +4,7 @@
 #' @importFrom statmod gauss.quad
 #' @noRd
 .get_gauss_legendre_rule <- function(order = 16L) {
-  if (length(order) != 1 || is.na(order) || !is.finite(order) ||
-      order < 1 || order != as.integer(order)) {
-    stop("quadrature_order must be a positive integer.")
-  }
-
+  # Numeric dimensionless order is already validated; returns nodes and weights.
   order <- as.integer(order)
 
   rule <- gauss.quad(order, kind = "legendre")
@@ -25,22 +21,21 @@
 #' Internal numerical kernel for the response to a uniform total rate along a
 #' straight finite line element. Coordinates are local to the line midpoint.
 #'
-#' @param along_distance Signed observation-point distance parallel to the
-#'   line. Must have units of length.
-#' @param perpendicular_distance Observation-point distance perpendicular to
-#'   the line. Must have units of length.
-#' @param line_length Length of the finite line. Must be positive and have
-#'   units of length.
-#' @param K Saturated hydraulic conductivity with units of length per time.
-#' @param D Aquifer thickness with units of length.
+#' @param along_distance_m Signed observation-point distance parallel to the
+#'   line. Numeric in meters.
+#' @param perpendicular_distance_m Observation-point distance perpendicular to
+#'   the line. Numeric in meters.
+#' @param line_length_m Positive numeric length of the finite line, in meters.
+#' @param K_m_per_day Numeric hydraulic conductivity in meters per day.
+#' @param D_m Numeric aquifer thickness in meters.
 #' @param V Drainable porosity or specific yield.
-#' @param t Positive elapsed time with units of time.
-#' @param stream_width Positive physical stream width with units of length.
+#' @param t_day Positive numeric elapsed time in days.
+#' @param stream_width_m Positive numeric stream width in meters.
 #' @param quadrature_order Positive number of Gauss--Legendre points. The
 #'   default is 16.
 #'
-#' @return A units vector giving water-level change divided by total line rate,
-#'   with dimensions of time per length squared.
+#' @return A numeric vector in day/m^2 giving water-level change divided by
+#'   total line rate.
 #'
 #' @details
 #' For a line of length \eqn{L} centered on the local origin, this evaluates
@@ -48,104 +43,44 @@
 #' \deqn{R_{line} = \int_{-1/2}^{1/2}
 #' R_{Theis}(\sqrt{(x-L\xi)^2+y^2},t)\,d\xi.}
 #' The effective distance at every quadrature point is bounded below by
-#' `stream_width / 2`. Because the quadrature weights sum to one, the rate
+#' `stream_width_m / 2`. Because the quadrature weights sum to one, the rate
 #' multiplying the result is the total segment rate, not a rate per unit
 #' length.
 #'
 #' @noRd
 .line_sink_aquifer_drawdown_ratio <- function(
-    along_distance,
-    perpendicular_distance,
-    line_length,
-    K,
-    D,
-    V,
-    t,
-    stream_width,
-    quadrature_order = 16L) {
-
-  check_dimensionality(along_distance, "m", "along_distance")
-  check_dimensionality(perpendicular_distance, "m", "perpendicular_distance")
-  check_dimensionality(line_length, "m", "line_length")
-  check_dimensionality(stream_width, "m", "stream_width")
-  check_dimensionality(K, "m/s", "K")
-  check_dimensionality(D, "m", "D")
-  check_dimensionality(t, "s", "t")
-
-  argument_lengths <- c(
-    length(along_distance), length(perpendicular_distance),
-    length(line_length), length(K), length(D), length(V), length(t),
-    length(stream_width)
-  )
-  output_length <- max(argument_lengths)
-
-  if (any(!(argument_lengths %in% c(1L, output_length)))) {
-    stop("Line-response inputs must have length one or a common length.")
-  }
-
-  finite_inputs <- c(
-    as.numeric(along_distance), as.numeric(perpendicular_distance),
-    as.numeric(line_length), as.numeric(K), as.numeric(D), V,
-    as.numeric(t), as.numeric(stream_width)
-  )
-  if (any(!is.finite(finite_inputs))) {
-    stop("Line-response inputs must contain finite values.")
-  }
-  if (any(as.numeric(line_length) <= 0) || any(as.numeric(K) <= 0) ||
-      any(as.numeric(D) <= 0) || any(V <= 0) || any(as.numeric(t) <= 0) ||
-      any(as.numeric(stream_width) <= 0)) {
-    stop(
-      "line_length, K, D, V, t, and stream_width must be positive."
-    )
-  }
-
+    along_distance_m, perpendicular_distance_m, line_length_m,
+    K_m_per_day, D_m, V, t_day, stream_width_m, quadrature_order = 16L) {
+  # Already-validated numeric inputs: m, m/day and day; returns numeric day/m^2.
+  output_length <- max(lengths(list(
+    along_distance_m, perpendicular_distance_m, line_length_m,
+    K_m_per_day, D_m, V, t_day, stream_width_m
+  )))
   rule <- .get_gauss_legendre_rule(quadrature_order)
-  output <- numeric(output_length)
-  response_unit <- units::deparse_unit(1 / (K * D))
-
+  response_day_per_m2 <- numeric(output_length)
   recycle <- function(x) rep(x, length.out = output_length)
-  along_distance <- recycle(along_distance)
-  perpendicular_distance <- recycle(perpendicular_distance)
-  line_length <- recycle(line_length)
-  K <- recycle(K)
-  D <- recycle(D)
+  along_distance_m <- recycle(along_distance_m)
+  perpendicular_distance_m <- recycle(perpendicular_distance_m)
+  line_length_m <- recycle(line_length_m)
+  K_m_per_day <- recycle(K_m_per_day)
+  D_m <- recycle(D_m)
   V <- recycle(V)
-  t <- recycle(t)
-  stream_width <- recycle(stream_width)
+  t_day <- recycle(t_day)
+  stream_width_m <- recycle(stream_width_m)
 
-  # Evaluate each requested line response by summing the weighted response at
-  # its quadrature points.
   for (index in seq_len(output_length)) {
-    source_offset <- rule$node * line_length[[index]]
-    distances <- sqrt(
-      (along_distance[[index]] - source_offset)^2 +
-        perpendicular_distance[[index]]^2
+    source_offset_m <- rule$node * line_length_m[[index]]
+    distance_m <- sqrt(
+      (along_distance_m[[index]] - source_offset_m)^2 +
+        perpendicular_distance_m[[index]]^2
     )
-    radius <- units::set_units(
-      stream_width[[index]] / 2,
-      units::deparse_unit(distances),
-      mode = "standard"
+    effective_distance_m <- pmax(distance_m, stream_width_m[[index]] / 2)
+    point_response_day_per_m2 <- .theis_response_at_distance(
+      effective_distance_m, K_m_per_day[[index]], D_m[[index]], V[[index]], t_day[[index]]
     )
-    effective_distance <- units::set_units(
-      pmax(as.numeric(distances), as.numeric(radius)),
-      units::deparse_unit(distances),
-      mode = "standard"
-    )
-    response <- .theis_response_at_distance(
-      effective_distance,
-      K[[index]],
-      D[[index]],
-      V[[index]],
-      t[[index]]
-    )
-    output[[index]] <- sum(rule$weight * as.numeric(units::set_units(
-      response,
-      response_unit,
-      mode = "standard"
-    )))
+    response_day_per_m2[[index]] <- sum(rule$weight * point_response_day_per_m2)
   }
-
-  units::set_units(output, response_unit, mode = "standard")
+  response_day_per_m2
 }
 
 # Expand finite line elements into reusable quadrature source points.

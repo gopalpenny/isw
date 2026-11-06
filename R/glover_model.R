@@ -4,6 +4,7 @@
 # @return A dimensionless numeric value.
 # @noRd
 prob_integral <- function(Z) {
+  # Numeric dimensionless input and output.
   (pnorm(Z * sqrt(2)) - 0.5) * 2
 }
 
@@ -12,13 +13,12 @@ prob_integral <- function(Z) {
 #' Internal numerical kernel for calculating stream depletion caused by a
 #' pumping well near a fully penetrating stream with no streambed resistance.
 #'
-#' @param x1 Distance from the pumping well to the stream. Must have units of
-#'   length.
-#' @param K Saturated hydraulic conductivity. Must have units of length per
-#'   time.
-#' @param D Aquifer thickness. Must have units of length.
+#' @param x1_m Numeric distance from the pumping well to the stream, in meters.
+#' @param K_m_per_day Saturated hydraulic conductivity. Numeric in meters per
+#'   day.
+#' @param D_m Aquifer thickness. Numeric in meters.
 #' @param V Drainable porosity or specific yield. A dimensionless numeric value.
-#' @param t Elapsed time since pumping began. Must have units of time.
+#' @param t_day Numeric elapsed time since pumping began, in days.
 #'
 #' @return A dimensionless numeric vector containing the stream-depletion
 #'   fraction.
@@ -44,26 +44,11 @@ prob_integral <- function(Z) {
 #'
 #' @seealso [calc_straight_stream_depletion_fraction()]
 #' @noRd
-.glover_stream_depletion_fraction <- function(x1, K, D, V, t) {
-  alpha <- K * D / V
-  
-  x1_over_4_alpha_t <- x1 / sqrt(4 * alpha * t)
-  
-  dimensionless <-
-    length(units(x1_over_4_alpha_t)$numerator) == 0 &&
-    length(units(x1_over_4_alpha_t)$denominator) == 0
-  
-  if (!dimensionless) {
-    stop(
-      "Units error resulting in dimensional value input ",
-      "to probability integral. Numerator: ",
-      units(x1_over_4_alpha_t)$numerator,
-      ", Denominator: ",
-      units(x1_over_4_alpha_t)$denominator
-    )
-  }
-  
-  1 - prob_integral(as.numeric(x1_over_4_alpha_t))
+.glover_stream_depletion_fraction <- function(x1_m, K_m_per_day, D_m, V, t_day) {
+  # Already-validated numeric inputs in meters/days; returns dimensionless fractions.
+  diffusivity_m2_per_day <- K_m_per_day * D_m / V
+  dimensionless_distance <- x1_m / sqrt(4 * diffusivity_m2_per_day * t_day)
+  1 - prob_integral(dimensionless_distance)
 }
 
 #' Calculate straight-stream depletion fraction
@@ -121,11 +106,11 @@ calc_straight_stream_depletion_fraction <- function(
   # Validate physical inputs and strip units after normalization to meters/days.
   inputs <- .prepare_analytical_inputs(list(x1 = x1), K, D, V, t)
   .glover_stream_depletion_fraction(
-    x1 = inputs$x1_m,
-    K = inputs$K_m_per_day,
-    D = inputs$D_m,
+    x1_m = inputs$x1_m,
+    K_m_per_day = inputs$K_m_per_day,
+    D_m = inputs$D_m,
     V = inputs$V,
-    t = inputs$t_day
+    t_day = inputs$t_day
   )
 }
 
@@ -134,18 +119,18 @@ calc_straight_stream_depletion_fraction <- function(
 #' Internal numerical kernel for calculating drawdown from one pumping or
 #' injection well without aquifer boundaries.
 #'
-#' @param distance Direct distance between the pumping or injection well and
-#'   the observation location. Must have units of length.
-#' @param K Saturated hydraulic conductivity. Must have units of length per
-#'   time.
-#' @param D Aquifer thickness. Must have units of length.
+#' @param distance_m Direct distance between the pumping or injection well and
+#'   the observation location. Numeric in meters.
+#' @param K_m_per_day Saturated hydraulic conductivity. Numeric in meters per
+#'   day.
+#' @param D_m Aquifer thickness. Numeric in meters.
 #' @param V Drainable porosity or specific yield. A dimensionless numeric value.
-#' @param t Elapsed time since the rate change began. Must have units of time.
-#' @param well_diam Well diameter. Drawdown does not increase within one well
-#'   radius. Must have units of length.
+#' @param t_day Numeric elapsed time since the rate change began, in days.
+#' @param well_diam_m Well diameter. Drawdown does not increase within one well
+#'   radius. Numeric in meters.
 #'
-#' @return A units vector containing the ratio of water-level change to the
-#'   well-rate change. The resulting dimensions are time divided by length
+#' @return A numeric vector in day/m^2 containing the ratio of water-level change
+#'   to the well-rate change. The resulting dimensions are time divided by length
 #'   squared. Positive pumping rates produce negative water-level changes;
 #'   negative rates represent injection and produce positive changes.
 #'
@@ -156,78 +141,26 @@ calc_straight_stream_depletion_fraction <- function(
 #'
 #' @noRd
 .theis_aquifer_drawdown_ratio <- function(
-    distance,
-    K,
-    D,
-    V,
-    t,
-    well_diam) {
-
-  check_dimensionality(distance, "m", "distance")
-  check_dimensionality(K, "m/s", "K")
-  check_dimensionality(D, "m", "D")
-  check_dimensionality(t, "s", "t")
-  check_dimensionality(well_diam, "m", "well_diam")
-
-  alpha <- K * D / V
-  check_dimensionality(alpha, "m^2/s", "alpha")
-
-  well_radius <- units::set_units(well_diam / 2, units(distance))
-  response_distance <- dplyr::if_else(
-    distance < well_radius,
-    well_radius,
-    distance
-  )
-  check_dimensionality(response_distance, "m", "response_distance")
-
-  .theis_response_at_distance(
-    distance = response_distance,
-    K = K,
-    D = D,
-    V = V,
-    t = t
-  )
+    distance_m, K_m_per_day, D_m, V, t_day, well_diam_m) {
+  # Already-validated numeric inputs: m, m/day and day; returns numeric day/m^2.
+  effective_distance_m <- pmax(distance_m, well_diam_m / 2)
+  .theis_response_at_distance(effective_distance_m, K_m_per_day, D_m, V, t_day)
 }
 
 # Evaluate the infinite-aquifer Theis response at an effective distance.
-.theis_response_at_distance <- function(distance, K, D, V, t) {
-  check_dimensionality(distance, "m", "distance")
-  check_dimensionality(K, "m/s", "K")
-  check_dimensionality(D, "m", "D")
-  check_dimensionality(t, "s", "t")
+.theis_response_at_distance <- function(distance_m, K_m_per_day, D_m, V, t_day) {
+  # Already-validated numeric inputs: m, m/day and day; returns numeric day/m^2.
+  transmissivity_m2_per_day <- K_m_per_day * D_m
+  diffusivity_m2_per_day <- transmissivity_m2_per_day / V
+  dimensionless_time <- distance_m^2 / (4 * diffusivity_m2_per_day * t_day)
+  evaluate_response <- dimensionless_time <= 700
+  well_function <- numeric(length(dimensionless_time))
 
-  alpha <- K * D / V
-  check_dimensionality(alpha, "m^2/s", "alpha")
-
-  dimensionless_time <- distance^2 / (4 * alpha * t)
-  dimensionless <-
-    length(units(dimensionless_time)$numerator) == 0 &&
-    length(units(dimensionless_time)$denominator) == 0
-
-  if (!dimensionless) {
-    stop(
-      "Units error resulting in dimensional value input to expint. ",
-      "Numerator: ",
-      units(dimensionless_time)$numerator,
-      ", Denominator: ",
-      units(dimensionless_time)$denominator
-    )
-  }
-
-  dimensionless_time_values <- as.numeric(dimensionless_time)
-  maximum_expint_argument <- 700
-  evaluate_response <- dimensionless_time_values <= maximum_expint_argument
-  well_function <- numeric(length(dimensionless_time_values))
-
-  # E1(700) is approximately 1.4e-307. Larger arguments are effectively zero
-  # for model outputs, and expint() begins emitting underflow warnings near
-  # 701.9. Avoiding those calls also prevents warning handling from dominating
-  # large response-matrix evaluations.
+  # E1(700) is approximately 1.4e-307; skip larger arguments to avoid underflow.
   well_function[evaluate_response] <- -0.5 * expint(
-    dimensionless_time_values[evaluate_response]
+    dimensionless_time[evaluate_response]
   )
-
-  1 / (2 * pi * K * D) * well_function
+  well_function / (2 * pi * transmissivity_m2_per_day)
 }
 
 #' Calculate the straight-stream aquifer-drawdown ratio
@@ -236,20 +169,19 @@ calc_straight_stream_depletion_fraction <- function(
 #' well caused by pumping from another well near a single straight stream
 #' represented as a constant-head boundary.
 #'
-#' @param x1 Perpendicular distance from the pumping well to the stream.
-#' @param x2 Perpendicular distance from the observation well to the stream.
-#' @param y_diff Distance between the pumping and observation wells parallel
-#'   to the stream.
-#' @param K Saturated hydraulic conductivity. Must have units of length per
-#'   time.
-#' @param D Aquifer thickness. Must have units of length.
+#' @param x1_m Numeric perpendicular pump-to-stream distance, in meters.
+#' @param x2_m Numeric perpendicular observation-to-stream distance, in meters.
+#' @param y_diff_m Numeric separation parallel to the stream, in meters.
+#' @param K_m_per_day Saturated hydraulic conductivity. Numeric in meters per
+#'   day.
+#' @param D_m Aquifer thickness. Numeric in meters.
 #' @param V Drainable porosity or specific yield. A dimensionless numeric value.
-#' @param t Elapsed time since pumping began. Must have units of time.
-#' @param well_diam Pumping-well diameter. Drawdown does not increase within
-#'   one well radius. Must have units of length.
+#' @param t_day Numeric elapsed time since pumping began, in days.
+#' @param well_diam_m Pumping-well diameter. Drawdown does not increase within
+#'   one well radius. Numeric in meters.
 #'
-#' @return A units vector containing the ratio of aquifer drawdown to pumping
-#'   rate. The resulting dimensions are time divided by length squared.
+#' @return A numeric vector in day/m^2 containing the ratio of aquifer drawdown
+#'   to pumping rate.
 #'
 #' @details
 #' For a stream boundary, the function calculates drawdown from the pumping
@@ -268,40 +200,17 @@ calc_straight_stream_depletion_fraction <- function(
 #' @seealso [calc_straight_stream_drawdown_ratio()]
 #' @noRd
 .glover_aquifer_drawdown_ratio <- function(
-    x1,
-    x2,
-    y_diff,
-    K,
-    D,
-    V,
-    t,
-    well_diam) {
-  check_dimensionality(x1, "m", "x1")
-  check_dimensionality(x2, "m", "x2")
-  check_dimensionality(y_diff, "m", "y_diff")
-
-  rw <- sqrt((x2 - x1)^2 + y_diff^2)
-  rwi <- sqrt((x2 + x1)^2 + y_diff^2)
-  
-  sw_over_Q <- .theis_aquifer_drawdown_ratio(
-    distance = rw,
-    K = K,
-    D = D,
-    V = V,
-    t = t,
-    well_diam = well_diam
+    x1_m, x2_m, y_diff_m, K_m_per_day, D_m, V, t_day, well_diam_m) {
+  # Already-validated numeric inputs: m, m/day and day; returns numeric day/m^2.
+  real_distance_m <- sqrt((x2_m - x1_m)^2 + y_diff_m^2)
+  image_distance_m <- sqrt((x2_m + x1_m)^2 + y_diff_m^2)
+  real_response_day_per_m2 <- .theis_aquifer_drawdown_ratio(
+    real_distance_m, K_m_per_day, D_m, V, t_day, well_diam_m
   )
-
-  swi_over_Q <- .theis_aquifer_drawdown_ratio(
-    distance = rwi,
-    K = K,
-    D = D,
-    V = V,
-    t = t,
-    well_diam = well_diam
+  image_response_day_per_m2 <- .theis_aquifer_drawdown_ratio(
+    image_distance_m, K_m_per_day, D_m, V, t_day, well_diam_m
   )
-
-  sw_over_Q - swi_over_Q
+  real_response_day_per_m2 - image_response_day_per_m2
 }
 
 #' Calculate infinite-aquifer drawdown ratio
@@ -368,12 +277,12 @@ calc_infinite_aquifer_drawdown_ratio <- function(
     list(distance = distance), K, D, V, t, well_diam
   )
   response_day_per_m2 <- .theis_aquifer_drawdown_ratio(
-    distance = inputs$distance_m,
-    K = inputs$K_m_per_day,
-    D = inputs$D_m,
+    distance_m = inputs$distance_m,
+    K_m_per_day = inputs$K_m_per_day,
+    D_m = inputs$D_m,
     V = inputs$V,
-    t = inputs$t_day,
-    well_diam = inputs$well_diam_m
+    t_day = inputs$t_day,
+    well_diam_m = inputs$well_diam_m
   )
   # Restore the caller-facing response units after numeric calculation.
   units::set_units(
@@ -451,14 +360,14 @@ calc_straight_stream_drawdown_ratio <- function(
     list(x1 = x1, x2 = x2, y_diff = y_diff), K, D, V, t, well_diam
   )
   response_day_per_m2 <- .glover_aquifer_drawdown_ratio(
-    x1 = inputs$x1_m,
-    x2 = inputs$x2_m,
-    y_diff = inputs$y_diff_m,
-    K = inputs$K_m_per_day,
-    D = inputs$D_m,
+    x1_m = inputs$x1_m,
+    x2_m = inputs$x2_m,
+    y_diff_m = inputs$y_diff_m,
+    K_m_per_day = inputs$K_m_per_day,
+    D_m = inputs$D_m,
     V = inputs$V,
-    t = inputs$t_day,
-    well_diam = inputs$well_diam_m
+    t_day = inputs$t_day,
+    well_diam_m = inputs$well_diam_m
   )
   # Restore the caller-facing response units after numeric calculation.
   units::set_units(

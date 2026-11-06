@@ -137,6 +137,7 @@ The following chunk is deliberately visible so parameters, cases, and
 quadrature orders can be changed and rerun during review.
 
 ```{r calculate-comparison}
+# Private kernel calls below receive numeric values normalized to meters and days.
 reference_response <- vapply(
   seq_len(nrow(cases)),
   function(case_index) {
@@ -168,15 +169,14 @@ comparison <- tidyr::crossing(
       seq_len(n()),
       function(result_index) {
         as.numeric(isw:::.line_sink_aquifer_drawdown_ratio(
-          along_distance = set_units(along_m[[result_index]], "m"),
-          perpendicular_distance =
-            set_units(perpendicular_m[[result_index]], "m"),
-          line_length = hydraulics$line_length,
-          K = hydraulics$K,
-          D = hydraulics$D,
+          along_distance_m = along_m[[result_index]],
+          perpendicular_distance_m = perpendicular_m[[result_index]],
+          line_length_m = as.numeric(set_units(hydraulics$line_length, "m")),
+          K_m_per_day = as.numeric(set_units(hydraulics$K, "m/day")),
+          D_m = as.numeric(set_units(hydraulics$D, "m")),
           V = hydraulics$V,
-          t = hydraulics$elapsed_time,
-          stream_width = hydraulics$stream_width,
+          t_day = as.numeric(set_units(hydraulics$elapsed_time, "day")),
+          stream_width_m = as.numeric(set_units(hydraulics$stream_width, "m")),
           quadrature_order = quadrature_order[[result_index]]
         ))
       },
@@ -305,12 +305,12 @@ short_line_convergence <- tidyr::crossing(
       seq_len(n()),
       function(result_index) {
         as.numeric(isw:::.theis_aquifer_drawdown_ratio(
-          distance = set_units(point_distance_m[[result_index]], "m"),
-          K = hydraulics$K,
-          D = hydraulics$D,
+          distance_m = point_distance_m[[result_index]],
+          K_m_per_day = as.numeric(set_units(hydraulics$K, "m/day")),
+          D_m = as.numeric(set_units(hydraulics$D, "m")),
           V = hydraulics$V,
-          t = hydraulics$elapsed_time,
-          well_diam = hydraulics$stream_width
+          t_day = as.numeric(set_units(hydraulics$elapsed_time, "day")),
+          well_diam_m = as.numeric(set_units(hydraulics$stream_width, "m"))
         ))
       },
       numeric(1)
@@ -319,15 +319,14 @@ short_line_convergence <- tidyr::crossing(
       seq_len(n()),
       function(result_index) {
         as.numeric(isw:::.line_sink_aquifer_drawdown_ratio(
-          along_distance = set_units(along_m[[result_index]], "m"),
-          perpendicular_distance =
-            set_units(perpendicular_m[[result_index]], "m"),
-          line_length = set_units(line_length_m[[result_index]], "m"),
-          K = hydraulics$K,
-          D = hydraulics$D,
+          along_distance_m = along_m[[result_index]],
+          perpendicular_distance_m = perpendicular_m[[result_index]],
+          line_length_m = line_length_m[[result_index]],
+          K_m_per_day = as.numeric(set_units(hydraulics$K, "m/day")),
+          D_m = as.numeric(set_units(hydraulics$D, "m")),
           V = hydraulics$V,
-          t = hydraulics$elapsed_time,
-          stream_width = hydraulics$stream_width,
+          t_day = as.numeric(set_units(hydraulics$elapsed_time, "day")),
+          stream_width_m = as.numeric(set_units(hydraulics$stream_width, "m")),
           quadrature_order = 16L
         ))
       },

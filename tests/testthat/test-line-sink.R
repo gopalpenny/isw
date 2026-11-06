@@ -34,43 +34,31 @@ test_that("Gauss-Legendre rule matches known low-order rules", {
 })
 
 test_that("Theis responses skip numerical underflow without changing values", {
-  K <- units::set_units(10, "m/day")
-  D <- units::set_units(20, "m")
+  # Numeric inputs use meters/days; responses are day/m^2.
+  K_m_per_day <- 10
+  D_m <- 20
   V <- 0.15
-  elapsed_time <- units::set_units(10, "days")
-  alpha <- K * D / V
-  dimensionless_times <- c(1, 699, 701, 1000)
-  distances <- sqrt(
-    4 * alpha * elapsed_time * dimensionless_times
-  )
+  t_day <- 10
+  diffusivity_m2_per_day <- K_m_per_day * D_m / V
+  dimensionless_times <- c(1, 699, 700 - 1e-10, 701, 1000)
+  distance_m <- sqrt(4 * diffusivity_m2_per_day * t_day * dimensionless_times)
 
-  expect_silent(
-    response <- isw:::.theis_response_at_distance(
-      distances,
-      K,
-      D,
-      V,
-      elapsed_time
-    )
-  )
-  expected_at_one <- 1 / (2 * pi * K * D) *
-    (-0.5 * expint::expint(1))
-
-  expect_equal(response[[1]], expected_at_one)
-  expect_gt(abs(as.numeric(response[[2]])), 0)
-  expect_identical(as.numeric(response[3:4]), c(0, 0))
+  expect_silent(response_day_per_m2 <- isw:::.theis_response_at_distance(
+    distance_m, K_m_per_day, D_m, V, t_day
+  ))
+  expected_at_one_day_per_m2 <- -expint::expint_E1(1) / (4 * pi * K_m_per_day * D_m)
+  expect_equal(response_day_per_m2[[1]], expected_at_one_day_per_m2)
+  expect_true(all(abs(response_day_per_m2[2:3]) > 0))
+  expect_identical(response_day_per_m2[4:5], c(0, 0))
+  # This input gives u = 700 exactly, without a square-root rounding ambiguity.
+  expect_gt(abs(isw:::.theis_response_at_distance(700, 175, 1, 1, 1)), 0)
 })
 
 test_that("local line response converges with quadrature order", {
+  # Already-prepared numeric inputs use meters and days.
   arguments <- list(
-    along_distance = units::set_units(20, "m"),
-    perpendicular_distance = units::set_units(3, "m"),
-    line_length = units::set_units(100, "m"),
-    K = units::set_units(10, "m/day"),
-    D = units::set_units(20, "m"),
-    V = 0.15,
-    t = units::set_units(10, "days"),
-    stream_width = units::set_units(5, "m")
+    along_distance_m = 20, perpendicular_distance_m = 3, line_length_m = 100,
+    K_m_per_day = 10, D_m = 20, V = 0.15, t_day = 10, stream_width_m = 5
   )
   response_16 <- do.call(
     isw:::.line_sink_aquifer_drawdown_ratio,
@@ -200,24 +188,16 @@ test_that("prepared straight-line operator matches the local-coordinate kernel",
     0.15,
     units::set_units(10, "days")
   )
-  local_response <- isw:::.line_sink_aquifer_drawdown_ratio(
-    units::set_units(20, "m"),
-    units::set_units(30, "m"),
-    units::set_units(100, "m"),
-    units::set_units(10, "m/day"),
-    units::set_units(20, "m"),
-    0.15,
-    units::set_units(10, "days"),
-    units::set_units(10, "m"),
-    quadrature_order = 16
+  local_response_day_per_m2 <- isw:::.line_sink_aquifer_drawdown_ratio(
+    20, 30, 100, 10, 20, 0.15, 10, 10, quadrature_order = 16
   )
 
   expect_s3_class(operator_response, "units")
   expect_equal(units::deparse_unit(operator_response), "d m-2")
-  expect_equal(operator_response[[1]], local_response)
+  expect_equal(as.numeric(operator_response[[1]]), local_response_day_per_m2)
 })
 
-test_that("finite-line responses are invariant to equivalent input units", {
+test_that("prepared finite-line operators are invariant to equivalent input units", {
   convert_units <- function(x, new_units) {
     units::set_units(x, new_units, mode = "standard")
   }
@@ -251,20 +231,6 @@ test_that("finite-line responses are invariant to equivalent input units", {
   mixed_unit_inputs$stream_width <- convert_units(
     metric_inputs$stream_width,
     "ft"
-  )
-
-  metric_kernel_response <- do.call(
-    isw:::.line_sink_aquifer_drawdown_ratio,
-    metric_inputs
-  )
-  mixed_unit_kernel_response <- do.call(
-    isw:::.line_sink_aquifer_drawdown_ratio,
-    mixed_unit_inputs
-  )
-  expect_equal(
-    convert_units(metric_kernel_response, "day/m^2"),
-    convert_units(mixed_unit_kernel_response, "day/m^2"),
-    tolerance = 1e-12
   )
 
   metric_segments <- make_line_sink_segments(

@@ -4,29 +4,37 @@ Design document for branch `performance`. The tables below inventory the 61
 named, top-level functions present before the refactor; proposed helpers are
 identified separately.
 
-## Implementation status: public input boundaries
+## Implementation status: public boundaries and analytical kernels
 
 The first implementation stage adds validated numeric preparation to all ten
 public entry points. Physical inputs are converted before stripping, numeric
 columns carry unit suffixes, and CRS/original time and unit metadata are retained.
 Analytical wrappers also define restoration of their public response units.
 
-Per the user's requested staging, there is no compatibility adapter: existing
-calculation bodies and all their internal unit checks remain in place. Public
-preparation therefore intentionally breaks the paths whose internal calculations
-still expect units objects and the original column names. The newly extracted
-private coordinators retain the former public calculation bodies unchanged.
-The next stage will migrate these internals individually, rather than bypassing
-or removing their checks now.
+The public-boundary checkpoint was committed as `56de729`. Per the user's
+requested staging, there is no compatibility adapter: public preparation
+intentionally breaks paths whose internal calculations still expect units
+objects and the original column names. Unmigrated private coordinators retain
+the former public calculation bodies and their checks.
+
+Stage 2 migrates Glover, Theis, direct/image-well, local finite-line and quadrature
+kernels to standard numeric inputs. Arguments/physical intermediates have unit
+suffixes, with brief numeric-contract comments. Their repeated unit/input checks
+are removed; independent public analytical functions retain validation and
+restore the caller-facing response units. Radius regularization, expint underflow
+handling and quadrature normalization remain intact. Direct private-kernel test
+and manual-analysis calls are updated to the numeric contract. Calls from the
+unmigrated spatial/model coordinators will be updated in their respective stages.
 
 Boundary tests use captured internal calls to verify numeric preparation without
 depending on the not-yet-migrated calculations. The baseline full suite passed
 before implementation. The latest boundary-only run passed 76 expectations.
-After this stage, boundary tests pass; the full suite
-reports 45 test blocks with errors from unmigrated paths (307 passed expectations,
-zero failed expectations). These counts are a transition snapshot, not a passing
-package result. Vignette explanations of completed numeric internals remain
-pending until the end-to-end paths work.
+The existing standalone analytical tests, new numeric-kernel regression tests,
+and boundary tests pass. The latest full suite reports 42 test blocks with errors
+from unmigrated paths, 340 passed expectations and zero failed expectations.
+These counts are a transition snapshot, not a passing package result. Vignette
+explanations of completed model internals remain pending until end-to-end paths
+work. Shared UTM/sf preparation is the next implementation stage.
 
 ## Internal contract
 
@@ -296,8 +304,8 @@ numerical implementations.
 |---|---|---|
 | 0. Baseline and profiling | Preserve original behavior as a reference; establish reproducible ADF/constant-head profiles | Original full suite passed before changes; profiling setup exists. Add missing regression cases as each layer migrates. |
 | 1. Public boundaries | Validate external inputs, normalize/strip physical quantities with suffixes, retain output metadata; keep old internal checks | Implemented and boundary-tested. No adapter; branch intentionally has failing end-to-end paths. Audit these boundaries as later layers establish their exact contracts. |
-| 2. Analytical kernels | Migrate Glover, Theis, direct/image-well and local finite-line kernels to numeric meters/days; preserve regularization and underflow logic | Next. Standalone public analytical functions work with equivalent meter/feet and day/second inputs and unchanged output-unit behavior. |
-| 3. Spatial preparation | Consolidate shared UTM selection, retain sf/CRS, migrate segmentation/sampling/apportionment, prepare reusable line operators and numeric meter distances | Pending. Spatial public functions work independently; mixed CRSs and zone crossings work; secondary model-point geometry is handled explicitly. |
+| 2. Analytical kernels | Migrate Glover, Theis, direct/image-well and local finite-line kernels to numeric meters/days; preserve regularization and underflow logic | Implemented and tested. Standalone public analytical functions work with equivalent input units and unchanged output-unit behavior. |
+| 3. Spatial preparation | Consolidate shared UTM selection, retain sf/CRS, migrate segmentation/sampling/apportionment, prepare reusable line operators and numeric meter distances | Next. Spatial public functions must work independently; mixed CRSs and zone crossings must work; secondary model-point geometry needs explicit handling. |
 | 4. Time and pumping events | Numeric day/rate tables, event changes, evaluation indices, shared Date origin, aquifer groups | Pending. Helpers no longer renormalize inputs or reconstruct the same events repeatedly. |
 | 5. ADF workflow | Migrate fraction lookup, event superposition, interval averaging and private schedule coordinator | Pending. Public depletion/schedule outputs retain shapes, dates, units and missing-time completion behavior. |
 | 6. Constant-head workflow | Numeric response/cache keys, precomputed pump-to-stream distances, numeric history accumulation; retain QR/factorization reuse | Pending. Match baseline rates, signs and boundary residuals; retain numerical diagnostics. |

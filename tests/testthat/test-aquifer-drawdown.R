@@ -211,30 +211,30 @@ test_that("water-level model superimposes pumping and stream injection", {
   )
   injection_events <- isw:::.get_injection_rate_changes(injection_schedule)
 
-  pumping_ratio_10 <- isw:::.theis_aquifer_drawdown_ratio(
-    distance = units::set_units(50, "m"),
-    K = inputs$pumping_wells$K,
-    D = inputs$pumping_wells$D,
+  pumping_ratio_10_day_per_m2 <- isw:::.theis_aquifer_drawdown_ratio(
+    distance_m = 50,
+    K_m_per_day = as.numeric(units::set_units(inputs$pumping_wells$K, "m/day")),
+    D_m = as.numeric(units::set_units(inputs$pumping_wells$D, "m")),
     V = inputs$pumping_wells$V,
-    t = units::set_units(10, "days"),
-    well_diam = units::set_units(0, "m")
+    t_day = 10,
+    well_diam_m = 0
   )
   expected_pumping_10 <- units::set_units(
-    -inputs$pumping_schedules$pump_1[[1]] * pumping_ratio_10,
+    -inputs$pumping_schedules$pump_1[[1]] * units::set_units(pumping_ratio_10_day_per_m2, "day/m^2"),
     "m"
   )
-  line_ratio_10 <- isw:::.line_sink_aquifer_drawdown_ratio(
-    along_distance = units::set_units(0, "m"),
-    perpendicular_distance = units::set_units(50, "m"),
-    line_length = inputs$stream_segments$represented_length[[1]],
-    K = inputs$pumping_wells$K,
-    D = inputs$pumping_wells$D,
+  line_ratio_10_day_per_m2 <- isw:::.line_sink_aquifer_drawdown_ratio(
+    along_distance_m = 0,
+    perpendicular_distance_m = 50,
+    line_length_m = as.numeric(units::set_units(inputs$stream_segments$represented_length[[1]], "m")),
+    K_m_per_day = as.numeric(units::set_units(inputs$pumping_wells$K, "m/day")),
+    D_m = as.numeric(units::set_units(inputs$pumping_wells$D, "m")),
     V = inputs$pumping_wells$V,
-    t = units::set_units(10, "days"),
-    stream_width = inputs$stream_segments$stream_width[[1]]
+    t_day = 10,
+    stream_width_m = as.numeric(units::set_units(inputs$stream_segments$stream_width[[1]], "m"))
   )
   expected_recovery_10 <- units::set_units(
-    injection_events$injection_rate_change[[1]] * line_ratio_10,
+    injection_events$injection_rate_change[[1]] * units::set_units(line_ratio_10_day_per_m2, "day/m^2"),
     "m"
   )
 
@@ -291,18 +291,18 @@ test_that("stream injection uses finite-line geometry and stream width", {
     stream_apportionment = inputs$stream_apportionment
   )
 
-  expected_ratio <- isw:::.line_sink_aquifer_drawdown_ratio(
-    along_distance = units::set_units(0, "m"),
-    perpendicular_distance = units::set_units(0, "m"),
-    line_length = inputs$stream_segments$represented_length[[1]],
-    K = inputs$pumping_wells$K,
-    D = inputs$pumping_wells$D,
+  expected_ratio_day_per_m2 <- isw:::.line_sink_aquifer_drawdown_ratio(
+    along_distance_m = 0,
+    perpendicular_distance_m = 0,
+    line_length_m = as.numeric(units::set_units(inputs$stream_segments$represented_length[[1]], "m")),
+    K_m_per_day = as.numeric(units::set_units(inputs$pumping_wells$K, "m/day")),
+    D_m = as.numeric(units::set_units(inputs$pumping_wells$D, "m")),
     V = inputs$pumping_wells$V,
-    t = evaluation_time,
-    stream_width = inputs$stream_segments$stream_width[[1]]
+    t_day = as.numeric(units::set_units(evaluation_time, "day")),
+    stream_width_m = as.numeric(units::set_units(inputs$stream_segments$stream_width[[1]], "m"))
   )
   expected_recovery <- units::set_units(
-    injection_events$injection_rate_change[[1]] * expected_ratio,
+    injection_events$injection_rate_change[[1]] * units::set_units(expected_ratio_day_per_m2, "day/m^2"),
     "m"
   )
 
