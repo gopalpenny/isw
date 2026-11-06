@@ -4,7 +4,7 @@ Design document for branch `performance`. The tables below inventory the 61
 named, top-level functions present before the refactor; proposed helpers are
 identified separately.
 
-## Implementation status: stages 1 through 5
+## Implementation status: stages 1 through 6
 
 The first implementation stage adds validated numeric preparation to all ten
 public entry points. Physical inputs are converted before stripping, numeric
@@ -67,12 +67,33 @@ warnings format those missing times in the caller's representation.
 
 Existing ADF tests and 29 new workflow expectations pass. Independent comparisons
 against the pre-refactor implementation match depletion and injection schedules
-for Date inputs and hour-based inputs with imperial rates. The latest full suite
+for Date inputs and hour-based inputs with imperial rates. The stage 5 full suite
 reports 531 passed expectations, zero failed expectations and 10 error blocks
 in unmigrated constant-head/aquifer workflows.
 These counts are a transition snapshot, not a passing package result. Vignette
 explanations of completed model internals remain pending until end-to-end paths
-work. Constant-head schedule construction is the next stage.
+work. Stage 5 was committed as `8eb515a`.
+
+Stage 6 restores constant-head injection-schedule construction using prepared
+numeric wells, events, aquifer groups and day grids. Pump-to-stream distances are
+converted to bare meters once; pump event tables are split once before interval
+loops. Cached response matrices use day/m2, solved rates use m3/day and head
+accumulation uses meters. Public formatting restores dates, rate units and meter
+residuals. Repeated input checks and unit conversion are removed from the solver;
+public schedule/model boundaries protect the private entry point. QR solves,
+per-aquifer/duration factorization reuse, conditioning warnings and nonfinite
+rate diagnostics remain. Explicit matrix dimensions support one segment with
+multiple pumps during history accumulation.
+
+Independent comparisons match pre-refactor schedules for dates and hours,
+imperial rates, unequal interval lengths, and shared/separate aquifer groups.
+Regression checks reconstruct endpoint head cancellation, cover single-segment
+streams, zero pumping and empty horizons, and retain numerical diagnostics.
+The stage 6 full suite reports 571 passed expectations, zero failed expectations
+and 7 blocks with errors (six in aquifer workflow tests and one older direct
+spatial-helper fixture). The aquifer test errors also include a supplied-schedule
+fixture whose interval coverage must be corrected. This is still an intentionally
+incomplete package result. Aquifer observation superposition is the next stage.
 
 ## Internal contract
 
@@ -347,8 +368,8 @@ numerical implementations.
 | 3. Spatial preparation | Consolidate shared UTM selection, retain sf/CRS, migrate segmentation/sampling/apportionment, prepare reusable line operators and numeric meter distances | Implemented and tested. Spatial public functions work independently; mixed CRSs and zone crossings work; secondary model-point geometry is transformed explicitly. Numeric cache/extraction interfaces migrated alongside operators. |
 | 4. Time and pumping events | Numeric day/rate tables, event changes, evaluation indices, shared Date origin, aquifer groups | Implemented and tested. Prepared schedules retain reusable events/pairs; grouping uses normalized properties with boundary diagnostics. |
 | 5. ADF workflow | Migrate fraction lookup, event superposition, interval averaging and private schedule coordinator | Implemented and tested. Public depletion/schedule outputs retain shapes, dates, units and missing-time completion behavior; match the pre-refactor implementation. |
-| 6. Constant-head workflow | Numeric response/cache keys, precomputed pump-to-stream distances, numeric history accumulation; retain QR/factorization reuse | Next. Match baseline rates, signs and boundary residuals; retain numerical diagnostics. Numeric operators/caches are already available from stage 3. |
-| 7. Aquifer workflow | Numeric direct pumping and injection superposition; reuse prepared geometry, events and response matrices | Pending. Full public wrapper and supplied-schedule paths work; observations no longer trigger repeated spatial preparation in time loops. |
+| 6. Constant-head workflow | Numeric response/cache keys, precomputed pump-to-stream distances, numeric history accumulation; retain QR/factorization reuse | Implemented and tested. Matches baseline schedules; geometry and event preparation stay outside interval loops. Numeric units, QR reuse and solver diagnostics retained. |
+| 7. Aquifer workflow | Numeric direct pumping and injection superposition; reuse prepared geometry, events and response matrices | Next. Full public wrapper and supplied-schedule paths must work; observations should no longer trigger repeated spatial preparation in time loops. |
 | 8. Validation and output audit | Verify every independent public route is protected; remove repeated input checks only from migrated helpers; complete output formatting | Ongoing per stage, final audit pending. Keep checks of newly supplied data and numerical/service diagnostics. |
 | 9. Documentation and package checks | Update both vignettes, internal contracts/comments, manual analyses, public-invalid-input tests and private numeric fixtures | Pending. Tests and R CMD check pass; rendered examples reflect actual behavior. |
 | 10. Measure and optimize further | Repeat comparable unprofiled timings and profiles; inspect memory and larger workloads; consider further batching/chunking | Pending. Report measured gains separately from later algorithmic changes; no promised speedup or solver replacement. |

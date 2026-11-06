@@ -458,3 +458,124 @@ test_that("constant-head schedules retain Date interval boundaries", {
     evaluation_dates
   )
 })
+
+test_that("constant-head history cancels pumping at every interval endpoint", {
+  inputs <- make_constant_head_inputs(two_pumps = TRUE)
+  inputs$pumping_schedules$t <- units::set_units(c(0, 7), "days")
+  evaluation_time_day <- c(3, 10, 20)
+  schedule <- generate_stream_injection_schedule(
+    inputs$pumping_wells, inputs$pumping_schedules, inputs$stream_segments,
+    units::set_units(evaluation_time_day, "days"), method = "constant_head"
+  )
+  segments <- isw:::.prepare_numeric_segments(inputs$stream_segments)
+  wells <- isw:::.prepare_numeric_wells(inputs$pumping_wells, sf::st_crs(segments))
+  times <- isw:::.prepare_numeric_model_times(
+    inputs$pumping_schedules, units::set_units(evaluation_time_day, "days")
+  )
+  prepared_schedule <- isw:::.prepare_numeric_schedule(
+    inputs$pumping_schedules, inputs$pumping_wells, times
+  )
+  events <- attr(prepared_schedule, "isw_pumping_events")
+  operator <- isw:::.prepare_line_response_operator(
+    segments$model_point, isw:::.prepare_line_elements(segments, 16L)
+  )
+  distances_m <- units::drop_units(sf::st_distance(wells, segments$model_point))
+  for (pump_row in seq_len(nrow(wells))) {
+    pump <- wells[pump_row, ]
+    pump_events <- events[events$pump_id == pump$pump_id, ]
+    injection <- schedule[schedule$pump_id == pump$pump_id, ]
+    for (endpoint_day in sort(unique(as.numeric(schedule$interval_end)))) {
+      head_m <- isw:::.get_pumping_head_at_stream(
+        pump, pump_events, distances_m[pump_row, ], endpoint_day
+      )
+      for (start_day in unique(as.numeric(injection$interval_start))) {
+        rows <- which(as.numeric(injection$interval_start) == start_day)
+        end_day <- as.numeric(injection$interval_end[rows[1]])
+        response <- function(age_day) {
+          isw:::.evaluate_line_response_operator(
+            operator, pump$K_m_per_day, pump$D_m, pump$V, age_day
+          )
+        }
+        if (endpoint_day > start_day) {
+          pulse_day_per_m2 <- response(endpoint_day - start_day)
+          if (endpoint_day > end_day) {
+            pulse_day_per_m2 <- pulse_day_per_m2 - response(endpoint_day - end_day)
+          }
+          head_m <- head_m - as.numeric(pulse_day_per_m2 %*%
+            as.numeric(injection$injection_rate[rows]))
+        }
+      }
+      expect_equal(head_m, rep(0, nrow(segments)), tolerance = 1e-10)
+    }
+  }
+})
+
+test_that("single-segment constant-head schedules preserve units and pump dimensions", {
+  inputs <- make_constant_head_inputs(two_pumps = TRUE)
+  inputs$stream_segments <- inputs$stream_segments[1, ]
+  baseline <- generate_stream_injection_schedule(
+    inputs$pumping_wells, inputs$pumping_schedules, inputs$stream_segments,
+    inputs$evaluation_times, method = "constant_head"
+  )
+  inputs$pumping_schedules$t <- units::set_units(inputs$pumping_schedules$t, "hours")
+  for (id in inputs$pumping_wells$pump_id) {
+    inputs$pumping_schedules[[id]] <- units::set_units(
+      inputs$pumping_schedules[[id]], "ft^3/day"
+    )
+  }
+  converted <- generate_stream_injection_schedule(
+    inputs$pumping_wells, inputs$pumping_schedules, inputs$stream_segments,
+    units::set_units(inputs$evaluation_times, "hours"), method = "constant_head"
+  )
+  expect_equal(nrow(converted), 4L)
+  expect_equal(units::set_units(converted$injection_rate, "m^3/day"),
+               baseline$injection_rate)
+  expect_equal(converted$boundary_residual, baseline$boundary_residual)
+  expect_equal(converted$matrix_condition_number, baseline$matrix_condition_number)
+  expect_identical(units::deparse_unit(converted$interval_end), "h")
+  expect_identical(units::deparse_unit(converted$injection_rate),
+                   units::deparse_unit(inputs$pumping_schedules$pump_1))
+
+  inputs$pumping_wells$K[2] <- 2 * inputs$pumping_wells$K[1]
+  expect_warning(separate <- generate_stream_injection_schedule(
+    inputs$pumping_wells, inputs$pumping_schedules, inputs$stream_segments,
+    units::set_units(inputs$evaluation_times, "hours"), method = "constant_head"
+  ), "2 pump-specific aquifer")
+  expect_length(unique(separate$aquifer_id), 2L)
+  expect_lt(max(abs(as.numeric(separate$boundary_residual))), 1e-10)
+})
+
+test_that("constant-head schedules handle zero pumping and empty time horizons", {
+  inputs <- make_constant_head_inputs()
+  inputs$pumping_schedules$pump_1[] <- units::set_units(0, "m^3/day")
+  run_schedule <- function(evaluation_times) generate_stream_injection_schedule(
+    inputs$pumping_wells, inputs$pumping_schedules, inputs$stream_segments,
+    evaluation_times, method = "constant_head"
+  )
+  schedule <- run_schedule(inputs$evaluation_times)
+  expect_equal(as.numeric(schedule$injection_rate), rep(0, nrow(schedule)))
+  expect_equal(as.numeric(schedule$boundary_residual), rep(0, nrow(schedule)))
+  empty <- run_schedule(units::set_units(0, "days"))
+  expect_equal(nrow(empty), 0L)
+  expect_named(empty, names(schedule))
+  expect_identical(units::deparse_unit(empty$boundary_residual), "m")
+  expect_identical(units::deparse_unit(empty$injection_rate),
+                   units::deparse_unit(schedule$injection_rate))
+})
+
+test_that("constant-head numerical diagnostics survive numeric preparation", {
+  inputs <- make_constant_head_inputs()
+  run_schedule <- function() generate_stream_injection_schedule(
+    inputs$pumping_wells, inputs$pumping_schedules, inputs$stream_segments,
+    inputs$evaluation_times, method = "constant_head"
+  )
+  response_day_per_m2 <- diag(c(1, 1e-8))
+  testthat::local_mocked_bindings(
+    .get_cached_line_response_matrix = function(...) response_day_per_m2,
+    .package = "isw"
+  )
+  expect_warning(schedule <- run_schedule(), "condition number exceeded 1e6")
+  expect_true(all(schedule$matrix_condition_number > 1e6))
+  response_day_per_m2 <- matrix(0, 2, 2)
+  expect_error(run_schedule(), "produced nonfinite rates.*aquifer_1")
+})

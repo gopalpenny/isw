@@ -641,7 +641,7 @@ generate_stream_injection_schedule <- function(
   } else {
     schedule <- .get_constant_head_injection_schedule(
       pumping_wells, pumping_schedules, stream_segments, grid,
-      allow_n_aquifer_parameter_sets, quadrature_order
+      quadrature_order = quadrature_order
     )
   }
   attr(schedule, "isw_schedule_metadata") <- list(
