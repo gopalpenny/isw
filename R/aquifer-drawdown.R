@@ -12,7 +12,8 @@
   }
 
   quadrature_order <- metadata$quadrature_order
-  if (length(quadrature_order) != 1L || is.na(quadrature_order) ||
+  if (!is.numeric(quadrature_order) || inherits(quadrature_order, "units") ||
+      length(quadrature_order) != 1L || is.na(quadrature_order) ||
       !is.finite(quadrature_order) || quadrature_order < 1 ||
       quadrature_order != as.integer(quadrature_order)) {
     return(NULL)
@@ -82,11 +83,7 @@
     )
   }
 
-  .validate_pumping_schedules(pumping_schedules, pumping_wells)
-  .validate_stream_depletion_apportionment(
-    stream_apportionment,
-    pumping_wells
-  )
+  # Context tables were checked at the public boundary; supplied depletion is new.
 
   evaluation_times <- sort(unique(stream_depletion$evaluation_time))
   .validate_evaluation_times(evaluation_times, pumping_schedules$t)
@@ -200,9 +197,7 @@
     stream_segments,
     evaluation_times = NULL) {
 
-  .validate_pumping_schedules(pumping_schedules, pumping_wells)
-  .validate_stream_segments(stream_segments)
-  .validate_evaluation_times(evaluation_times, pumping_schedules$t)
+  # Context wells, schedule, segments and evaluation times were checked by the wrapper.
 
   if (!is.data.frame(stream_injection_schedule)) {
     stop("stream_injection_schedule must be a data frame or tibble.")
@@ -229,22 +224,20 @@
     )
   }
 
+  if ("boundary_residual" %in% names(stream_injection_schedule)) {
+    check_dimensionality(stream_injection_schedule$boundary_residual, "m",
+                         "stream_injection_schedule$boundary_residual")
+    if (any(!is.finite(as.numeric(stream_injection_schedule$boundary_residual)))) {
+      stop("stream_injection_schedule$boundary_residual must be finite.")
+    }
+  }
+
   normalized_evaluations <- .normalize_time_inputs(
     pumping_schedules$t,
     evaluation_times
   )
   schedule_start_day <- normalized_evaluations$schedule_time_day[[1]]
   final_evaluation_day <- max(normalized_evaluations$target_time_day)
-
-  if (nrow(stream_injection_schedule) == 0) {
-    if (final_evaluation_day > schedule_start_day) {
-      stop(
-        "stream_injection_schedule cannot be empty when evaluation times ",
-        "extend beyond the first pumping-schedule time."
-      )
-    }
-    return(stream_injection_schedule)
-  }
 
   if (!is.character(stream_injection_schedule$pump_id) ||
       !is.character(stream_injection_schedule$reach_id) ||
@@ -287,6 +280,21 @@
     stop(
       "stream_injection_schedule interval times must have time units."
     )
+  }
+
+  if (nrow(stream_injection_schedule) == 0) {
+    # Empty horizons still require correctly typed physical columns.
+    if (!schedule_is_date) {
+      check_dimensionality(stream_injection_schedule$interval_start, "days", "interval_start")
+      check_dimensionality(stream_injection_schedule$interval_end, "days", "interval_end")
+    }
+    if (final_evaluation_day > schedule_start_day) {
+      stop(
+        "stream_injection_schedule cannot be empty when evaluation times ",
+        "extend beyond the first pumping-schedule time."
+      )
+    }
+    return(stream_injection_schedule)
   }
 
   if (schedule_is_date) {
@@ -576,8 +584,9 @@ generate_stream_injection_schedule <- function(
   # Validate external tables/units before preparing numeric meters, days and rates.
   method <- match.arg(method)
   aquifer_groups <- NULL
+  segments <- .prepare_numeric_segments(stream_segments)
+  wells <- .prepare_numeric_wells(pumping_wells, sf::st_crs(segments))
   .validate_pumping_schedules(pumping_schedules, pumping_wells)
-  .validate_stream_segments(stream_segments)
   .validate_quadrature_order(quadrature_order)
   times <- .prepare_numeric_model_times(
     pumping_schedules, evaluation_times, injection_times
@@ -599,12 +608,10 @@ generate_stream_injection_schedule <- function(
     if (!is.null(adf_stream_depletion)) {
       stop('adf_stream_depletion can only be supplied when method = "adf".')
     }
-    aquifer_groups <- .prepare_aquifer_groups(pumping_wells, allow_n_aquifer_parameter_sets)
+    aquifer_groups <- .prepare_aquifer_groups(wells, allow_n_aquifer_parameter_sets)
     apportionment <- NULL
     depletion <- NULL
   }
-  segments <- .prepare_numeric_segments(stream_segments)
-  wells <- .prepare_numeric_wells(pumping_wells, sf::st_crs(segments))
   attr(wells, "isw_aquifer_groups") <- aquifer_groups
   result <- .generate_stream_injection_schedule(
     wells,
@@ -875,9 +882,14 @@ model_aquifer_water_level_change <- function(
   # Validate original inputs, including supplied intermediates, before stripping units.
   injection_method <- match.arg(injection_method)
   aquifer_groups <- NULL
+  segments <- .prepare_numeric_segments(stream_segments)
+  wells <- .prepare_numeric_wells(pumping_wells, sf::st_crs(segments))
   .validate_pumping_schedules(pumping_schedules, pumping_wells)
+  if (is.null(observation_wells)) {
+    stop("observation_wells must be a nonempty sf object.")
+  }
   .validate_observation_wells(observation_wells)
-  .validate_stream_segments(stream_segments)
+  .validate_quadrature_order(quadrature_order)
   if (!is.null(stream_injection_schedule) && !is.null(injection_times)) {
     stop("injection_times must be NULL when a stream-injection schedule is supplied.")
   }
@@ -902,13 +914,10 @@ model_aquifer_water_level_change <- function(
     apportionment <- .prepare_numeric_apportionment(stream_apportionment, pumping_wells)
     injection_schedule <- NULL
   } else {
-    aquifer_groups <- .prepare_aquifer_groups(pumping_wells, allow_n_aquifer_parameter_sets)
+    aquifer_groups <- .prepare_aquifer_groups(wells, allow_n_aquifer_parameter_sets)
     apportionment <- NULL
     injection_schedule <- NULL
   }
-  .validate_quadrature_order(quadrature_order)
-  segments <- .prepare_numeric_segments(stream_segments)
-  wells <- .prepare_numeric_wells(pumping_wells, sf::st_crs(segments))
   attr(wells, "isw_aquifer_groups") <- aquifer_groups
   result <- .model_aquifer_water_level_change(
     wells,

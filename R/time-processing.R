@@ -1,7 +1,6 @@
 # Normalize checked external times at the public preparation boundary.
 .normalize_time_inputs <- function(schedule_times, target_times = NULL) {
-  # Validate Date/time dimensions, then strip to numeric days; retain output metadata.
-  .validate_target_times(target_times, schedule_times, "target_times")
+  # The boundary checked Date/time dimensions and ordering; strip to numeric days.
   output_target_times <- if (is.null(target_times)) schedule_times else target_times
   time_origin <- if (inherits(schedule_times, "Date")) schedule_times[1] else NULL
   schedule_time_day <- .time_in_days(schedule_times, time_origin)

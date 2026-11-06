@@ -360,6 +360,9 @@
     if (anyNA(x)) {
       stop(object_name, " cannot contain missing dates.")
     }
+    if (any(!is.finite(as.numeric(x)))) {
+      stop(object_name, " must contain finite dates.")
+    }
   } else if (inherits(x, "units")) {
     check_dimensionality(
       x,
@@ -410,11 +413,12 @@
 #'
 #' This function validates inputs but does not normalize time units or convert
 #' pumping rates to changes in pumping rate.
+#' Pumping wells must already have been validated by the public boundary.
 #'
 #' @noRd
 .validate_pumping_schedules <- function(pumping_schedules, pumping_wells) {
 
-  .validate_pumping_wells(pumping_wells)
+  # The public boundary validates wells once before checking this related table.
 
   if (!is.data.frame(pumping_schedules)) {
     stop("pumping_schedules must be a data frame or tibble.")
@@ -485,7 +489,7 @@
     schedule_times,
     target_name) {
 
-  .validate_time_vector(schedule_times, "pumping_schedules$t")
+  # Schedule times were checked with the pumping schedule; only targets are new.
 
   if (is.null(target_times)) {
     return(NULL)

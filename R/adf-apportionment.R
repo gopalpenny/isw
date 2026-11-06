@@ -61,8 +61,8 @@ prep_adf_stream_apportionment <- function(
 
   # Validate unit-bearing inputs before preparing numeric meter/day columns.
   method <- match.arg(method)
-  .validate_pumping_wells(pumping_wells)
-  .validate_stream_segments(stream_segments)
+  segments <- .prepare_numeric_segments(stream_segments)
+  wells <- .prepare_numeric_wells(pumping_wells, sf::st_crs(segments))
   .validate_positive_length(sample_spacing, "sample_spacing")
   if (!is.null(maximum_distance)) {
     .validate_positive_length(maximum_distance, "maximum_distance")
@@ -71,9 +71,8 @@ prep_adf_stream_apportionment <- function(
   maximum_distance_m <- if (!is.null(maximum_distance)) {
     .numeric_in_standard_units(maximum_distance, "m", "maximum_distance")
   } else NULL
-  segments <- .prepare_numeric_segments(stream_segments)
   result <- .prep_adf_stream_apportionment(
-    .prepare_numeric_wells(pumping_wells, sf::st_crs(segments)),
+    wells,
     segments,
     sample_spacing_m, method, maximum_distance_m
   )
@@ -165,7 +164,7 @@ prep_adf_stream_apportionment <- function(
     )
   }
 
-  .validate_pumping_wells(pumping_wells)
+  # Pumping wells were checked by the public boundary; validate this relationship only.
 
   if (!is.character(stream_apportionment$pump_id) ||
       !is.character(stream_apportionment$reach_id) ||
@@ -431,11 +430,12 @@ model_adf_stream_depletion <- function(
     evaluation_times = NULL) {
 
   # Validate original inputs, then strip units using the shared meter/day boundary.
+  wells <- .prepare_numeric_wells(pumping_wells)
   .validate_pumping_schedules(pumping_schedules, pumping_wells)
   .validate_stream_depletion_apportionment(stream_apportionment, pumping_wells)
   times <- .prepare_numeric_model_times(pumping_schedules, evaluation_times)
   result <- .calculate_adf_stream_depletion(
-    .prepare_numeric_wells(pumping_wells),
+    wells,
     .prepare_numeric_schedule(pumping_schedules, pumping_wells, times),
     .prepare_numeric_apportionment(stream_apportionment, pumping_wells),
     times$evaluation_time_day

@@ -28,13 +28,12 @@ check_dimensionality <- function(object, desired_units, variable_name = NULL) {
   if (is.null(variable_name)) {
     variable_name <- "The variable passed to check_dimensionality()"
   }
-  units::units_options(set_units_mode = "standard")
   if(!any(class(object)=="units")) {
     stop(paste(variable_name, 'is not a units object. Make sure to provide appropriate units'))
   }
   tryCatch(
     expr = {
-      test <- units::set_units(object, desired_units)
+      test <- units::set_units(object, desired_units, mode = "standard")
     },
     error = function(cond) {
       message1 <- paste(variable_name,"is",object,".",

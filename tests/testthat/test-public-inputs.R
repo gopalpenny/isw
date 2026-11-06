@@ -42,6 +42,158 @@ make_boundary_inputs <- function(dates = FALSE) {
        injection = injection)
 }
 
+test_that("public workflows validate each context object once", {
+  inputs <- make_boundary_inputs()
+  depletion <- model_adf_stream_depletion(
+    inputs$wells, inputs$schedules, inputs$apportionment, inputs$evaluation_times
+  )
+  validation_names <- c(".validate_pumping_wells", ".validate_pumping_schedules",
+                        ".validate_stream_segments", ".validate_stream_depletion_apportionment",
+                        ".validate_observation_wells")
+  counts <- stats::setNames(integer(length(validation_names)), validation_names)
+  bindings <- stats::setNames(lapply(validation_names, function(name) {
+    original <- get(name, envir = asNamespace("isw"))
+    force(original)
+    force(name)
+    function(...) {
+      counts[[name]] <<- counts[[name]] + 1L
+      original(...)
+    }
+  }), validation_names)
+  do.call(local_mocked_bindings, c(bindings, list(.package = "isw", .env = environment())))
+  routes <- list(
+    apportionment = function() prep_adf_stream_apportionment(
+      inputs$wells, inputs$segments, units::set_units(25, "m")
+    ),
+    depletion = function() model_adf_stream_depletion(
+      inputs$wells, inputs$schedules, inputs$apportionment, inputs$evaluation_times
+    ),
+    adf_schedule = function() generate_stream_injection_schedule(
+      inputs$wells, inputs$schedules, inputs$segments, inputs$evaluation_times,
+      stream_apportionment = inputs$apportionment, adf_stream_depletion = depletion
+    ),
+    constant_head_schedule = function() generate_stream_injection_schedule(
+      inputs$wells, inputs$schedules, inputs$segments, inputs$evaluation_times,
+      method = "constant_head"
+    ),
+    adf_model = function() model_aquifer_water_level_change(
+      inputs$wells, inputs$schedules, inputs$observations, inputs$segments,
+      inputs$evaluation_times, stream_apportionment = inputs$apportionment
+    ),
+    constant_head_model = function() model_aquifer_water_level_change(
+      inputs$wells, inputs$schedules, inputs$observations, inputs$segments,
+      inputs$evaluation_times, injection_method = "constant_head"
+    ),
+    supplied_schedule_model = function() model_aquifer_water_level_change(
+      inputs$wells, inputs$schedules, inputs$observations, inputs$segments,
+      inputs$evaluation_times, stream_injection_schedule = inputs$injection
+    )
+  )
+  expected_counts <- list(c(1L, 0L, 1L, 0L, 0L), c(1L, 1L, 0L, 1L, 0L),
+                          c(1L, 1L, 1L, 1L, 0L), c(1L, 1L, 1L, 0L, 0L),
+                          c(1L, 1L, 1L, 1L, 1L), c(1L, 1L, 1L, 0L, 1L),
+                          c(1L, 1L, 1L, 0L, 1L))
+  for (index in seq_along(routes)) {
+    counts[] <- 0L
+    routes[[index]]()
+    expect_identical(unname(counts), expected_counts[[index]], info = names(routes)[[index]])
+  }
+})
+
+test_that("public boundaries reject invalid values before unchecked calculations", {
+  inputs <- make_boundary_inputs()
+  run_model <- function(observations = inputs$observations, schedules = inputs$schedules,
+                        injection = inputs$injection, quadrature_order = 16L) {
+    model_aquifer_water_level_change(
+      inputs$wells, schedules, observations, inputs$segments, inputs$evaluation_times,
+      stream_injection_schedule = injection, quadrature_order = quadrature_order
+    )
+  }
+  expect_error(run_model(observations = NULL), "observation_wells must be a nonempty sf")
+  dates <- inputs$schedules
+  dates$t <- as.Date(c(0, Inf), origin = "2025-01-01")
+  expect_error(run_model(schedules = dates), "finite dates")
+  expect_error(run_model(quadrature_order = units::set_units(16, "m")), "positive integer")
+  injection <- inputs$injection
+  injection$boundary_residual <- 1
+  expect_error(run_model(injection = injection), "boundary_residual.*units object")
+  injection$boundary_residual <- units::set_units(Inf, "m")
+  expect_error(run_model(injection = injection), "boundary_residual must be finite")
+
+  # Metadata is optional; malformed recorded orders must fall back to the default.
+  injection <- inputs$injection
+  attr(injection, "isw_schedule_metadata") <- list(
+    injection_method = "constant_head", quadrature_order = "sixteen"
+  )
+  expect_equal(run_model(injection = injection), run_model())
+  empty <- inputs$injection[0, ]
+  empty$injection_rate <- numeric()
+  expect_error(model_aquifer_water_level_change(
+    inputs$wells, inputs$schedules, inputs$observations, inputs$segments,
+    inputs$evaluation_times[1], stream_injection_schedule = empty
+  ), "injection_rate.*units object")
+
+  zero_length <- inputs$segments
+  sf::st_geometry(zero_length) <- sf::st_sfc(
+    sf::st_linestring(matrix(c(100, 0, 100, 0), ncol = 2, byrow = TRUE)), crs = 32615
+  )
+  zero_length$represented_length <- units::set_units(0, "m")
+  expect_error(prep_stream_sample_points(zero_length, units::set_units(25, "m")),
+               "positive geometry lengths")
+  empty_line <- inputs$segments
+  sf::st_geometry(empty_line) <- sf::st_sfc(sf::st_linestring(), crs = 32615)
+  expect_error(generate_stream_injection_schedule(
+    inputs$wells, inputs$schedules, empty_line, inputs$evaluation_times,
+    method = "constant_head"
+  ), "nonempty geometries")
+})
+
+test_that("unit validation preserves caller unit options", {
+  previous_mode <- units::units_options("set_units_mode")
+  on.exit(units::units_options(set_units_mode = previous_mode))
+  units::units_options(set_units_mode = "symbols")
+  inputs <- make_boundary_inputs()
+  model_adf_stream_depletion(
+    inputs$wells, inputs$schedules, inputs$apportionment, inputs$evaluation_times
+  )
+  expect_identical(units::units_options("set_units_mode"), "symbols")
+})
+
+test_that("prepared aquifer coordinators do not call boundary validators", {
+  inputs <- make_boundary_inputs()
+  segments <- isw:::.prepare_numeric_segments(inputs$segments)
+  wells <- isw:::.prepare_numeric_wells(inputs$wells, sf::st_crs(segments))
+  attr(wells, "isw_aquifer_groups") <- isw:::.prepare_aquifer_groups(wells)
+  times <- isw:::.prepare_numeric_model_times(inputs$schedules, inputs$evaluation_times)
+  schedules <- isw:::.prepare_numeric_schedule(inputs$schedules, inputs$wells, times)
+  apportionment <- isw:::.prepare_numeric_apportionment(inputs$apportionment, inputs$wells)
+  methods <- c("adf", "constant_head")
+  expected <- lapply(methods, function(method) model_aquifer_water_level_change(
+    inputs$wells, inputs$schedules, inputs$observations, inputs$segments,
+    inputs$evaluation_times, injection_method = method,
+    stream_apportionment = inputs$apportionment
+  ))
+  reject_validation <- function(...) stop("unexpected internal boundary validation")
+  local_mocked_bindings(
+    .validate_pumping_wells = reject_validation,
+    .validate_pumping_schedules = reject_validation,
+    .validate_stream_segments = reject_validation,
+    .validate_stream_depletion_apportionment = reject_validation,
+    .validate_observation_wells = reject_validation,
+    .validate_evaluation_times = reject_validation,
+    .validate_quadrature_order = reject_validation,
+    check_dimensionality = reject_validation, .package = "isw"
+  )
+  for (index in seq_along(methods)) {
+    numeric_result <- isw:::.model_aquifer_water_level_change(
+      wells, schedules, inputs$observations, segments, times$evaluation_time_day,
+      injection_method = methods[[index]], stream_apportionment = apportionment
+    )
+    expect_equal(isw:::.restore_aquifer_output(numeric_result, times, "ft"),
+                 expected[[index]], info = methods[[index]])
+  }
+})
+
 test_that("analytical public boundaries pass normalized numeric arguments", {
   captured <- NULL
   capture_kernel <- function(...) {

@@ -372,6 +372,11 @@ prep_stream_segments <- function(
     stop("Every stream_segments geometry must be a LINESTRING.")
   }
 
+  if (any(sf::st_is_empty(stream_segments)) ||
+      any(!is.finite(sf::st_coordinates(stream_segments)[, 1:2, drop = FALSE]))) {
+    stop("stream_segments must contain nonempty geometries with finite coordinates.")
+  }
+
   if (!is.character(stream_segments$reach_id) ||
       !is.character(stream_segments$reach_segment_id) ||
       anyNA(stream_segments$reach_id) ||

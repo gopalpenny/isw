@@ -1,8 +1,7 @@
 # Public-boundary validation and preparation for standard numeric internals.
 
 .numeric_in_standard_units <- function(x, standard_unit, variable_name) {
-  # Check physical dimensions, normalize, then strip unit attributes.
-  check_dimensionality(x, standard_unit, variable_name)
+  # Dimensions were checked by the boundary validator; normalize, then strip units.
   as.numeric(units::set_units(x, standard_unit, mode = "standard"))
 }
 
@@ -73,8 +72,7 @@
 }
 
 .prepare_numeric_apportionment <- function(stream_apportionment, pumping_wells) {
-  # Validate the public table and strip distance units after meter conversion.
-  .validate_stream_depletion_apportionment(stream_apportionment, pumping_wells)
+  # The public boundary checked this table; strip distances after meter conversion.
   .prepare_numeric_columns(
     stream_apportionment, c(pump_to_reach_distance = "m")
   )
@@ -105,8 +103,7 @@
 }
 
 .prepare_numeric_schedule <- function(pumping_schedules, pumping_wells, times) {
-  # Validate rates, normalize to m^3/day, and replace schedule times with numeric days.
-  .validate_pumping_schedules(pumping_schedules, pumping_wells)
+  # The public boundary checked rates/times; normalize to numeric m^3/day and days.
   pumping_schedules <- .prepare_numeric_columns(
     pumping_schedules,
     stats::setNames(rep("m^3/day", nrow(pumping_wells)), pumping_wells$pump_id)
@@ -225,8 +222,9 @@
 }
 
 .validate_quadrature_order <- function(quadrature_order) {
-  # Dimensionless integer control; retain the existing internal check as well.
-  if (!is.numeric(quadrature_order) || length(quadrature_order) != 1L ||
+  # Dimensionless integer control, checked before calling numeric internals.
+  if (!is.numeric(quadrature_order) || inherits(quadrature_order, "units") ||
+      length(quadrature_order) != 1L ||
       !is.finite(quadrature_order) || quadrature_order < 1 ||
       quadrature_order != floor(quadrature_order)) {
     stop("quadrature_order must be a positive integer.")
@@ -320,6 +318,11 @@
     stop("Every stream_segments geometry must be a LINESTRING.")
   }
 
+  if (any(sf::st_is_empty(stream_segments)) ||
+      any(!is.finite(sf::st_coordinates(stream_segments)[, 1:2, drop = FALSE]))) {
+    stop("stream_segments must contain nonempty geometries with finite coordinates.")
+  }
+
   if (!is.character(stream_segments$reach_id) ||
       !is.character(stream_segments$reach_segment_id) ||
       anyNA(stream_segments$reach_id) ||
@@ -354,6 +357,11 @@
   }
 
   segment_lengths <- sf::st_length(stream_segments)
+
+  if (any(!is.finite(as.numeric(segment_lengths))) ||
+      any(as.numeric(segment_lengths) <= 0)) {
+    stop("stream_segments must contain finite, positive geometry lengths.")
+  }
 
   if (!isTRUE(all.equal(
     segment_lengths,

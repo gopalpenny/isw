@@ -1,8 +1,8 @@
 # Validate public aquifer-group controls and normalized hydraulic relationships.
 .prepare_aquifer_groups <- function(pumping_wells, allow_n_aquifer_parameter_sets = 5) {
-  # Raw wells retain units; validate and normalize before grouping numeric m/day and m fields.
-  .validate_pumping_wells(pumping_wells)
+  # The boundary already prepared numeric m/day and m fields; check group controls/IDs.
   if (!is.numeric(allow_n_aquifer_parameter_sets) ||
+      inherits(allow_n_aquifer_parameter_sets, "units") ||
       length(allow_n_aquifer_parameter_sets) != 1L ||
       is.na(allow_n_aquifer_parameter_sets) ||
       allow_n_aquifer_parameter_sets < 1 ||
@@ -15,8 +15,7 @@
     )
   }
 
-  prepared_wells <- .prepare_numeric_wells(pumping_wells)
-  groups <- .get_aquifer_groups(prepared_wells)
+  groups <- .get_aquifer_groups(pumping_wells)
   if ("aquifer_id" %in% names(pumping_wells)) {
     aquifer_id <- pumping_wells$aquifer_id
     if (!is.character(aquifer_id) || anyNA(aquifer_id) || any(trimws(aquifer_id) == "")) {

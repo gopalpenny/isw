@@ -4,7 +4,7 @@ Design document for branch `performance`. The tables below inventory the 61
 named, top-level functions present before the refactor; proposed helpers are
 identified separately.
 
-## Implementation status: stages 1 through 7
+## Implementation status: stages 1 through 8
 
 The first implementation stage adds validated numeric preparation to all ten
 public entry points. Physical inputs are converted before stripping, numeric
@@ -111,8 +111,43 @@ outputs, collocated observations with well-diameter regularization and zero even
 Two older fixtures now use the proper coverage horizon and public spatial entry.
 The full stage 7 suite passes: 170 test blocks, 619 expectations, zero failures
 and zero errors. This does not yet include R CMD check or vignette execution.
-The validation/output audit is the next stage; vignette/manual migration and
-package build checks remain pending.
+Stage 7 and the restored explanatory comments were committed as `231c2e8`.
+
+Stage 8 audits all ten exported entry points. Public boundaries now check each
+context object once; table-specific validators assume that related wells,
+schedules and segments have already been checked. Numeric conversion helpers
+trust those dimension checks, and time normalization trusts the checked time
+axis/targets. Aquifer grouping consumes the already prepared numeric wells while
+retaining boundary checks for group IDs and limits. Input checks remain for
+newly supplied depletion/injection data, including coverage and metadata.
+
+The audit also rejects nonfinite Date values, NULL model observations, invalid
+optional residual columns, dimensioned quadrature controls, empty segment
+geometries and zero-length sampling geometries. Empty supplied schedules still
+require appropriate physical column types. Unit checking uses an explicit
+conversion mode without changing the caller's global units options.
+
+Call-count regressions cover seven public routes and confirm one validation per
+relevant context object. Prepared aquifer coordinators run with boundary
+validators disabled in tests. All 638 expectations in 174 blocks pass, and the
+independent pre-refactor comparisons still match both injection methods across
+dates/hours, rates in imperial units, aquifer groups and supplied schedules.
+Vignette/manual migration and package build checks are the next stage.
+
+### Boundary validation ownership after the audit
+
+| Input/responsibility | Owner | Trusted downstream helpers |
+|---|---|---|
+| Pumping wells: geometry, IDs, K/D/V and optional diameter | `.prepare_numeric_wells` invokes `.validate_pumping_wells` once | Related schedule/apportionment validators and hydraulic kernels do not revalidate wells |
+| Pumping schedule: columns, rate units/values and time axis | Each public model/schedule wrapper invokes `.validate_pumping_schedules` once | `.prepare_numeric_schedule`, target-time checks and supplied-result validators trust the schedule |
+| Full stream-segment contract | `.prepare_numeric_segments` invokes `.validate_stream_segments` once | Apportionment, supplied-schedule validators and line operators trust segments |
+| Sampling-only segment contract | `prep_stream_sample_points` invokes `.validate_stream_sampling_inputs` | Numeric sampling trusts geometry, lengths and spacing; this route does not require model-point/width fields |
+| Evaluation and refinement times | `.prepare_numeric_model_times` validates targets against the checked schedule | `.normalize_time_inputs`, time grids and event pairing do not revalidate times |
+| Apportionment rows, distances, fractions and correspondence | Public ADF routes invoke `.validate_stream_depletion_apportionment`; schedule/model routes also check segment correspondence | Numeric apportionment conversion and supplied-depletion validation trust that context |
+| Newly supplied depletion/injection tables | `.prepare_numeric_depletion` / `.prepare_numeric_injection` validate new data, identifiers, units, times and coverage | Numeric event helpers consume the resulting trusted schedule |
+| Aquifer groups and quadrature controls/metadata | Public constant-head/model preparation using prepared wells | QR, line elements and response caches receive checked controls; numerical diagnostics remain active |
+| Standalone analytical inputs | `.prepare_analytical_inputs` validates original values/dimensions | Numeric conversion and analytical kernels trust that contract; public exits restore response units |
+| Service AOI and downloaded geometry | `fetch_usgs_stream_reaches` validates the query input and returned reaches | Service adapters retain sf/CRS behavior |
 
 ## Internal contract
 
@@ -393,8 +428,8 @@ numerical implementations.
 | 5. ADF workflow | Migrate fraction lookup, event superposition, interval averaging and private schedule coordinator | Implemented and tested. Public depletion/schedule outputs retain shapes, dates, units and missing-time completion behavior; match the pre-refactor implementation. |
 | 6. Constant-head workflow | Numeric response/cache keys, precomputed pump-to-stream distances, numeric history accumulation; retain QR/factorization reuse | Implemented and tested. Matches baseline schedules; geometry and event preparation stay outside interval loops. Numeric units, QR reuse and solver diagnostics retained. |
 | 7. Aquifer workflow | Numeric direct pumping and injection superposition; reuse prepared geometry, events and response matrices | Implemented and tested. Both injection methods and supplied schedules match baseline results; geometry/operators and event selections are reused, and public output units/times are restored. |
-| 8. Validation and output audit | Verify every independent public route is protected; remove repeated input checks only from migrated helpers; complete output formatting | Next. Audit all public routes, remove remaining repeated boundary preparation, and retain checks of newly supplied data and numerical/service diagnostics. |
-| 9. Documentation and package checks | Update both vignettes, internal contracts/comments, manual analyses, public-invalid-input tests and private numeric fixtures | Pending. Tests and R CMD check pass; rendered examples reflect actual behavior. |
+| 8. Validation and output audit | Verify every independent public route is protected; remove repeated input checks only from migrated helpers; complete output formatting | Implemented and tested. Public routes validate context once; new supplied data and numerical/service diagnostics retain their checks. |
+| 9. Documentation and package checks | Update both vignettes, internal contracts/comments, manual analyses, public-invalid-input tests and private numeric fixtures | Next. Tests and R CMD check must pass; rendered examples must reflect actual behavior. |
 | 10. Measure and optimize further | Repeat comparable unprofiled timings and profiles; inspect memory and larger workloads; consider further batching/chunking | Pending. Report measured gains separately from later algorithmic changes; no promised speedup or solver replacement. |
 
 For each migration: update its direct callers and unit-suffixed argument names,

@@ -85,13 +85,13 @@ test_that("normalization does not modify input vectors", {
   expect_identical(target_times, original_target_times)
 })
 
-test_that("normalization applies target-time validation", {
+test_that("the time preparation boundary applies target-time validation", {
   schedule_times <- units::set_units(c(1, 2, 3), "days")
   target_times <- units::set_units(c(0, 2, 3), "days")
 
   expect_error(
-    isw:::.normalize_time_inputs(schedule_times, target_times),
-    "target_times cannot occur before the first pumping-schedule time"
+    isw:::.prepare_numeric_model_times(tibble::tibble(t = schedule_times), target_times),
+    "evaluation_times cannot occur before the first pumping-schedule time"
   )
 })
 
