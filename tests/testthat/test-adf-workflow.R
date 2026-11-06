@@ -83,7 +83,7 @@ test_that("numeric ADF calculations reuse prepared events without boundary check
   x <- make_adf_workflow_inputs()
   times <- isw:::.prepare_numeric_model_times(x$schedules, x$evaluate, x$refine)
   schedules <- isw:::.prepare_numeric_schedule(x$schedules, x$wells, times)
-  wells <- isw:::.prepare_numeric_wells(x$wells)
+  wells <- isw:::.prepare_numeric_pumping_wells(x$wells)
   apportionment <- isw:::.prepare_numeric_apportionment(x$apportionment, x$wells)
   segments <- isw:::.prepare_numeric_segments(x$segments)
   local_mocked_bindings(

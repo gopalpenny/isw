@@ -252,7 +252,7 @@ test_that("fraction lookup evaluates unique elapsed times once per segment", {
   )
 
   fraction_lookup <- isw:::.get_stream_depletion_fraction_lookup(
-    isw:::.prepare_numeric_wells(inputs$pumping_wells),
+    isw:::.prepare_numeric_pumping_wells(inputs$pumping_wells),
     pumping_response_times,
     isw:::.prepare_numeric_apportionment(stream_apportionment, inputs$pumping_wells)
   )

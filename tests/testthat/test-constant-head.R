@@ -208,7 +208,7 @@ test_that("explicit aquifer identifiers must match hydraulic properties", {
   inputs$pumping_wells$K[[2]] <- units::set_units(12, "m/day")
 
   expect_error(
-    isw:::.prepare_aquifer_groups(isw:::.prepare_numeric_wells(inputs$pumping_wells)),
+    isw:::.prepare_aquifer_groups(isw:::.prepare_numeric_pumping_wells(inputs$pumping_wells)),
     "identical K, D, and V"
   )
 })
@@ -218,7 +218,7 @@ test_that("the aquifer parameter-set limit is configurable", {
   inputs$pumping_wells$K[[2]] <- units::set_units(12, "m/day")
 
   expect_warning(
-    groups <- isw:::.prepare_aquifer_groups(isw:::.prepare_numeric_wells(inputs$pumping_wells)),
+    groups <- isw:::.prepare_aquifer_groups(isw:::.prepare_numeric_pumping_wells(inputs$pumping_wells)),
     "2 pump-specific aquifer parameter sets"
   )
   expect_identical(length(unique(groups$aquifer_id)), 2L)
@@ -228,12 +228,12 @@ test_that("the aquifer parameter-set limit is configurable", {
   many_wells$K <- units::set_units(seq_len(6), "m/day")
 
   expect_error(
-    suppressWarnings(isw:::.prepare_aquifer_groups(isw:::.prepare_numeric_wells(many_wells))),
+    suppressWarnings(isw:::.prepare_aquifer_groups(isw:::.prepare_numeric_pumping_wells(many_wells))),
     "allow_n_aquifer_parameter_sets = 5"
   )
   expect_warning(
     allowed_groups <- isw:::.prepare_aquifer_groups(
-      isw:::.prepare_numeric_wells(many_wells),
+      isw:::.prepare_numeric_pumping_wells(many_wells),
       allow_n_aquifer_parameter_sets = 6
     ),
     "6 pump-specific aquifer parameter sets"
@@ -242,7 +242,7 @@ test_that("the aquifer parameter-set limit is configurable", {
 
   expect_warning(
     unlimited_groups <- isw:::.prepare_aquifer_groups(
-      isw:::.prepare_numeric_wells(many_wells),
+      isw:::.prepare_numeric_pumping_wells(many_wells),
       allow_n_aquifer_parameter_sets = Inf
     ),
     "6 pump-specific aquifer parameter sets"
@@ -267,7 +267,7 @@ test_that("the aquifer parameter-set limit is validated", {
   for (invalid_limit in invalid_limits) {
     expect_error(
       isw:::.prepare_aquifer_groups(
-        isw:::.prepare_numeric_wells(inputs$pumping_wells),
+        isw:::.prepare_numeric_pumping_wells(inputs$pumping_wells),
         allow_n_aquifer_parameter_sets = invalid_limit
       ),
       "positive whole-number scalar or Inf"
@@ -468,7 +468,7 @@ test_that("constant-head history cancels pumping at every interval endpoint", {
     units::set_units(evaluation_time_day, "days"), method = "constant_head"
   )
   segments <- isw:::.prepare_numeric_segments(inputs$stream_segments)
-  wells <- isw:::.prepare_numeric_wells(inputs$pumping_wells, sf::st_crs(segments))
+  wells <- isw:::.prepare_numeric_pumping_wells(inputs$pumping_wells, sf::st_crs(segments))
   times <- isw:::.prepare_numeric_model_times(
     inputs$pumping_schedules, units::set_units(evaluation_time_day, "days")
   )

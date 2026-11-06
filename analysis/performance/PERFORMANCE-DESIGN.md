@@ -133,12 +133,22 @@ validators disabled in tests. All 638 expectations in 174 blocks pass, and the
 independent pre-refactor comparisons still match both injection methods across
 dates/hours, rates in imperial units, aquifer groups and supplied schedules.
 Vignette/manual migration and package build checks are the next stage.
+The validation/output audit was committed as `1c7cc03`.
+
+The approved naming review preserves domain meaning in prepared boundary objects
+(`prepared_pumping_wells`, `prepared_stream_segments`, `prepared_model_times`,
+`prepared_stream_apportionment`) and in ADF event/fraction/rate calculations.
+Pump-specific apportionment tables are named `pump_apportionment`, not `segments`.
+Distance names identify stream or observation targets; observation operators,
+injection caches and event row selections identify their roles. The private well
+preparer is `.prepare_numeric_pumping_wells`. Public names, arguments, output
+columns, unit suffixes and numerical calculations are unchanged.
 
 ### Boundary validation ownership after the audit
 
 | Input/responsibility | Owner | Trusted downstream helpers |
 |---|---|---|
-| Pumping wells: geometry, IDs, K/D/V and optional diameter | `.prepare_numeric_wells` invokes `.validate_pumping_wells` once | Related schedule/apportionment validators and hydraulic kernels do not revalidate wells |
+| Pumping wells: geometry, IDs, K/D/V and optional diameter | `.prepare_numeric_pumping_wells` invokes `.validate_pumping_wells` once | Related schedule/apportionment validators and hydraulic kernels do not revalidate wells |
 | Pumping schedule: columns, rate units/values and time axis | Each public model/schedule wrapper invokes `.validate_pumping_schedules` once | `.prepare_numeric_schedule`, target-time checks and supplied-result validators trust the schedule |
 | Full stream-segment contract | `.prepare_numeric_segments` invokes `.validate_stream_segments` once | Apportionment, supplied-schedule validators and line operators trust segments |
 | Sampling-only segment contract | `prep_stream_sample_points` invokes `.validate_stream_sampling_inputs` | Numeric sampling trusts geometry, lengths and spacing; this route does not require model-point/width fields |

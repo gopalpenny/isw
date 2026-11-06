@@ -162,7 +162,7 @@ test_that("unit validation preserves caller unit options", {
 test_that("prepared aquifer coordinators do not call boundary validators", {
   inputs <- make_boundary_inputs()
   segments <- isw:::.prepare_numeric_segments(inputs$segments)
-  wells <- isw:::.prepare_numeric_wells(inputs$wells, sf::st_crs(segments))
+  wells <- isw:::.prepare_numeric_pumping_wells(inputs$wells, sf::st_crs(segments))
   attr(wells, "isw_aquifer_groups") <- isw:::.prepare_aquifer_groups(wells)
   times <- isw:::.prepare_numeric_model_times(inputs$schedules, inputs$evaluation_times)
   schedules <- isw:::.prepare_numeric_schedule(inputs$schedules, inputs$wells, times)

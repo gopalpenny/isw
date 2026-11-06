@@ -27,7 +27,7 @@
   x
 }
 
-.prepare_numeric_wells <- function(pumping_wells, analysis_crs = NULL) {
+.prepare_numeric_pumping_wells <- function(pumping_wells, analysis_crs = NULL) {
   # Validate unit-bearing wells; keep CRS metadata and normalize physical columns.
   .validate_pumping_wells(pumping_wells)
   if (!is.null(analysis_crs)) {

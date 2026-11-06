@@ -66,14 +66,14 @@
 
 # Calculate pump-specific signed head change at stream model points.
 .get_pumping_head_at_stream <- function(
-    pumping_well, pumping_events, pump_distances_m, evaluation_time_day) {
+    pumping_well, pumping_events, pump_to_stream_distances_m, evaluation_time_day) {
   # Validated numeric inputs use m, m/day, day and m3/day; returns signed head in m.
   contributing_rows <- which(pumping_events$pumping_time_day < evaluation_time_day)
-  pumping_head_m <- numeric(length(pump_distances_m))
+  pumping_head_m <- numeric(length(pump_to_stream_distances_m))
   # Sum the signed head response from every earlier rate change for this pump.
   for (event_row in contributing_rows) {
     response_day_per_m2 <- .theis_aquifer_drawdown_ratio(
-      distance_m = pump_distances_m,
+      distance_m = pump_to_stream_distances_m,
       K_m_per_day = pumping_well$K_m_per_day[[1]],
       D_m = pumping_well$D_m[[1]], V = pumping_well$V[[1]],
       t_day = evaluation_time_day - pumping_events$pumping_time_day[[event_row]],
@@ -116,7 +116,7 @@
     line_elements
   )
   # Convert spatial distances to bare meters once, before the interval loop.
-  pump_distances_m <- matrix(as.numeric(units::set_units(
+  pump_to_stream_distances_m <- matrix(as.numeric(units::set_units(
     sf::st_distance(prepared_pumping_wells, stream_collocation_points), "m"
   )), nrow = nrow(prepared_pumping_wells))
   pumping_events <- attr(pumping_schedules, "isw_pumping_events", exact = TRUE)
@@ -182,7 +182,7 @@
         pump_row <- pump_rows[[group_pump_index]]
         pumping_head_m[, group_pump_index] <- .get_pumping_head_at_stream(
           group_pumps[group_pump_index, , drop = FALSE],
-          pump_events[[pump_row]], pump_distances_m[pump_row, ], interval_end_day
+          pump_events[[pump_row]], pump_to_stream_distances_m[pump_row, ], interval_end_day
         )
       }
 

@@ -584,11 +584,11 @@ generate_stream_injection_schedule <- function(
   # Validate external tables/units before preparing numeric meters, days and rates.
   method <- match.arg(method)
   aquifer_groups <- NULL
-  segments <- .prepare_numeric_segments(stream_segments)
-  wells <- .prepare_numeric_wells(pumping_wells, sf::st_crs(segments))
+  prepared_stream_segments <- .prepare_numeric_segments(stream_segments)
+  prepared_pumping_wells <- .prepare_numeric_pumping_wells(pumping_wells, sf::st_crs(prepared_stream_segments))
   .validate_pumping_schedules(pumping_schedules, pumping_wells)
   .validate_quadrature_order(quadrature_order)
-  times <- .prepare_numeric_model_times(
+  prepared_model_times <- .prepare_numeric_model_times(
     pumping_schedules, evaluation_times, injection_times
   )
   if (method == "adf") {
@@ -597,31 +597,31 @@ generate_stream_injection_schedule <- function(
     }
     .validate_stream_depletion_apportionment(stream_apportionment, pumping_wells)
     .validate_stream_apportionment_segments(stream_apportionment, stream_segments)
-    apportionment <- .prepare_numeric_apportionment(stream_apportionment, pumping_wells)
+    prepared_stream_apportionment <- .prepare_numeric_apportionment(stream_apportionment, pumping_wells)
     depletion <- if (!is.null(adf_stream_depletion)) {
       .prepare_numeric_depletion(
         adf_stream_depletion, pumping_wells, pumping_schedules,
-        stream_apportionment, times$time_origin
+        stream_apportionment, prepared_model_times$time_origin
       )
     } else NULL
   } else {
     if (!is.null(adf_stream_depletion)) {
       stop('adf_stream_depletion can only be supplied when method = "adf".')
     }
-    aquifer_groups <- .prepare_aquifer_groups(wells, allow_n_aquifer_parameter_sets)
-    apportionment <- NULL
+    aquifer_groups <- .prepare_aquifer_groups(prepared_pumping_wells, allow_n_aquifer_parameter_sets)
+    prepared_stream_apportionment <- NULL
     depletion <- NULL
   }
-  attr(wells, "isw_aquifer_groups") <- aquifer_groups
+  attr(prepared_pumping_wells, "isw_aquifer_groups") <- aquifer_groups
   result <- .generate_stream_injection_schedule(
-    wells,
-    .prepare_numeric_schedule(pumping_schedules, pumping_wells, times),
-    segments,
-    times$evaluation_time_day, times$injection_time_day, method,
-    apportionment, allow_n_aquifer_parameter_sets, depletion, quadrature_order
+    prepared_pumping_wells,
+    .prepare_numeric_schedule(pumping_schedules, pumping_wells, prepared_model_times),
+    prepared_stream_segments,
+    prepared_model_times$evaluation_time_day, prepared_model_times$injection_time_day, method,
+    prepared_stream_apportionment, allow_n_aquifer_parameter_sets, depletion, quadrature_order
   )
   # Restore public interval times/rates; warnings use caller-facing time labels.
-  .restore_injection_output(result, times, units::deparse_unit(pumping_schedules[[pumping_wells$pump_id[[1]]]]))
+  .restore_injection_output(result, prepared_model_times, units::deparse_unit(pumping_schedules[[pumping_wells$pump_id[[1]]]]))
 }
 
 .generate_stream_injection_schedule <- function(
@@ -652,21 +652,21 @@ generate_stream_injection_schedule <- function(
     names(depletion)[names(depletion) == "evaluation_time_day"] <- "schedule_boundary_day"
     # For each pump-segment pair, average adjacent depletion rates to assign
     # one constant injection rate to the interval between them.
-    schedule <- .get_interval_average_injection_schedule(depletion, pumping_schedules)
+    stream_injection_schedule <- .get_interval_average_injection_schedule(depletion, pumping_schedules)
   } else {
     # Solve coupled segment rates to maintain zero head at stream model points,
     # accounting for pumping and all preceding injection intervals.
-    schedule <- .get_constant_head_injection_schedule(
+    stream_injection_schedule <- .get_constant_head_injection_schedule(
       pumping_wells, pumping_schedules, stream_segments, grid,
       quadrature_order = quadrature_order
     )
   }
-  attr(schedule, "isw_schedule_metadata") <- list(
+  attr(stream_injection_schedule, "isw_schedule_metadata") <- list(
     injection_method = method,
     quadrature_order = if (method == "constant_head") as.integer(quadrature_order) else NULL
   )
-  attr(schedule, "isw_missing_time_day") <- missing_time_day
-  schedule
+  attr(stream_injection_schedule, "isw_missing_time_day") <- missing_time_day
+  stream_injection_schedule
 }
 
 # Return one response per contributing injection event at the current observation.
@@ -705,9 +705,9 @@ generate_stream_injection_schedule <- function(
   # Prepare the quadrature representation for observation responses once;
   # line elements used during schedule generation are not retained here.
   line_elements <- .prepare_line_elements(stream_segments, quadrature_order)
-  response_operator <- .prepare_line_response_operator(observation_wells, line_elements)
+  observation_response_operator <- .prepare_line_response_operator(observation_wells, line_elements)
   # Strip spatial distance units once; every subsequent head calculation uses meters.
-  pump_distances_m <- matrix(as.numeric(units::set_units(
+  pump_to_observation_distances_m <- matrix(as.numeric(units::set_units(
     sf::st_distance(pumping_wells, observation_wells), "m"
   )), nrow = nrow(pumping_wells))
   # Reuse pumping-rate changes paired with later evaluations. Injection events
@@ -715,7 +715,7 @@ generate_stream_injection_schedule <- function(
   pumping_responses <- attr(pumping_schedules, "isw_pumping_response_times", exact = TRUE)
   injection_events <- .get_injection_rate_changes(stream_injection_schedule)
   segment_columns <- match(injection_events$reach_segment_id, stream_segments$reach_segment_id)
-  response_cache <- new.env(parent = emptyenv())
+  injection_response_cache <- new.env(parent = emptyenv())
   number_of_observations <- nrow(observation_wells)
   number_of_times <- length(evaluation_time_day)
   number_of_rows <- nrow(pumping_wells) * number_of_observations * number_of_times
@@ -737,33 +737,33 @@ generate_stream_injection_schedule <- function(
         result_index <- ((pump_row - 1L) * number_of_observations +
           observation_index - 1L) * number_of_times + time_index
         # Sum direct drawdown from all earlier pumping-rate changes.
-        rows <- pumping_rows[[time_index]]
-        if (length(rows) > 0) {
+        pumping_response_rows <- pumping_rows[[time_index]]
+        if (length(pumping_response_rows) > 0) {
           response_day_per_m2 <- .theis_aquifer_drawdown_ratio(
-            distance_m = pump_distances_m[pump_row, observation_index],
+            distance_m = pump_to_observation_distances_m[pump_row, observation_index],
             K_m_per_day = pumping_wells$K_m_per_day[[pump_row]],
             D_m = pumping_wells$D_m[[pump_row]], V = pumping_wells$V[[pump_row]],
-            t_day = pumping_responses$elapsed_time_day[rows],
+            t_day = pumping_responses$elapsed_time_day[pumping_response_rows],
             well_diam_m = pumping_wells$well_diam_m[[pump_row]]
           )
           pumping_drawdown_m[[result_index]] <- -sum(
-            pumping_responses$pumping_rate_change_m3_per_day[rows] * response_day_per_m2
+            pumping_responses$pumping_rate_change_m3_per_day[pumping_response_rows] * response_day_per_m2
           )
         }
         # Earlier injection events remain active as their elapsed ages increase.
         # Events sharing an age reuse a full observation-by-segment response matrix.
-        rows <- injection_rows[[time_index]]
-        if (length(rows) > 0) {
+        injection_event_rows <- injection_rows[[time_index]]
+        if (length(injection_event_rows) > 0) {
           response_day_per_m2 <- .get_response_ratios_for_injection_events(
-            response_operator, response_cache,
+            observation_response_operator, injection_response_cache,
             pumping_wells$K_m_per_day[[pump_row]], pumping_wells$D_m[[pump_row]],
             pumping_wells$V[[pump_row]], observation_index,
-            evaluation_time_day[[time_index]] - injection_events$injection_time_day[rows],
-            segment_columns[rows]
+            evaluation_time_day[[time_index]] - injection_events$injection_time_day[injection_event_rows],
+            segment_columns[injection_event_rows]
           )
           # Sum event-specific rate changes times their current response ratios.
           stream_recovery_m[[result_index]] <- sum(
-            injection_events$injection_rate_change_m3_per_day[rows] * response_day_per_m2
+            injection_events$injection_rate_change_m3_per_day[injection_event_rows] * response_day_per_m2
           )
         }
       }
@@ -882,8 +882,8 @@ model_aquifer_water_level_change <- function(
   # Validate original inputs, including supplied intermediates, before stripping units.
   injection_method <- match.arg(injection_method)
   aquifer_groups <- NULL
-  segments <- .prepare_numeric_segments(stream_segments)
-  wells <- .prepare_numeric_wells(pumping_wells, sf::st_crs(segments))
+  prepared_stream_segments <- .prepare_numeric_segments(stream_segments)
+  prepared_pumping_wells <- .prepare_numeric_pumping_wells(pumping_wells, sf::st_crs(prepared_stream_segments))
   .validate_pumping_schedules(pumping_schedules, pumping_wells)
   if (is.null(observation_wells)) {
     stop("observation_wells must be a nonempty sf object.")
@@ -893,7 +893,7 @@ model_aquifer_water_level_change <- function(
   if (!is.null(stream_injection_schedule) && !is.null(injection_times)) {
     stop("injection_times must be NULL when a stream-injection schedule is supplied.")
   }
-  times <- .prepare_numeric_model_times(
+  prepared_model_times <- .prepare_numeric_model_times(
     pumping_schedules, evaluation_times, injection_times
   )
   if (!is.null(stream_injection_schedule)) {
@@ -902,33 +902,33 @@ model_aquifer_water_level_change <- function(
     )
     injection_schedule <- .prepare_numeric_injection(
       stream_injection_schedule, pumping_wells, pumping_schedules,
-      stream_segments, evaluation_times, times$time_origin
+      stream_segments, evaluation_times, prepared_model_times$time_origin
     )
-    apportionment <- NULL
+    prepared_stream_apportionment <- NULL
   } else if (injection_method == "adf") {
     if (is.null(stream_apportionment)) {
       stop('stream_apportionment is required when method = "adf".')
     }
     .validate_stream_depletion_apportionment(stream_apportionment, pumping_wells)
     .validate_stream_apportionment_segments(stream_apportionment, stream_segments)
-    apportionment <- .prepare_numeric_apportionment(stream_apportionment, pumping_wells)
+    prepared_stream_apportionment <- .prepare_numeric_apportionment(stream_apportionment, pumping_wells)
     injection_schedule <- NULL
   } else {
-    aquifer_groups <- .prepare_aquifer_groups(wells, allow_n_aquifer_parameter_sets)
-    apportionment <- NULL
+    aquifer_groups <- .prepare_aquifer_groups(prepared_pumping_wells, allow_n_aquifer_parameter_sets)
+    prepared_stream_apportionment <- NULL
     injection_schedule <- NULL
   }
-  attr(wells, "isw_aquifer_groups") <- aquifer_groups
+  attr(prepared_pumping_wells, "isw_aquifer_groups") <- aquifer_groups
   result <- .model_aquifer_water_level_change(
-    wells,
-    .prepare_numeric_schedule(pumping_schedules, pumping_wells, times),
-    .transform_spatial_geometry(observation_wells, sf::st_crs(segments)),
-    segments,
-    times$evaluation_time_day, times$injection_time_day,
-    injection_schedule, injection_method, apportionment,
+    prepared_pumping_wells,
+    .prepare_numeric_schedule(pumping_schedules, pumping_wells, prepared_model_times),
+    .transform_spatial_geometry(observation_wells, sf::st_crs(prepared_stream_segments)),
+    prepared_stream_segments,
+    prepared_model_times$evaluation_time_day, prepared_model_times$injection_time_day,
+    injection_schedule, injection_method, prepared_stream_apportionment,
     allow_n_aquifer_parameter_sets, quadrature_order
   )
-  .restore_aquifer_output(result, times, units::deparse_unit(pumping_wells$D))
+  .restore_aquifer_output(result, prepared_model_times, units::deparse_unit(pumping_wells$D))
 }
 
 # Coordinate numeric schedule generation and observation superposition.
