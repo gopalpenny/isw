@@ -157,5 +157,76 @@ run_performance_study(
 If package R sources have uncommitted changes, the study saves their diff as
 `current-package.patch` alongside the commit and session information.
 
+To isolate observation batching from the cache-key optimization:
+
+```r
+run_performance_study(
+  baseline_ref = "b4b10cc",
+  output_directory = "analysis/profiles/observation-batching-study"
+)
+```
+
 See [PERFORMANCE-RESULTS.md](PERFORMANCE-RESULTS.md) for the initial measurements,
 the cache-key comparison and remaining optimization proposals.
+
+## Measure scaling independently
+
+```r
+source("analysis/performance/benchmark-scaling.R")
+scaling <- run_scaling_study()
+plot_scaling_study()
+```
+
+This uses the current working-tree package code and synthetic UTM geometry.
+Five one-factor sweeps vary observation wells, reach records, stream segments,
+pumps sharing an aquifer, and pumps with distinct aquifer parameters. A sixth
+sweep adds parallel reaches with 28 segments each, so total stream length and
+segment count grow together. The time grid stays at 19 evaluations over 90 days.
+All pumps change rates at the same three times. Each method is measured with
+stream preparation included and with stream inputs reused. Five repetitions
+follow warm-up and checks that both preparation modes return equivalent finite
+outputs with the expected row count. Scenario order and the four method/mode
+orders are seeded and shuffled; scenarios are not timed concurrently.
+
+Results include raw CSV timings, median/range/IQR summaries, session details,
+the working-tree R patch and PNG/PDF curves in `analysis/profiles/scaling-study/`.
+Use `sweeps` to select a subset, and a separate `output_directory` to preserve an
+earlier run. `plot_scaling_study(input_directories = c(...))` combines summaries
+from separate sweep directories. The fixtures isolate selected counts; curved
+networks, staggered schedules, more distinct response ages and larger time grids
+can have different costs. See [SCALING-RESULTS.md](SCALING-RESULTS.md).
+
+For 1,000 observations, 100 stream segments and ten years of calendar-monthly
+evaluations with two pumps sharing aquifer parameters:
+
+```r
+source("analysis/performance/benchmark-monthly.R")
+monthly <- run_monthly_study()
+```
+
+This uses 121 monthly dates (120 intervals) from January 2020 to January 2030.
+It measures both methods with three early pumping changes and with a repeating
+seasonal schedule changing every month. Three unprofiled repetitions follow
+warm-up for each case. Timings include stream preparation; output row counts,
+finite values and agreement with the warm-up result are checked outside timing.
+This is a considerably larger workload; each model call can take tens of seconds.
+Generated files are in `analysis/profiles/monthly-study/`.
+
+To measure quadrature orders 1 and 4 on the monthly-changing-pumping case:
+
+```r
+source("analysis/performance/benchmark-quadrature.R")
+quadrature <- run_quadrature_study()
+```
+
+Both methods use three timed repetitions after warm-up, with stream preparation
+included. An additional untimed order-16 run supplies a numerical comparison,
+including maximum absolute differences and RMSE in meters for stream recovery
+and total water-level change. Order 16 is a comparison reference, not established
+ground truth. Raw timings, difference summaries and session details are under
+`analysis/profiles/quadrature-study/`.
+
+The package default is now 4. Historical scaling/monthly fixtures explicitly
+retain order 16 in `.make_scaling_workload()` to keep their recorded comparisons
+reproducible; pass `quadrature_order = 4L` to that helper to use the new default
+order in a custom workload.

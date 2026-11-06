@@ -15,7 +15,7 @@ model_aquifer_water_level_change(
   injection_method = c("adf", "constant_head"),
   stream_apportionment = NULL,
   allow_n_aquifer_parameter_sets = 5,
-  quadrature_order = 16L
+  quadrature_order = 4L
 )
 }
 \arguments{
@@ -58,7 +58,7 @@ constant-head schedule is generated internally. The default is 5. Use
 \code{Inf} to impose no limit.}
 
 \item{quadrature_order}{Positive integer number of Gauss--Legendre points
-used per straight edge of each finite line element. The default is 16.
+used per straight edge of each finite line element. The default is 4.
 When a completed constant-head schedule is supplied and this argument is
 omitted, the order recorded in the schedule metadata is reused. Supplying
 a different order raises a warning and uses the supplied value.}

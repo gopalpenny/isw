@@ -131,7 +131,7 @@ cases <- tribble(
   "Far field",                    0,            500
 )
 
-quadrature_orders <- c(8L, 16L, 32L, 64L)
+quadrature_orders <- c(1L, 4L, 8L, 16L, 32L, 64L)
 cases
 ```
 
@@ -253,13 +253,12 @@ ggplot(
 
 ## Focus on the default order
 
-`isw` currently uses order 16 by default. This table isolates that order
-so its approximation error can be reviewed directly before deciding whether
-the default should change.
+`isw` uses order 4 by default. This table isolates that order so its
+approximation error can be reviewed for the geometries tested here.
 
 ```{r default-order}
 comparison |>
-  filter(quadrature_order == 16L) |>
+  filter(quadrature_order == 4L) |>
   transmute(
     location,
     along_m,

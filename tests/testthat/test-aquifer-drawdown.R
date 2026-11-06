@@ -65,6 +65,32 @@ make_drawdown_test_inputs <- function() {
   )
 }
 
+test_that("schedule and aquifer defaults use quadrature order four", {
+  inputs <- make_drawdown_test_inputs()
+  for (method in c("adf", "constant_head")) {
+    schedule_arguments <- list(
+      pumping_wells = inputs$pumping_wells,
+      pumping_schedules = inputs$pumping_schedules,
+      stream_segments = inputs$stream_segments,
+      evaluation_times = inputs$evaluation_times,
+      method = method,
+      stream_apportionment = if (method == "adf") inputs$stream_apportionment else NULL
+    )
+    default_schedule <- do.call(generate_stream_injection_schedule, schedule_arguments)
+    expect_identical(default_schedule, do.call(generate_stream_injection_schedule,
+      c(schedule_arguments, list(quadrature_order = 4L))))
+    if (method == "constant_head") {
+      expect_identical(attr(default_schedule, "isw_schedule_metadata")$quadrature_order, 4L)
+    }
+    model_arguments <- schedule_arguments[names(schedule_arguments) != "method"]
+    model_arguments$injection_method <- method
+    model_arguments$observation_wells <- inputs$observation_wells
+    expect_identical(do.call(model_aquifer_water_level_change, model_arguments),
+      do.call(model_aquifer_water_level_change,
+        c(model_arguments, list(quadrature_order = 4L))))
+  }
+})
+
 make_injection_schedule <- function(...) {
   generate_stream_injection_schedule(...)
 }

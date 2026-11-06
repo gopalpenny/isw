@@ -720,7 +720,9 @@ line geometry becomes a finite-line injection element, which requires
 numerical integration, implemented as Gauss--Legendre quadrature in `isw`.
 Gauss-Legendre source points and weights are prepared once, then their
 distances to every observation
-well are reused for all elapsed times. The default quadrature order is `16L`.
+well are reused for all elapsed times. The default quadrature order is `4L`.
+Set `quadrature_order` explicitly to compare higher orders when checking
+numerical convergence for a particular geometry.
 
 The physical pumping response uses the user-supplied pumping-well diameter.
 The line response uses `stream_width`, holding the water level response constant inside

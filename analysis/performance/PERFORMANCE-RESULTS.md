@@ -193,7 +193,79 @@ deduplicating them, so its temporary age vector can grow quadratically with the
 number of intervals. This study does not establish memory behavior for very
 long schedules. No observation-by-event-by-time response array is introduced.
 
+## Follow-up: batch injection recovery across observations
+
+Compared the cache-key checkpoint `b4b10cc` with observation batching using the
+same twelve workloads and five alternating timing pairs. All complete outputs
+agree at tolerance `1e-9`. Raw data, the exact working-tree package patch and
+separate profiles are in `analysis/profiles/observation-batching-study/`.
+
+The aquifer coordinator now loops over pumps, then evaluation times. Direct
+pumping still uses an observation loop. Injection recovery is outside that
+observation loop: a private helper retrieves each response-age matrix once,
+sums simultaneous rate changes by stream segment, and multiplies the matrix by
+that rate-change vector to recover all observations together. Output rows retain
+the original pump/observation/time order. The constant-head schedule solver,
+user-facing validation, output units, sf/CRS and cache ownership are unchanged.
+The original event-extraction helper remains available for existing private
+callers but is no longer used by the aquifer coordinator.
+
+| Case | Method | Preparation included | Before seconds | After seconds | Runtime reduction |
+|---|---|---|---:|---:|---:|
+| Example | ADF | No | 0.075 | 0.072 | 4.0% |
+| Example | Constant head | No | 0.088 | 0.088 | 0.0% |
+| Finer grid | ADF | No | 0.094 | 0.093 | 1.1% |
+| Finer grid | Constant head | No | 0.130 | 0.128 | 1.5% |
+| More observations | ADF | No | 0.203 | 0.161 | 20.7% |
+| More observations | Constant head | No | 0.285 | 0.241 | 15.4% |
+| Example | ADF | Yes | 0.138 | 0.146 | -5.8% |
+| Example | Constant head | Yes | 0.112 | 0.111 | 0.9% |
+| Finer grid | ADF | Yes | 0.159 | 0.158 | 0.6% |
+| Finer grid | Constant head | Yes | 0.151 | 0.151 | 0.0% |
+| More observations | ADF | Yes | 0.297 | 0.232 | 21.9% |
+| More observations | Constant head | Yes | 0.312 | 0.288 | 7.7% |
+
+These medians compare batching with prepared keys, not with the original
+pre-refactor package. Small cases show no consistent improvement; the example
+ADF preparation-included case is eight milliseconds slower in this run. The
+larger-case model-only reductions are consistent with the rough 10–20% planning
+estimate, but remain workload-specific. Summation order changes, so bit-for-bit
+numeric identity is not promised. Regression coverage checks repeated segment
+indices and ages, signed rate changes, empty events and a single observation
+against independent event-by-event superposition.
+
+This change remains separate from the committed cache-key checkpoint for the
+user's pending diff review. No large observation-by-event-by-time array is built;
+the helper uses the existing response matrix and rate/recovery vectors.
+
+Separate instrumentation confirms that ADF cache requests fell from 4,980 to
+249, while constant-head requests fell from 5,628 to 897 (including its unchanged
+schedule-generation requests). Actual matrix evaluations remain 30 / 66 and
+direct Theis ratio calls remain 600 / 642. Batched recovery runs 30 times per
+larger model call rather than extracting event responses 600 times.
+
+Recorded sized allocations fell from 53.6 to 34.5 MiB for ADF and from 101.7 to
+80.8 MiB for constant head, retaining the earlier exclusions and non-peak
+interpretation. Separate profiles put the batched recovery helper at roughly
+7% / 5% of sampled time; its inclusive cache helper overlaps these shares.
+The final constant-head profile initially triggered an R segmentation fault in
+the glue/tibble construction path, after all unprofiled timings had completed.
+Repeating that profile alone in a fresh R session succeeded; the completed
+timings were retained without rerunning or selecting timing samples.
+
+Validation: all 649 regression expectations pass with no failures, warnings or
+skips. `R CMD build` completes and `R CMD check` reports `Status: OK`, including
+examples, tests, vignette rebuilding and the PDF manual. The batching changes
+are being committed as a separate checkpoint from the cache-key commit. Detailed
+user review of batching, benchmark work and the default-order change is pending;
+committing does not indicate that this review has been completed. The checkpoint
+baseline is `b4b10cc`.
+
 ## Reproduce and inspect
+
+The separate [scaling study](SCALING-RESULTS.md) measures observations, reach
+records, segments, shared/distinct-aquifer pumps and growing stream networks.
+It uses 31 synthetic scenarios and 620 unprofiled timings on the batched code.
 
 See [PROFILING.md](PROFILING.md) for commands. Interactive reports and raw data
 are generated, ignored artifacts under `analysis/profiles/performance-study/`:

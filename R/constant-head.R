@@ -91,7 +91,7 @@
     pumping_schedules,
     stream_segments,
     time_grid,
-    quadrature_order = 16L) {
+    quadrature_order = 4L) {
 
   # Prepared sf geometry retains its shared meter UTM CRS; hydraulic inputs use
   # numeric m, m/day, day and m3/day. User-facing boundaries validate and restore units.

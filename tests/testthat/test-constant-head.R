@@ -477,7 +477,9 @@ test_that("constant-head history cancels pumping at every interval endpoint", {
   )
   events <- attr(prepared_schedule, "isw_pumping_events")
   operator <- isw:::.prepare_line_response_operator(
-    segments$model_point, isw:::.prepare_line_elements(segments, 16L)
+    segments$model_point, isw:::.prepare_line_elements(
+      segments, attr(schedule, "isw_schedule_metadata", exact = TRUE)$quadrature_order
+    )
   )
   distances_m <- units::drop_units(sf::st_distance(wells, segments$model_point))
   for (pump_row in seq_len(nrow(wells))) {

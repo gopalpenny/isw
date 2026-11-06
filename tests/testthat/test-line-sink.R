@@ -1,4 +1,4 @@
-make_numeric_line_elements <- function(stream_segments, quadrature_order = 16L) {
+make_numeric_line_elements <- function(stream_segments, quadrature_order = 4L) {
   isw:::.prepare_line_elements(isw:::.prepare_numeric_segments(stream_segments), quadrature_order)
 }
 
@@ -422,6 +422,46 @@ test_that("cached line responses support injection-event extraction", {
     other_operator, response_cache, 10, 20, 0.15, 10,
     response_key = prepared$response_keys[[1]]
   ), "cannot be reused with a different response_operator")
+})
+
+test_that("batched recovery matches event superposition for all observations", {
+  segments <- prep_stream_segments(
+    sf::st_sf(reach_id = "reach", geometry = sf::st_sfc(
+      sf::st_linestring(matrix(c(-100, 0, 100, 0), ncol = 2, byrow = TRUE)), crs = 32615
+    )), units::set_units(100, "m")
+  )
+  targets <- sf::st_as_sf(data.frame(x = c(-20, 40), y = c(30, 60)),
+                           coords = c("x", "y"), crs = 32615)
+  operator <- isw:::.prepare_line_response_operator(targets, make_numeric_line_elements(segments))
+  elapsed_times_day <- c(10, 1, 10, 1, 10)
+  segment_columns <- c(2L, 1L, 2L, 2L, 1L)
+  injection_rate_change_m3_per_day <- c(20, -5, -7, 3, 4)
+  prepared <- isw:::.prepare_line_response_keys(10, 20, 0.15, elapsed_times_day)
+  cache <- new.env(parent = emptyenv())
+  # Independent event-by-event superposition includes repeated segments/ages,
+  # negative changes and nonconsecutive event ordering.
+  expected_m <- numeric(nrow(targets))
+  for (index in seq_along(elapsed_times_day)) {
+    response_day_per_m2 <- isw:::.evaluate_line_response_operator(
+      operator, 10, 20, 0.15, elapsed_times_day[[index]]
+    )
+    expected_m <- expected_m + response_day_per_m2[, segment_columns[[index]]] *
+      injection_rate_change_m3_per_day[[index]]
+  }
+  actual_m <- isw:::.calculate_stream_recovery_at_observations(
+    operator, cache, 10, 20, 0.15, elapsed_times_day, segment_columns,
+    injection_rate_change_m3_per_day, prepared
+  )
+  expect_equal(actual_m, expected_m, tolerance = 1e-12)
+  expect_length(ls(cache), 2L)
+  expect_identical(isw:::.calculate_stream_recovery_at_observations(
+    operator, cache, 10, 20, 0.15, numeric(), integer(), numeric(), prepared
+  ), numeric(nrow(targets)))
+  single_operator <- isw:::.prepare_line_response_operator(targets[1, ], make_numeric_line_elements(segments))
+  expect_equal(isw:::.calculate_stream_recovery_at_observations(
+    single_operator, new.env(parent = emptyenv()), 10, 20, 0.15,
+    elapsed_times_day, segment_columns, injection_rate_change_m3_per_day, prepared
+  ), expected_m[1], tolerance = 1e-12)
 })
 
 test_that("target boundary validation rejects invalid geometries", {

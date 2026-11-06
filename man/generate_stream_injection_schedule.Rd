@@ -14,7 +14,7 @@ generate_stream_injection_schedule(
   stream_apportionment = NULL,
   allow_n_aquifer_parameter_sets = 5,
   adf_stream_depletion = NULL,
-  quadrature_order = 16L
+  quadrature_order = 4L
 )
 }
 \arguments{
@@ -55,7 +55,7 @@ are ignored. If required boundaries are missing, a warning is issued and
 depletion is calculated internally only for the missing times.}
 
 \item{quadrature_order}{Positive integer number of Gauss--Legendre points
-used per straight edge of each finite line element. The default is 16.}
+used per straight edge of each finite line element. The default is 4.}
 }
 \value{
 A tibble with one row per \code{pump_id}, \code{reach_segment_id}, and

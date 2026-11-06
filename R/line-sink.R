@@ -3,7 +3,7 @@
 # Return Gauss--Legendre nodes and normalized weights on [-1/2, 1/2].
 #' @importFrom statmod gauss.quad
 #' @noRd
-.get_gauss_legendre_rule <- function(order = 16L) {
+.get_gauss_legendre_rule <- function(order = 4L) {
   # Numeric dimensionless order is already validated; returns nodes and weights.
   order <- as.integer(order)
 
@@ -32,7 +32,7 @@
 #' @param t_day Positive numeric elapsed time in days.
 #' @param stream_width_m Positive numeric stream width in meters.
 #' @param quadrature_order Positive number of Gauss--Legendre points. The
-#'   default is 16.
+#'   default is 4.
 #'
 #' @return A numeric vector in day/m^2 giving water-level change divided by
 #'   total line rate.
@@ -50,7 +50,7 @@
 #' @noRd
 .line_sink_aquifer_drawdown_ratio <- function(
     along_distance_m, perpendicular_distance_m, line_length_m,
-    K_m_per_day, D_m, V, t_day, stream_width_m, quadrature_order = 16L) {
+    K_m_per_day, D_m, V, t_day, stream_width_m, quadrature_order = 4L) {
   # Already-validated numeric inputs: m, m/day and day; returns numeric day/m^2.
   output_length <- max(lengths(list(
     along_distance_m, perpendicular_distance_m, line_length_m,
@@ -84,7 +84,7 @@
 }
 
 # Expand finite line elements into reusable quadrature source points.
-.prepare_line_elements <- function(stream_segments, quadrature_order = 16L) {
+.prepare_line_elements <- function(stream_segments, quadrature_order = 4L) {
   # Validated shared-UTM sf geometry retains CRS; stream widths are numeric meters.
   rule <- .get_gauss_legendre_rule(quadrature_order)
   geometry <- sf::st_geometry(stream_segments)

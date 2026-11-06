@@ -103,7 +103,7 @@ test_that("user-facing workflows validate each context object once", {
 test_that("user-facing boundaries reject invalid values before unchecked calculations", {
   inputs <- make_boundary_inputs()
   run_model <- function(observations = inputs$observations, schedules = inputs$schedules,
-                        injection = inputs$injection, quadrature_order = 16L) {
+                        injection = inputs$injection, quadrature_order = 4L) {
     model_aquifer_water_level_change(
       inputs$wells, schedules, observations, inputs$segments, inputs$evaluation_times,
       stream_injection_schedule = injection, quadrature_order = quadrature_order

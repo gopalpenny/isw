@@ -32,7 +32,8 @@ inspect_performance_overhead <- function(output_directory = "analysis/profiles/p
       result_mib = as.numeric(object.size(result)) / 1024^2
     )
     function_names <- c(".get_cached_line_response_matrix", ".evaluate_line_response_operator",
-                        ".get_response_ratios_for_injection_events", ".theis_aquifer_drawdown_ratio",
+                        ".get_response_ratios_for_injection_events",
+                        ".calculate_stream_recovery_at_observations", ".theis_aquifer_drawdown_ratio",
                         ".theis_response_at_distance")
     counts <- stats::setNames(integer(length(function_names)), function_names)
     bindings <- stats::setNames(lapply(function_names, function(name) {

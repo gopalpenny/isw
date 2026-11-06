@@ -16,6 +16,10 @@
 
 ## Finite-line stream representation
 
+* The default quadrature order is reduced from 16 to 4. Higher orders remain
+  available through `quadrature_order`; supplied constant-head schedules still
+  retain their recorded order when the modeling argument is omitted.
+
 * Stream injection is now distributed uniformly along each stream segment using
   finite-line response calculations, replacing injection at discrete segment
   model points. This changes both constant-head injection rates and
@@ -37,8 +41,8 @@
   | `get_stream_segments()` | `prep_stream_segments()` | Adds `stream_width = NULL`. |
   | `get_adf_stream_apportionment()` | `prep_adf_stream_apportionment()` | None. |
   | `get_adf_stream_depletion()` | `model_adf_stream_depletion()` | None. |
-  | `get_stream_injection_schedule()` | `generate_stream_injection_schedule()` | Requires `stream_segments`; replaces `allow_many_aquifer_parameter_sets = FALSE` with `allow_n_aquifer_parameter_sets = 5`; adds `quadrature_order = 16L`. |
-  | `get_aquifer_water_level_change()` | `model_aquifer_water_level_change()` | Replaces `allow_many_aquifer_parameter_sets = FALSE` with `allow_n_aquifer_parameter_sets = 5`; adds `quadrature_order = 16L`. |
+  | `get_stream_injection_schedule()` | `generate_stream_injection_schedule()` | Requires `stream_segments`; replaces `allow_many_aquifer_parameter_sets = FALSE` with `allow_n_aquifer_parameter_sets = 5`; adds `quadrature_order = 4L`. |
+  | `get_aquifer_water_level_change()` | `model_aquifer_water_level_change()` | Replaces `allow_many_aquifer_parameter_sets = FALSE` with `allow_n_aquifer_parameter_sets = 5`; adds `quadrature_order = 4L`. |
   | `generate_segment_sample_points()` | `prep_stream_sample_points()` | None. |
 
 * Reversed the user-facing `injection_rate` sign convention: positive values now
@@ -52,7 +56,7 @@
 * In `generate_stream_injection_schedule()` and
   `model_aquifer_water_level_change()`, `quadrature_order` controls the number
   of Gauss--Legendre points per straight edge of each stream segment. The
-  default is 16.
+  default is 4.
 * The default constant-head limit changes from ten unique aquifer parameter
   sets to five. Set `allow_n_aquifer_parameter_sets = Inf` for unrestricted
   calculations, replacing the former
