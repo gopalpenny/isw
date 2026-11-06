@@ -406,216 +406,60 @@
        interval_duration_day = diff(boundary_time_day))
 }
 
-# Calculate interval-average stream-injection rates.
-.get_interval_average_injection_schedule <- function(
-    depletion_at_schedule_boundaries,
-    pumping_schedules) {
-
-  boundary_times <- sort(unique(
-    depletion_at_schedule_boundaries$schedule_boundary
-  ))
-  normalized_times <- .normalize_time_inputs(
-    pumping_schedules$t,
-    boundary_times
-  )
-  schedule_start <- normalized_times$normalized_schedule_times[[1]]
-  boundary_days <- normalized_times$normalized_target_times
-  prepend_initial_zero <- boundary_days[[1]] > schedule_start
-
-  if (prepend_initial_zero) {
-    time_nodes <- c(schedule_start, boundary_days)
-  } else {
-    time_nodes <- boundary_days
-  }
-
-  result_pump_ids <- character()
-  result_reach_ids <- character()
-  result_segment_ids <- character()
-  result_interval_starts <- time_nodes[0]
-  result_interval_ends <- time_nodes[0]
-  result_injection_rates <-
-    depletion_at_schedule_boundaries$stream_depletion_rate[0]
-  pair_keys <- unique(paste(
-    depletion_at_schedule_boundaries$pump_id,
-    depletion_at_schedule_boundaries$reach_segment_id,
-    sep = "\r"
-  ))
-
-  # Convert boundary depletion rates into interval-average rates separately
-  # for every pump-segment pair.
-  for (pair_key in pair_keys) {
-    key_parts <- strsplit(pair_key, "\r", fixed = TRUE)[[1]]
-    pump_id <- key_parts[[1]]
-    reach_segment_id <- key_parts[[2]]
-    # Select the boundary rows for this pump-segment pair and place them in
-    # chronological order.
-    pair_rows <- which(
-      depletion_at_schedule_boundaries$pump_id == pump_id &
-        depletion_at_schedule_boundaries$reach_segment_id == reach_segment_id
+# Average endpoint depletion into piecewise-constant injection intervals.
+.get_interval_average_injection_schedule <- function(depletion_at_schedule_boundaries, pumping_schedules) {
+  # Validated numeric boundary times are days and depletion/injection rates m^3/day.
+  boundary_time_day <- sort(unique(depletion_at_schedule_boundaries$schedule_boundary_day))
+  schedule_start_day <- pumping_schedules$t_day[[1]]
+  prepend_zero <- length(boundary_time_day) > 0 && boundary_time_day[[1]] > schedule_start_day
+  time_day <- if (prepend_zero) c(schedule_start_day, boundary_time_day) else boundary_time_day
+  template <- tibble::tibble(pump_id = character(), reach_id = character(), reach_segment_id = character(),
+                            interval_start_day = numeric(), interval_end_day = numeric(), injection_rate_m3_per_day = numeric())
+  keys <- unique(depletion_at_schedule_boundaries[c("pump_id", "reach_segment_id")])
+  parts <- lapply(seq_len(nrow(keys)), function(index) {
+    rows <- which(depletion_at_schedule_boundaries$pump_id == keys$pump_id[[index]] &
+                  depletion_at_schedule_boundaries$reach_segment_id == keys$reach_segment_id[[index]])
+    rows <- rows[order(depletion_at_schedule_boundaries$schedule_boundary_day[rows])]
+    endpoint_rate_m3_per_day <- depletion_at_schedule_boundaries$stream_depletion_rate_m3_per_day[rows]
+    if (prepend_zero) endpoint_rate_m3_per_day <- c(0, endpoint_rate_m3_per_day)
+    if (length(endpoint_rate_m3_per_day) < 2) return(template)
+    tibble::tibble(
+      pump_id = rep(keys$pump_id[[index]], length(time_day) - 1L),
+      reach_id = rep(depletion_at_schedule_boundaries$reach_id[rows[[1]]], length(time_day) - 1L),
+      reach_segment_id = rep(keys$reach_segment_id[[index]], length(time_day) - 1L),
+      interval_start_day = utils::head(time_day, -1L), interval_end_day = utils::tail(time_day, -1L),
+      injection_rate_m3_per_day = (utils::head(endpoint_rate_m3_per_day, -1L) + utils::tail(endpoint_rate_m3_per_day, -1L)) / 2
     )
-    pair_rows <- pair_rows[order(as.numeric(
-      depletion_at_schedule_boundaries$schedule_boundary[pair_rows]
-    ))]
-    # Extract the depletion rate at each time boundary for this pump-segment
-    # pair.
-    endpoint_rates <-
-      depletion_at_schedule_boundaries$stream_depletion_rate[pair_rows]
-
-    if (prepend_initial_zero) {
-      endpoint_rates <- c(endpoint_rates[[1]] * 0, endpoint_rates)
-    }
-
-    if (length(endpoint_rates) < 2) {
-      next
-    }
-
-    # Average each pair of adjacent endpoint rates to obtain the constant rate
-    # assigned to the interval between them.
-    interval_rates <- (
-      endpoint_rates[-length(endpoint_rates)] + endpoint_rates[-1]
-    ) / 2
-    number_of_intervals <- length(interval_rates)
-
-    result_pump_ids <- c(
-      result_pump_ids,
-      rep(pump_id, number_of_intervals)
-    )
-    result_reach_ids <- c(
-      result_reach_ids,
-      rep(
-        depletion_at_schedule_boundaries$reach_id[pair_rows[[1]]],
-        number_of_intervals
-      )
-    )
-    result_segment_ids <- c(
-      result_segment_ids,
-      rep(reach_segment_id, number_of_intervals)
-    )
-    result_interval_starts <- c(
-      result_interval_starts,
-      time_nodes[-length(time_nodes)]
-    )
-    result_interval_ends <- c(result_interval_ends, time_nodes[-1])
-    result_injection_rates <- c(result_injection_rates, interval_rates)
-  }
-
-  tibble::tibble(
-    pump_id = result_pump_ids,
-    reach_id = result_reach_ids,
-    reach_segment_id = result_segment_ids,
-    interval_start = result_interval_starts,
-    interval_end = result_interval_ends,
-    injection_rate = result_injection_rates
-  )
+  })
+  do.call(rbind, c(list(template), parts))
 }
 
-# Convert an interval injection schedule to nonzero rate-change events.
 .get_injection_rate_changes <- function(injection_schedule) {
-
-  event_pumps <- character()
-  event_reaches <- character()
-  event_segments <- character()
-  event_times <- injection_schedule$interval_start[0]
-  event_rate_changes <- injection_schedule$injection_rate[0]
-  pair_keys <- unique(paste(
-    injection_schedule$pump_id,
-    injection_schedule$reach_segment_id,
-    sep = "\r"
-  ))
-
-  # Convert each pump-segment interval schedule into nonzero rate-change events.
-  for (pair_key in pair_keys) {
-    key_parts <- strsplit(pair_key, "\r", fixed = TRUE)[[1]]
-    pump_id <- key_parts[[1]]
-    reach_segment_id <- key_parts[[2]]
-    pair_rows <- which(
-      injection_schedule$pump_id == pump_id &
-        injection_schedule$reach_segment_id == reach_segment_id
+  # Numeric public-convention rates are m^3/day and time day; events use the opposite pumping sign.
+  template <- tibble::tibble(pump_id = character(), reach_id = character(), reach_segment_id = character(),
+                            injection_time_day = numeric(), injection_rate_change_m3_per_day = numeric())
+  keys <- unique(injection_schedule[c("pump_id", "reach_segment_id")])
+  parts <- lapply(seq_len(nrow(keys)), function(index) {
+    rows <- which(injection_schedule$pump_id == keys$pump_id[[index]] &
+                  injection_schedule$reach_segment_id == keys$reach_segment_id[[index]])
+    rows <- rows[order(injection_schedule$interval_start_day[rows])]
+    change_m3_per_day <- diff(c(0, -injection_schedule$injection_rate_m3_per_day[rows]))
+    changed <- which(change_m3_per_day != 0)
+    tibble::tibble(
+      pump_id = rep(keys$pump_id[[index]], length(changed)),
+      reach_id = rep(injection_schedule$reach_id[rows[[1]]], length(changed)),
+      reach_segment_id = rep(keys$reach_segment_id[[index]], length(changed)),
+      injection_time_day = injection_schedule$interval_start_day[rows][changed],
+      injection_rate_change_m3_per_day = change_m3_per_day[changed]
     )
-    pair_rows <- pair_rows[order(as.numeric(
-      injection_schedule$interval_start[pair_rows]
-    ))]
-    # Public schedules use positive rates for water moving from the stream to
-    # the aquifer. Response kernels use the pumping convention, so aquifer
-    # injection enters the superposition calculation with the opposite sign.
-    interval_rates <- -injection_schedule$injection_rate[pair_rows]
-    previous_rates <- c(
-      interval_rates[[1]] * 0,
-      interval_rates[-length(interval_rates)]
-    )
-    rate_changes <- interval_rates - previous_rates
-    nonzero_change <- as.numeric(rate_changes) != 0
-
-    event_pumps <- c(event_pumps, rep(pump_id, sum(nonzero_change)))
-    event_reaches <- c(
-      event_reaches,
-      rep(injection_schedule$reach_id[pair_rows[[1]]], sum(nonzero_change))
-    )
-    event_segments <- c(
-      event_segments,
-      rep(reach_segment_id, sum(nonzero_change))
-    )
-    event_times <- c(
-      event_times,
-      injection_schedule$interval_start[pair_rows][nonzero_change]
-    )
-    event_rate_changes <- c(
-      event_rate_changes,
-      rate_changes[nonzero_change]
-    )
-  }
-
-  tibble::tibble(
-    pump_id = event_pumps,
-    reach_id = event_reaches,
-    reach_segment_id = event_segments,
-    injection_time = event_times,
-    injection_rate_change = event_rate_changes
-  )
+  })
+  do.call(rbind, c(list(template), parts))
 }
 
-#' Calculate interval-average stream-injection rate changes
-#'
-#' Convert stream-depletion rates evaluated at discrete times into piecewise
-#' constant injection rates for aquifer-response superposition.
-#'
-#' @param stream_depletion Validated output from
-#'   [model_adf_stream_depletion()].
-#' @param pumping_schedules A validated pumping-schedule object.
-#'
-#' @return A tibble with one row per nonzero change in interval-average
-#'   injection rate. Columns are `pump_id`, `reach_id`, `reach_segment_id`,
-#'   `injection_time`, and `injection_rate_change`. Times use internal units of
-#'   days and rates retain the stream-depletion rate units.
-#'
-#' @details
-#' Stream depletion and public injection schedules are positive when water
-#' enters the aquifer from a stream. This helper converts schedule rates to the
-#' opposite sign so the same response kernel can be used for pumping and
-#' injection.
-#'
-#' The first pumping-schedule time defines the initial time boundary. When the
-#' first evaluation occurs later, stream depletion at that initial boundary is
-#' assumed to be zero. The public injection rate in each interval is the
-#' positive arithmetic mean of stream depletion at the beginning and end of
-#' that interval. Consecutive rates are converted to signed aquifer-response
-#' events; exact zero changes are omitted.
-#'
-#' @noRd
-.get_interval_average_injection_rate_changes <- function(
-    stream_depletion,
-    pumping_schedules) {
-  depletion_at_schedule_boundaries <- stream_depletion
-  names(depletion_at_schedule_boundaries)[
-    names(depletion_at_schedule_boundaries) == "evaluation_time"
-  ] <- "schedule_boundary"
-
-  .get_injection_rate_changes(
-    .get_interval_average_injection_schedule(
-      depletion_at_schedule_boundaries,
-      pumping_schedules
-    )
-  )
+.get_interval_average_injection_rate_changes <- function(stream_depletion, pumping_schedules) {
+  # Prepared numeric depletion rates are m^3/day and evaluation/schedule times day.
+  names(stream_depletion)[names(stream_depletion) == "evaluation_time_day"] <- "schedule_boundary_day"
+  .get_injection_rate_changes(.get_interval_average_injection_schedule(stream_depletion, pumping_schedules))
 }
 
 #' Construct a stream-injection schedule
@@ -757,180 +601,55 @@ generate_stream_injection_schedule <- function(
   segments <- .prepare_numeric_segments(stream_segments)
   wells <- .prepare_numeric_wells(pumping_wells, sf::st_crs(segments))
   attr(wells, "isw_aquifer_groups") <- aquifer_groups
-  .generate_stream_injection_schedule(
+  result <- .generate_stream_injection_schedule(
     wells,
     .prepare_numeric_schedule(pumping_schedules, pumping_wells, times),
     segments,
     times$evaluation_time_day, times$injection_time_day, method,
     apportionment, allow_n_aquifer_parameter_sets, depletion, quadrature_order
   )
+  # Restore public interval times/rates; warnings use caller-facing time labels.
+  .restore_injection_output(result, times, units::deparse_unit(pumping_schedules[[pumping_wells$pump_id[[1]]]]))
 }
 
-# Existing unit-bearing implementation; its checks remain until migration.
 .generate_stream_injection_schedule <- function(
-    pumping_wells, pumping_schedules, stream_segments, evaluation_times = NULL,
-    injection_times = NULL, method = c("adf", "constant_head"),
-    stream_apportionment = NULL, allow_n_aquifer_parameter_sets = 5,
-    adf_stream_depletion = NULL, quadrature_order = 16L) {
-
-  method <- match.arg(method)
-  .validate_pumping_schedules(pumping_schedules, pumping_wells)
-  .validate_stream_segments(stream_segments)
-
-  # Combine pumping changes, requested evaluation times, and optional injection
-  # times into boundaries for the piecewise-constant injection intervals.
-  time_grid <- .get_stream_injection_times(
-    pumping_schedules,
-    evaluation_times,
-    injection_times
-  )
-
+    pumping_wells, pumping_schedules, stream_segments, evaluation_time_day = NULL,
+    injection_time_day = NULL, method = "adf", stream_apportionment = NULL,
+    allow_n_aquifer_parameter_sets = 5, adf_stream_depletion = NULL, quadrature_order = 16L) {
+  # All physical inputs are prepared numeric meters/days; sf geometry retains its shared CRS.
+  grid <- .get_stream_injection_times(pumping_schedules, evaluation_time_day, injection_time_day)
+  missing_time_day <- numeric()
   if (method == "adf") {
-    if (is.null(stream_apportionment)) {
-      stop("stream_apportionment is required when method = \"adf\".")
-    }
-
-    .validate_stream_depletion_apportionment(
-      stream_apportionment,
-      pumping_wells
-    )
-    .validate_stream_apportionment_segments(
-      stream_apportionment,
-      stream_segments
-    )
     if (is.null(adf_stream_depletion)) {
-      internal_depletion <- model_adf_stream_depletion(
-        pumping_wells,
-        pumping_schedules,
-        stream_apportionment,
-        time_grid$schedule_boundaries
+      depletion <- .calculate_adf_stream_depletion(
+        pumping_wells, pumping_schedules, stream_apportionment, grid$boundary_time_day
       )
     } else {
-      internal_depletion <- .validate_apportioned_stream_depletion(
-        adf_stream_depletion,
-        pumping_wells,
-        pumping_schedules,
-        stream_apportionment
-      )
-      supplied_times <- sort(unique(internal_depletion$evaluation_time))
-      required_times <- time_grid$schedule_boundaries
-      supplied_day_values <- if (inherits(supplied_times, "Date")) {
-        as.numeric(supplied_times)
-      } else {
-        as.numeric(units::set_units(
-          supplied_times,
-          "days",
-          mode = "standard"
+      adf_stream_depletion <- adf_stream_depletion[c(
+        "pump_id", "evaluation_time_day", "reach_id", "reach_segment_id", "stream_depletion_rate_m3_per_day"
+      )]
+      missing_time_day <- grid$boundary_time_day[!grid$boundary_time_day %in% adf_stream_depletion$evaluation_time_day]
+      depletion <- adf_stream_depletion[adf_stream_depletion$evaluation_time_day %in% grid$boundary_time_day, ]
+      if (length(missing_time_day)) {
+        depletion <- rbind(depletion, .calculate_adf_stream_depletion(
+          pumping_wells, pumping_schedules, stream_apportionment, missing_time_day
         ))
       }
-      required_day_values <- if (inherits(required_times, "Date")) {
-        as.numeric(required_times)
-      } else {
-        as.numeric(units::set_units(
-          required_times,
-          "days",
-          mode = "standard"
-        ))
-      }
-      missing_time_indices <- which(
-        !(required_day_values %in% supplied_day_values)
-      )
-      if (length(missing_time_indices) > 0) {
-        missing_times <- required_times[missing_time_indices]
-        missing_time_labels <- trimws(format(missing_times))
-        displayed_time_labels <- head(missing_time_labels, 5L)
-        missing_time_summary <- paste(displayed_time_labels, collapse = ", ")
-        if (length(missing_time_labels) > length(displayed_time_labels)) {
-          missing_time_summary <- paste0(missing_time_summary, ", ...")
-        }
-
-        warning(
-          "adf_stream_depletion is missing ",
-          length(missing_times),
-          " required schedule ",
-          if (length(missing_times) == 1L) "boundary" else "boundaries",
-          " (", missing_time_summary, "). Depletion at missing times will ",
-          "be calculated internally.",
-          call. = FALSE
-        )
-
-        missing_depletion <- model_adf_stream_depletion(
-          pumping_wells,
-          pumping_schedules,
-          stream_apportionment,
-          missing_times
-        )
-        internal_depletion <- rbind(
-          internal_depletion,
-          missing_depletion
-        )
-      }
-      row_day_values <- if (inherits(
-          internal_depletion$evaluation_time,
-          "Date")) {
-        as.numeric(internal_depletion$evaluation_time)
-      } else {
-        as.numeric(units::set_units(
-          internal_depletion$evaluation_time,
-          "days",
-          mode = "standard"
-        ))
-      }
-      internal_depletion <- internal_depletion[
-        row_day_values %in% required_day_values,
-      ]
     }
-    depletion_at_schedule_boundaries <- internal_depletion
-    names(depletion_at_schedule_boundaries)[
-      names(depletion_at_schedule_boundaries) == "evaluation_time"
-    ] <- "schedule_boundary"
-    # For each pump-segment pair, average depletion rates at adjacent times to
-    # assign one constant injection rate to the interval between them.
-    injection_schedule <- .get_interval_average_injection_schedule(
-      depletion_at_schedule_boundaries,
-      pumping_schedules
-    )
-  } else if (method == "constant_head") {
-    if (!is.null(adf_stream_depletion)) {
-      stop(
-        "adf_stream_depletion can only be supplied when method = \"adf\"."
-      )
-    }
-    # Solve coupled segment injection rates for each interval to maintain zero
-    # head change at stream model points while accounting for pumping and prior
-    # injection.
-    injection_schedule <- .get_constant_head_injection_schedule(
-      pumping_wells,
-      pumping_schedules,
-      stream_segments,
-      time_grid,
-      allow_n_aquifer_parameter_sets = allow_n_aquifer_parameter_sets,
-      quadrature_order = quadrature_order
+    names(depletion)[names(depletion) == "evaluation_time_day"] <- "schedule_boundary_day"
+    schedule <- .get_interval_average_injection_schedule(depletion, pumping_schedules)
+  } else {
+    schedule <- .get_constant_head_injection_schedule(
+      pumping_wells, pumping_schedules, stream_segments, grid,
+      allow_n_aquifer_parameter_sets, quadrature_order
     )
   }
-
-  start_rows <- match(
-    as.numeric(injection_schedule$interval_start),
-    as.numeric(time_grid$boundary_days)
-  )
-  end_rows <- match(
-    as.numeric(injection_schedule$interval_end),
-    as.numeric(time_grid$boundary_days)
-  )
-  injection_schedule$interval_start <-
-    time_grid$schedule_boundaries[start_rows]
-  injection_schedule$interval_end <- time_grid$schedule_boundaries[end_rows]
-
-  attr(injection_schedule, "isw_schedule_metadata") <- list(
+  attr(schedule, "isw_schedule_metadata") <- list(
     injection_method = method,
-    quadrature_order = if (method == "constant_head") {
-      as.integer(quadrature_order)
-    } else {
-      NULL
-    }
+    quadrature_order = if (method == "constant_head") as.integer(quadrature_order) else NULL
   )
-
-  injection_schedule
+  attr(schedule, "isw_missing_time_day") <- missing_time_day
+  schedule
 }
 
 # Extract event responses from reusable numeric spatial response matrices.

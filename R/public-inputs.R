@@ -122,10 +122,58 @@
   # Prepare reusable numeric events/pairs once, independently of output time metadata.
   events <- .get_pumping_rate_changes(pumping_schedules, pumping_wells$pump_id)
   attr(pumping_schedules, "isw_pumping_events") <- events
+  attr(pumping_schedules, "isw_evaluation_time_day") <- times$evaluation_time_day
   attr(pumping_schedules, "isw_pumping_response_times") <- .get_pumping_response_times(
     events, times$evaluation_time_day
   )
   pumping_schedules
+}
+
+.restore_adf_output <- function(x, times, rate_units) {
+  # Restore public times and rate units from numeric day and m^3/day columns.
+  if (!all(c("evaluation_time_day", "stream_depletion_rate_m3_per_day") %in% names(x))) return(x)
+  x$evaluation_time_day <- .restore_time_values(
+    x$evaluation_time_day, times$output_evaluation_times, times$time_origin
+  )
+  names(x)[names(x) == "evaluation_time_day"] <- "evaluation_time"
+  x$stream_depletion_rate_m3_per_day <- units::set_units(
+    units::set_units(x$stream_depletion_rate_m3_per_day, "m^3/day"), rate_units, mode = "standard"
+  )
+  names(x)[names(x) == "stream_depletion_rate_m3_per_day"] <- "stream_depletion_rate"
+  x
+}
+
+.restore_injection_output <- function(x, times, rate_units) {
+  # Restore public interval times and rates; numeric internals use day and m^3/day.
+  if (!"interval_start_day" %in% names(x)) return(x)
+  missing_time_day <- attr(x, "isw_missing_time_day")
+  if (length(missing_time_day)) {
+    labels <- trimws(format(.restore_time_values(
+      missing_time_day, times$output_schedule_times, times$time_origin
+    )))
+    warning("adf_stream_depletion is missing ", length(labels), " required schedule ",
+            if (length(labels) == 1L) "boundary" else "boundaries", " (",
+            paste(utils::head(labels, 5L), collapse = ", "),
+            if (length(labels) > 5L) ", ..." else "",
+            "). Depletion at missing times will be calculated internally.", call. = FALSE)
+  }
+  for (column in c("interval_start", "interval_end")) {
+    numeric_column <- paste0(column, "_day")
+    x[[numeric_column]] <- .restore_time_values(
+      x[[numeric_column]], times$output_schedule_times, times$time_origin
+    )
+    names(x)[names(x) == numeric_column] <- column
+  }
+  x$injection_rate_m3_per_day <- units::set_units(
+    units::set_units(x$injection_rate_m3_per_day, "m^3/day"), rate_units, mode = "standard"
+  )
+  names(x)[names(x) == "injection_rate_m3_per_day"] <- "injection_rate"
+  if ("boundary_residual_m" %in% names(x)) {
+    x$boundary_residual_m <- units::set_units(x$boundary_residual_m, "m")
+    names(x)[names(x) == "boundary_residual_m"] <- "boundary_residual"
+  }
+  attr(x, "isw_missing_time_day") <- NULL
+  x
 }
 
 .prepare_numeric_depletion <- function(stream_depletion, pumping_wells,

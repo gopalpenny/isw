@@ -121,15 +121,15 @@ test_that("injection grids distinguish boundaries from evaluation times", {
 
 test_that("interval injection rates average depletion endpoints", {
   pumping_schedules <- tibble::tibble(
-    t = units::set_units(c(0, 10), "days"),
-    pump_1 = units::set_units(c(100, 0), "m^3/day")
+    t_day = c(0, 10),
+    pump_1_m3_per_day = c(100, 0)
   )
   depletion_at_schedule_boundaries <- tibble::tibble(
     pump_id = rep("pump_1", 3),
-    schedule_boundary = units::set_units(c(0, 10, 20), "days"),
+    schedule_boundary_day = c(0, 10, 20),
     reach_id = rep("stream_1", 3),
     reach_segment_id = rep("stream_1_segment_1", 3),
-    stream_depletion_rate = units::set_units(c(0, 20, 40), "m^3/day")
+    stream_depletion_rate_m3_per_day = c(0, 20, 40)
   )
 
   schedule <- isw:::.get_interval_average_injection_schedule(
@@ -139,31 +139,31 @@ test_that("interval injection rates average depletion endpoints", {
   events <- isw:::.get_injection_rate_changes(schedule)
 
   expect_equal(
-    schedule$injection_rate,
-    units::set_units(c(10, 30), "m^3/day")
+    schedule$injection_rate_m3_per_day,
+    c(10, 30)
   )
 
   expect_equal(
-    events$injection_time,
-    units::set_units(c(0, 10), "days")
+    events$injection_time_day,
+    c(0, 10)
   )
   expect_equal(
-    events$injection_rate_change,
-    units::set_units(c(-10, -20), "m^3/day")
+    events$injection_rate_change_m3_per_day,
+    c(-10, -20)
   )
 })
 
 test_that("zero depletion is assumed at an unevaluated initial boundary", {
   pumping_schedules <- tibble::tibble(
-    t = units::set_units(c(0, 10), "days"),
-    pump_1 = units::set_units(c(100, 0), "m^3/day")
+    t_day = c(0, 10),
+    pump_1_m3_per_day = c(100, 0)
   )
   stream_depletion <- tibble::tibble(
     pump_id = rep("pump_1", 2),
-    evaluation_time = units::set_units(c(10, 20), "days"),
+    evaluation_time_day = c(10, 20),
     reach_id = rep("stream_1", 2),
     reach_segment_id = rep("stream_1_segment_1", 2),
-    stream_depletion_rate = units::set_units(c(20, 40), "m^3/day")
+    stream_depletion_rate_m3_per_day = c(20, 40)
   )
 
   events <- isw:::.get_interval_average_injection_rate_changes(
@@ -172,8 +172,8 @@ test_that("zero depletion is assumed at an unevaluated initial boundary", {
   )
 
   expect_equal(
-    events$injection_rate_change,
-    units::set_units(c(-10, -20), "m^3/day")
+    events$injection_rate_change_m3_per_day,
+    c(-10, -20)
   )
 })
 
@@ -194,7 +194,10 @@ test_that("water-level model superimposes pumping and stream injection", {
     inputs$evaluation_times,
     stream_apportionment = inputs$stream_apportionment
   )
-  injection_events <- isw:::.get_injection_rate_changes(injection_schedule)
+  injection_events <- isw:::.get_injection_rate_changes(isw:::.prepare_numeric_injection(
+    injection_schedule, inputs$pumping_wells, inputs$pumping_schedules,
+    inputs$stream_segments, inputs$evaluation_times, NULL
+  ))
 
   pumping_ratio_10_day_per_m2 <- isw:::.theis_aquifer_drawdown_ratio(
     distance_m = 50,
@@ -219,7 +222,7 @@ test_that("water-level model superimposes pumping and stream injection", {
     stream_width_m = as.numeric(units::set_units(inputs$stream_segments$stream_width[[1]], "m"))
   )
   expected_recovery_10 <- units::set_units(
-    injection_events$injection_rate_change[[1]] * units::set_units(line_ratio_10_day_per_m2, "day/m^2"),
+    injection_events$injection_rate_change_m3_per_day[[1]] * line_ratio_10_day_per_m2,
     "m"
   )
 
@@ -264,7 +267,10 @@ test_that("stream injection uses finite-line geometry and stream width", {
     evaluation_time,
     stream_apportionment = inputs$stream_apportionment
   )
-  injection_events <- isw:::.get_injection_rate_changes(injection_schedule)
+  injection_events <- isw:::.get_injection_rate_changes(isw:::.prepare_numeric_injection(
+    injection_schedule, inputs$pumping_wells, inputs$pumping_schedules,
+    inputs$stream_segments, inputs$evaluation_times, NULL
+  ))
 
   result <- model_aquifer_water_level_change(
     inputs$pumping_wells,
@@ -287,7 +293,7 @@ test_that("stream injection uses finite-line geometry and stream width", {
     stream_width_m = as.numeric(units::set_units(inputs$stream_segments$stream_width[[1]], "m"))
   )
   expected_recovery <- units::set_units(
-    injection_events$injection_rate_change[[1]] * units::set_units(expected_ratio_day_per_m2, "day/m^2"),
+    injection_events$injection_rate_change_m3_per_day[[1]] * expected_ratio_day_per_m2,
     "m"
   )
 

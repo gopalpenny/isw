@@ -4,7 +4,7 @@ Design document for branch `performance`. The tables below inventory the 61
 named, top-level functions present before the refactor; proposed helpers are
 identified separately.
 
-## Implementation status: stages 1 through 4
+## Implementation status: stages 1 through 5
 
 The first implementation stage adds validated numeric preparation to all ten
 public entry points. Physical inputs are converted before stripping, numeric
@@ -53,14 +53,26 @@ uses normalized numeric properties; its relationship checks, limits and warnings
 live in the boundary preparer, and prepared groups are retained for reuse.
 
 The final time, event, aquifer-group and boundary runs passed 136 expectations.
-The last full suite reports 19 test blocks with errors from unmigrated paths,
-473 passed expectations and zero failed expectations (before four additional
-passing injection-grid assertions). Two additional error blocks now expose
-interval-averaging helpers that still read the former normalized-time schema;
-these are part of the next ADF migration, not repaired with a compatibility layer.
+Stage 4 was committed as `47f3a1c`.
+
+Stage 5 restores public ADF depletion and injection-schedule workflows. Numeric
+Glover fractions are batched across segments/distinct elapsed times, rates are
+accumulated into preallocated segment-by-evaluation arrays, and prepared pumping
+events/pairs are reused. Interval averaging and injection-rate changes operate
+on numeric days and m3_per_day columns, retaining the existing sign convention.
+The private coordinator no longer calls public validating functions. Public
+formatters restore original time/rate units and Date values. Supplied depletion
+is reused, extra times are ignored, and missing boundaries alone are calculated;
+warnings format those missing times in the caller's representation.
+
+Existing ADF tests and 29 new workflow expectations pass. Independent comparisons
+against the pre-refactor implementation match depletion and injection schedules
+for Date inputs and hour-based inputs with imperial rates. The latest full suite
+reports 531 passed expectations, zero failed expectations and 10 error blocks
+in unmigrated constant-head/aquifer workflows.
 These counts are a transition snapshot, not a passing package result. Vignette
 explanations of completed model internals remain pending until end-to-end paths
-work. The ADF depletion and injection-schedule workflow is the next stage.
+work. Constant-head schedule construction is the next stage.
 
 ## Internal contract
 
@@ -334,8 +346,8 @@ numerical implementations.
 | 2. Analytical kernels | Migrate Glover, Theis, direct/image-well and local finite-line kernels to numeric meters/days; preserve regularization and underflow logic | Implemented and tested. Standalone public analytical functions work with equivalent input units and unchanged output-unit behavior. |
 | 3. Spatial preparation | Consolidate shared UTM selection, retain sf/CRS, migrate segmentation/sampling/apportionment, prepare reusable line operators and numeric meter distances | Implemented and tested. Spatial public functions work independently; mixed CRSs and zone crossings work; secondary model-point geometry is transformed explicitly. Numeric cache/extraction interfaces migrated alongside operators. |
 | 4. Time and pumping events | Numeric day/rate tables, event changes, evaluation indices, shared Date origin, aquifer groups | Implemented and tested. Prepared schedules retain reusable events/pairs; grouping uses normalized properties with boundary diagnostics. |
-| 5. ADF workflow | Migrate fraction lookup, event superposition, interval averaging and private schedule coordinator | Next. Public depletion/schedule outputs must retain shapes, dates, units and missing-time completion behavior. |
-| 6. Constant-head workflow | Numeric response/cache keys, precomputed pump-to-stream distances, numeric history accumulation; retain QR/factorization reuse | Pending. Match baseline rates, signs and boundary residuals; retain numerical diagnostics. |
+| 5. ADF workflow | Migrate fraction lookup, event superposition, interval averaging and private schedule coordinator | Implemented and tested. Public depletion/schedule outputs retain shapes, dates, units and missing-time completion behavior; match the pre-refactor implementation. |
+| 6. Constant-head workflow | Numeric response/cache keys, precomputed pump-to-stream distances, numeric history accumulation; retain QR/factorization reuse | Next. Match baseline rates, signs and boundary residuals; retain numerical diagnostics. Numeric operators/caches are already available from stage 3. |
 | 7. Aquifer workflow | Numeric direct pumping and injection superposition; reuse prepared geometry, events and response matrices | Pending. Full public wrapper and supplied-schedule paths work; observations no longer trigger repeated spatial preparation in time loops. |
 | 8. Validation and output audit | Verify every independent public route is protected; remove repeated input checks only from migrated helpers; complete output formatting | Ongoing per stage, final audit pending. Keep checks of newly supplied data and numerical/service diagnostics. |
 | 9. Documentation and package checks | Update both vignettes, internal contracts/comments, manual analyses, public-invalid-input tests and private numeric fixtures | Pending. Tests and R CMD check pass; rendered examples reflect actual behavior. |

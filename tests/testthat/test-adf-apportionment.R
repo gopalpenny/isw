@@ -247,19 +247,19 @@ test_that("fraction lookup evaluates unique elapsed times once per segment", {
     pump_id = rep("pump_1", 3),
     evaluation_time = as.Date(c("2025-02-01", "2025-03-01", "2025-04-01")),
     pumping_time = units::set_units(c(0, 31, 61), "days"),
-    elapsed_time = units::set_units(c(30, 30, 60), "days"),
+    elapsed_time_day = c(30, 30, 60),
     pumping_rate_change = units::set_units(c(100, -20, 10), "m^3/day")
   )
 
   fraction_lookup <- isw:::.get_stream_depletion_fraction_lookup(
-    inputs$pumping_wells,
+    isw:::.prepare_numeric_wells(inputs$pumping_wells),
     pumping_response_times,
-    stream_apportionment
+    isw:::.prepare_numeric_apportionment(stream_apportionment, inputs$pumping_wells)
   )
 
   expect_equal(nrow(fraction_lookup), 4)
   expect_equal(
-    sort(unique(as.numeric(fraction_lookup$elapsed_time))),
+    sort(unique(as.numeric(fraction_lookup$elapsed_time_day))),
     c(30, 60)
   )
 })
