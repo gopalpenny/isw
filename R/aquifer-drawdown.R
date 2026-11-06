@@ -507,8 +507,11 @@
 #'   at required schedule boundaries are reused and results at additional times
 #'   are ignored. If required boundaries are missing, a warning is issued and
 #'   depletion is calculated internally only for the missing times.
-#' @param quadrature_order Positive integer number of Gauss--Legendre points
-#'   used per straight edge of each finite line element. The default is 4.
+#' @param quadrature_order Positive integer controlling stream injection sources.
+#'   With `1`, each segment injects its total rate at its `model_point`, using
+#'   `stream_width / 2` as the minimum response radius. Larger values give the
+#'   number of Gauss--Legendre points per straight edge of each finite line
+#'   element. The default is 4.
 #'
 #' @return A tibble with one row per `pump_id`, `reach_segment_id`, and
 #'   injection interval. `interval_start` and `interval_end` retain the time
@@ -536,9 +539,9 @@
 #' warning while the missing values are calculated internally.
 #'
 #' With `method = "constant_head"`, segment model points are constant-head
-#' collocation points and the segment lines are finite injection elements. One
-#' coupled response matrix is factored for each aquifer parameter set and
-#' interval duration.
+#' collocation points. Injection uses those points when `quadrature_order = 1`,
+#' and uniform finite-line sources otherwise. One coupled response matrix is
+#' factored for each aquifer parameter set and interval duration.
 #' Pump-specific right-hand sides preserve attribution while sharing that
 #' factorization. Rates are solved so the signed boundary residual is zero at
 #' each interval endpoint after accounting for all preceding injection.
@@ -670,8 +673,8 @@ generate_stream_injection_schedule <- function(
 }
 
 # Return one response per contributing injection event at the current observation.
-# The operator stores observation-by-quadrature-point distances in meters, with
-# weights, widths and segment indices for the source points. Its response matrix
+# The operator stores effective source distances in meters and, for lines,
+# quadrature weights and segment indices. Its response matrix
 # has one row per observation and one column per stream segment.
 # elapsed_times_day and segment_columns are parallel event vectors: each event
 # has an age and a source segment. observation_well_index selects the target row.
@@ -691,7 +694,7 @@ generate_stream_injection_schedule <- function(
         elapsed_time_day, prepared_response_keys$elapsed_times_day
       )]]
     } else NULL
-    response_matrix_day_per_m2 <- .get_cached_line_response_matrix(
+    response_matrix_day_per_m2 <- .get_cached_stream_response_matrix(
       response_operator, response_cache, K_m_per_day, D_m, V, elapsed_time_day,
       response_key = response_key
     )
@@ -713,7 +716,7 @@ generate_stream_injection_schedule <- function(
   stream_recovery_m <- numeric(response_operator$number_of_targets)
   for (elapsed_time_day in unique(elapsed_times_day)) {
     event_indices <- which(elapsed_times_day == elapsed_time_day)
-    response_matrix_day_per_m2 <- .get_cached_line_response_matrix(
+    response_matrix_day_per_m2 <- .get_cached_stream_response_matrix(
       response_operator, response_cache, K_m_per_day, D_m, V, elapsed_time_day,
       response_key = prepared_response_keys$response_keys[[match(
         elapsed_time_day, prepared_response_keys$elapsed_times_day
@@ -735,15 +738,16 @@ generate_stream_injection_schedule <- function(
   stream_recovery_m
 }
 
-# Superimpose pumping and finite-line injection responses at observations.
+# Superimpose pumping and point or finite-line injection responses at observations.
 .calculate_aquifer_water_level_change <- function(
     pumping_wells, pumping_schedules, observation_wells, evaluation_time_day,
     stream_injection_schedule, quadrature_order, stream_segments) {
   # Validated numeric hydraulic inputs use m, m/day, day and m3/day; sf retains CRS.
-  # Prepare the quadrature representation for observation responses once;
-  # line elements used during schedule generation are not retained here.
-  line_elements <- .prepare_line_elements(stream_segments, quadrature_order)
-  observation_response_operator <- .prepare_line_response_operator(observation_wells, line_elements)
+  # Prepare the selected source representation for observation responses once;
+  # operators used during schedule generation are not retained here.
+  observation_response_operator <- .prepare_stream_response_operator(
+    observation_wells, stream_segments, quadrature_order
+  )
   # Strip spatial distance units once; every subsequent head calculation uses meters.
   pump_to_observation_distances_m <- matrix(as.numeric(units::set_units(
     sf::st_distance(pumping_wells, observation_wells), "m"
@@ -860,11 +864,16 @@ generate_stream_injection_schedule <- function(
 #'   the maximum number of unique aquifer parameter sets allowed when a
 #'   constant-head schedule is generated internally. The default is 5. Use
 #'   `Inf` to impose no limit.
-#' @param quadrature_order Positive integer number of Gauss--Legendre points
-#'   used per straight edge of each finite line element. The default is 4.
+#' @param quadrature_order Positive integer controlling stream injection sources.
+#'   With `1`, each segment injects its total rate at its `model_point`, using
+#'   `stream_width / 2` as the minimum response radius. Larger values give the
+#'   number of Gauss--Legendre points per straight edge of each finite line
+#'   element. The default is 4.
 #'   When a completed constant-head schedule is supplied and this argument is
 #'   omitted, the order recorded in the schedule metadata is reused. Supplying
-#'   a different order raises a warning and uses the supplied value.
+#'   a different order raises a warning and uses the supplied value. This can
+#'   change head responses, including the constant-head boundary residuals,
+#'   while preserving each segment's total injection rate.
 #'
 #' @return A tibble with one row for every `pump_id`, `observation_id`, and
 #'   requested `evaluation_time`. `pumping_drawdown` is the positive decline
@@ -883,7 +892,11 @@ generate_stream_injection_schedule <- function(
 #' segments and therefore requires `stream_apportionment`. The constant-head
 #' path solves segment injection rates that keep segment model points as close
 #' as practical to zero head change. Pumping and stream responses are then
-#' superimposed at each observation well. Positive pumping rates produce
+#' superimposed at each observation well. With `quadrature_order = 1`, the
+#' entire segment rate is applied at its `model_point`; larger orders integrate
+#' uniform injection along the segment. Both representations use a minimum
+#' response radius of `stream_width / 2`. ADF injection rates are independent
+#' of quadrature order. Positive pumping rates produce
 #' positive `pumping_drawdown`; injection produces positive `stream_recovery`.
 #'
 #' @seealso [generate_stream_injection_schedule()],

@@ -25,13 +25,14 @@ inspect_performance_overhead <- function(output_directory = "analysis/profiles/p
       allocated_mib = sum(allocated_bytes) / 1024^2,
       largest_allocation_mib = max(allocated_bytes) / 1024^2,
       cache_lookup_allocated_mib = sum(allocated_bytes[
-        grepl(".get_cached_line_response_matrix", allocation_stacks, fixed = TRUE)
+        grepl(".get_cached_stream_response_matrix", allocation_stacks, fixed = TRUE)
       ]) / 1024^2,
       format_small_vector_pages = sum(grepl("^new page:", allocation_lines) &
         grepl('"format.default"', allocation_lines, fixed = TRUE)),
       result_mib = as.numeric(object.size(result)) / 1024^2
     )
-    function_names <- c(".get_cached_line_response_matrix", ".evaluate_line_response_operator",
+    function_names <- c(".get_cached_stream_response_matrix", ".evaluate_stream_response_operator",
+                        ".evaluate_line_response_operator",
                         ".get_response_ratios_for_injection_events",
                         ".calculate_stream_recovery_at_observations", ".theis_aquifer_drawdown_ratio",
                         ".theis_response_at_distance")

@@ -346,7 +346,7 @@ test_that("cached line responses support injection-event extraction", {
     V = 0.15
   )
 
-  first_response <- isw:::.get_cached_line_response_matrix(
+  first_response <- isw:::.get_cached_stream_response_matrix(
     response_operator = operator,
     response_cache = response_cache,
     K_m_per_day = hydraulics$K_m_per_day,
@@ -354,7 +354,7 @@ test_that("cached line responses support injection-event extraction", {
     V = hydraulics$V,
     elapsed_time_day = 1
   )
-  repeated_response <- isw:::.get_cached_line_response_matrix(
+  repeated_response <- isw:::.get_cached_stream_response_matrix(
     response_operator = operator,
     response_cache = response_cache,
     K_m_per_day = hydraulics$K_m_per_day,
@@ -373,7 +373,7 @@ test_that("cached line responses support injection-event extraction", {
     make_numeric_line_elements(segments, quadrature_order = 8)
   )
   expect_error(
-    isw:::.get_cached_line_response_matrix(
+    isw:::.get_cached_stream_response_matrix(
       response_operator = other_operator,
       response_cache = response_cache,
       K_m_per_day = hydraulics$K_m_per_day,
@@ -394,7 +394,7 @@ test_that("cached line responses support injection-event extraction", {
     elapsed_times_day = c(10, 1, 10),
     segment_columns = c(1L, 1L, 1L)
   )
-  late_response <- isw:::.get_cached_line_response_matrix(
+  late_response <- isw:::.get_cached_stream_response_matrix(
     response_operator = operator,
     response_cache = response_cache,
     K_m_per_day = hydraulics$K_m_per_day,
@@ -418,7 +418,7 @@ test_that("cached line responses support injection-event extraction", {
   expect_identical(prepared_ratios, response_ratios)
   # Prepared keys and the scalar fallback address the same existing entries.
   expect_length(ls(envir = response_cache, all.names = TRUE), 2)
-  expect_error(isw:::.get_cached_line_response_matrix(
+  expect_error(isw:::.get_cached_stream_response_matrix(
     other_operator, response_cache, 10, 20, 0.15, 10,
     response_key = prepared$response_keys[[1]]
   ), "cannot be reused with a different response_operator")

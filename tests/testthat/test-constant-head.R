@@ -573,7 +573,7 @@ test_that("constant-head numerical diagnostics survive numeric preparation", {
   )
   response_day_per_m2 <- diag(c(1, 1e-8))
   testthat::local_mocked_bindings(
-    .get_cached_line_response_matrix = function(...) response_day_per_m2,
+    .get_cached_stream_response_matrix = function(...) response_day_per_m2,
     .package = "isw"
   )
   expect_warning(schedule <- run_schedule(), "condition number exceeded 1e6")

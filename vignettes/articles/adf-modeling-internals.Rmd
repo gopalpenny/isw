@@ -572,7 +572,8 @@ patchwork::wrap_plots(
 ## Generate the stream-depletion schedule for ADF drawdown
 
 In order to estimate aquifer drawdown, we represent stream depletion as
-uniform injection along finite line elements. Each reach segment receives a
+uniform injection along finite line elements by default, or injection at segment
+model points when `quadrature_order = 1`. Each reach segment receives a
 total-rate schedule derived from the depletion apportioned to that segment.
 `generate_stream_injection_schedule()` returns one row per pumping well, stream reach segment, and time
 interval. Each row specifies the stream injection rate represented
@@ -603,8 +604,9 @@ attr(stream_injection_schedule, "isw_schedule_metadata")
 ```
 
 For the ADF schedule above, the attribute records `injection_method = "adf"`;
-quadrature is used when calculating water level responses. It
-remains `NULL` at this point for the ADF model, because water level responses are not needed to estimate
+the source representation is selected when calculating water level responses.
+The metadata entry `quadrature_order` remains `NULL` for the ADF schedule,
+because water level responses are not needed to estimate
 stream injection. The constant-head approach requires calculating water-level responses
 at the stream. `generate_stream_injection_schedule` therefore records the integer `quadrature_order` used
 in these calculations when constant-head injection is requested.
@@ -722,14 +724,17 @@ Gauss-Legendre source points and weights are prepared once, then their
 distances to every observation
 well are reused for all elapsed times. The default quadrature order is `4L`.
 Set `quadrature_order` explicitly to compare higher orders when checking
-numerical convergence for a particular geometry.
+numerical convergence for a particular geometry. Setting `quadrature_order = 1`
+instead bypasses line construction and integration, applying each segment's
+entire injection rate at its `model_point`.
 
 The physical pumping response uses the user-supplied pumping-well diameter.
-The line response uses `stream_width`, holding the water level response constant inside
-`stream_width/2` to prevent a singular response on the stream.
+Both point and line responses use `stream_width`, holding the water level
+response constant inside `stream_width/2` to prevent a singular response on the stream.
 
-`isw:::.prepare_line_elements()` places Gauss--Legendre quadrature points
-along each stream segment and stores their weights, segment identifiers, and
+`isw:::.prepare_stream_response_operator()` selects point or line sources. For
+orders greater than 1, `isw:::.prepare_line_elements()` places Gauss--Legendre
+quadrature points along each stream segment and stores their weights, segment identifiers, and
 stream widths. `isw:::.prepare_line_response_operator()` then calculates the
 distances from each observation well to those points and packages them with
 the weights and widths for reuse when evaluating responses at different

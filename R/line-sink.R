@@ -1,4 +1,49 @@
-# Numerical response operators for transient finite line elements.
+# Numerical response operators for transient point and finite-line sources.
+
+# Select the stream representation before constructing any quadrature geometry.
+.prepare_stream_response_operator <- function(
+    target_points, stream_segments, quadrature_order = 4L) {
+  # Inputs are boundary-validated, with shared meter UTM geometry and numeric widths.
+  if (quadrature_order == 1L) {
+    return(.prepare_point_response_operator(target_points, stream_segments))
+  }
+  line_elements <- .prepare_line_elements(stream_segments, quadrature_order)
+  .prepare_line_response_operator(target_points, line_elements)
+}
+
+# Prepare one injection source per segment, located at its model point.
+.prepare_point_response_operator <- function(target_points, stream_segments) {
+  if (inherits(target_points, "sfc")) target_points <- sf::st_sf(geometry = target_points)
+  prepared_targets <- .transform_spatial_geometry(target_points, sf::st_crs(stream_segments))
+  distances_m <- as.matrix(units::drop_units(units::set_units(
+    sf::st_distance(prepared_targets, stream_segments$model_point), "m"
+  )))
+  # Apply each source segment's half-width to its entire target column.
+  effective_distances_m <- matrix(
+    pmax(as.numeric(distances_m),
+         rep(stream_segments$stream_width_m / 2, each = nrow(prepared_targets))),
+    nrow = nrow(prepared_targets)
+  )
+  structure(list(
+    distances_m = distances_m,
+    effective_distances_m = effective_distances_m,
+    segment_ids = stream_segments$reach_segment_id,
+    number_of_targets = nrow(prepared_targets),
+    number_of_segments = nrow(stream_segments)
+  ), class = "isw_point_response_operator")
+}
+
+# Both representations return numeric day/m^2 matrices with one column per segment.
+.evaluate_stream_response_operator <- function(operator, K_m_per_day, D_m, V, elapsed_time_day) {
+  if (!inherits(operator, "isw_point_response_operator")) {
+    return(.evaluate_line_response_operator(operator, K_m_per_day, D_m, V, elapsed_time_day))
+  }
+  response_day_per_m2 <- matrix(.theis_response_at_distance(
+    as.numeric(operator$effective_distances_m), K_m_per_day, D_m, V, elapsed_time_day
+  ), nrow = operator$number_of_targets, ncol = operator$number_of_segments)
+  dimnames(response_day_per_m2) <- list(NULL, operator$segment_ids)
+  response_day_per_m2
+}
 
 # Return Gauss--Legendre nodes and normalized weights on [-1/2, 1/2].
 #' @importFrom statmod gauss.quad
@@ -223,18 +268,18 @@
 }
 
 # Cache numeric day/m^2 matrices by prepared hydraulic parameters and elapsed days.
-# The operator's target-by-quadrature-point distances, weights, widths and segment
-# indices define the fixed spatial problem; matrices have target rows and segment
+# The operator's effective distances and, for lines, weights and segment indices
+# define the fixed spatial problem; matrices have target rows and segment
 # columns. K_m_per_day, D_m and dimensionless V determine the hydraulic response.
 # Bind each cache to its first operator so entries cannot be reused with different
-# targets, stream elements or quadrature rules.
-.get_cached_line_response_matrix <- function(
+# targets, source representations or quadrature rules.
+.get_cached_stream_response_matrix <- function(
     response_operator, response_cache, K_m_per_day, D_m, V, elapsed_time_day,
     response_key = NULL) {
   # Prepared numeric inputs use m, m/day and day; retain cache-ownership diagnostics.
-  cached_operator <- attr(response_cache, "isw_line_response_operator", exact = TRUE)
+  cached_operator <- attr(response_cache, "isw_stream_response_operator", exact = TRUE)
   if (is.null(cached_operator)) {
-    attr(response_cache, "isw_line_response_operator") <- response_operator
+    attr(response_cache, "isw_stream_response_operator") <- response_operator
   } else if (!identical(response_operator, cached_operator)) {
     stop("response_cache cannot be reused with a different response_operator.")
   }
@@ -245,7 +290,7 @@
                           format(V, digits = 17), format(elapsed_time_day, digits = 17), sep = "\r")
   }
   if (!exists(response_key, envir = response_cache, inherits = FALSE)) {
-    assign(response_key, .evaluate_line_response_operator(
+    assign(response_key, .evaluate_stream_response_operator(
       response_operator, K_m_per_day, D_m, V, elapsed_time_day
     ), envir = response_cache)
   }

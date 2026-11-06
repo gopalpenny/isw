@@ -106,14 +106,12 @@
     reach_segment_id = stream_segments$reach_segment_id,
     geometry = sf::st_transform(stream_segments$model_point, analysis_crs)
   )
-  # Represent each stream segment by weighted Gauss--Legendre source points
-  # used to integrate its finite-line injection response.
-  line_elements <- .prepare_line_elements(stream_segments, quadrature_order)
-  # Precompute distances from every stream collocation point to those source
-  # points so the geometry can be reused across response times and aquifers.
-  boundary_response_operator <- .prepare_line_response_operator(
+  # Order 1 uses model-point injection wells; higher orders integrate along lines.
+  # Prepare source distances once for reuse across response times and aquifers.
+  boundary_response_operator <- .prepare_stream_response_operator(
     stream_collocation_points,
-    line_elements
+    stream_segments,
+    quadrature_order
   )
   # Convert spatial distances to bare meters once, before the interval loop.
   pump_to_stream_distances_m <- matrix(as.numeric(units::set_units(
@@ -163,7 +161,7 @@
 
     get_response_matrix <- function(elapsed_time_day) {
       # Retrieve cached numeric day/m2 responses directly for the QR algebra.
-      .get_cached_line_response_matrix(
+      .get_cached_stream_response_matrix(
         response_operator = boundary_response_operator,
         response_cache = response_cache,
         K_m_per_day = group_pumps$K_m_per_day[[1]],

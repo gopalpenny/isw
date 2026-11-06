@@ -57,11 +57,16 @@ the maximum number of unique aquifer parameter sets allowed when a
 constant-head schedule is generated internally. The default is 5. Use
 \code{Inf} to impose no limit.}
 
-\item{quadrature_order}{Positive integer number of Gauss--Legendre points
-used per straight edge of each finite line element. The default is 4.
+\item{quadrature_order}{Positive integer controlling stream injection sources.
+With \code{1}, each segment injects its total rate at its \code{model_point}, using
+\code{stream_width / 2} as the minimum response radius. Larger values give the
+number of Gauss--Legendre points per straight edge of each finite line
+element. The default is 4.
 When a completed constant-head schedule is supplied and this argument is
 omitted, the order recorded in the schedule metadata is reused. Supplying
-a different order raises a warning and uses the supplied value.}
+a different order raises a warning and uses the supplied value. This can
+change head responses, including the constant-head boundary residuals,
+while preserving each segment's total injection rate.}
 }
 \value{
 A tibble with one row for every \code{pump_id}, \code{observation_id}, and
@@ -84,7 +89,11 @@ The ADF path apportions each pump's analytical stream depletion among stream
 segments and therefore requires \code{stream_apportionment}. The constant-head
 path solves segment injection rates that keep segment model points as close
 as practical to zero head change. Pumping and stream responses are then
-superimposed at each observation well. Positive pumping rates produce
+superimposed at each observation well. With \code{quadrature_order = 1}, the
+entire segment rate is applied at its \code{model_point}; larger orders integrate
+uniform injection along the segment. Both representations use a minimum
+response radius of \code{stream_width / 2}. ADF injection rates are independent
+of quadrature order. Positive pumping rates produce
 positive \code{pumping_drawdown}; injection produces positive \code{stream_recovery}.
 }
 \examples{

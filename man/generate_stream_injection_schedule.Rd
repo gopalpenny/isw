@@ -54,8 +54,11 @@ at required schedule boundaries are reused and results at additional times
 are ignored. If required boundaries are missing, a warning is issued and
 depletion is calculated internally only for the missing times.}
 
-\item{quadrature_order}{Positive integer number of Gauss--Legendre points
-used per straight edge of each finite line element. The default is 4.}
+\item{quadrature_order}{Positive integer controlling stream injection sources.
+With \code{1}, each segment injects its total rate at its \code{model_point}, using
+\code{stream_width / 2} as the minimum response radius. Larger values give the
+number of Gauss--Legendre points per straight edge of each finite line
+element. The default is 4.}
 }
 \value{
 A tibble with one row per \code{pump_id}, \code{reach_segment_id}, and
@@ -88,9 +91,9 @@ that omits required boundaries is reused where possible, but generates a
 warning while the missing values are calculated internally.
 
 With \code{method = "constant_head"}, segment model points are constant-head
-collocation points and the segment lines are finite injection elements. One
-coupled response matrix is factored for each aquifer parameter set and
-interval duration.
+collocation points. Injection uses those points when \code{quadrature_order = 1},
+and uniform finite-line sources otherwise. One coupled response matrix is
+factored for each aquifer parameter set and interval duration.
 Pump-specific right-hand sides preserve attribution while sharing that
 factorization. Rates are solved so the signed boundary residual is zero at
 each interval endpoint after accounting for all preceding injection.

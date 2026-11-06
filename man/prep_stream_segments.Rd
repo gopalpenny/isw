@@ -41,11 +41,12 @@ approximately equal-length model segments.
 }
 \details{
 \code{model_point} is the along-line midpoint used as the constant-head
-collocation location. Injection is distributed uniformly along the active
-line geometry. Stream validation requires it to be a finite point in the
+collocation location and, with \code{quadrature_order = 1}, the injection source.
+Larger orders distribute injection uniformly along the active line geometry.
+Stream validation requires it to be a finite point in the
 segment CRS and on the active line, and warns if it differs from the
 along-line midpoint. Input objects are not modified.
-\code{stream_width} regularizes responses on and very near a line element using
+\code{stream_width} regularizes responses near point or line sources using
 an effective minimum radius of half the width.
 \code{well_diam} is reserved for pumping-well objects and is not accepted on
 stream-reach or stream-segment inputs.
