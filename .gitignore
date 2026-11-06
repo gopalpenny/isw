@@ -9,5 +9,6 @@ isw.Rproj
 /Meta/
 private/
 analysis/*.html
+analysis/profiles/
 tests/manual/*.html
 tests/manual/*_files/

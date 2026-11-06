@@ -118,12 +118,14 @@ calc_straight_stream_depletion_fraction <- function(
     V,
     t) {
 
+  # Validate physical inputs and strip units after normalization to meters/days.
+  inputs <- .prepare_analytical_inputs(list(x1 = x1), K, D, V, t)
   .glover_stream_depletion_fraction(
-    x1 = x1,
-    K = K,
-    D = D,
-    V = V,
-    t = t
+    x1 = inputs$x1_m,
+    K = inputs$K_m_per_day,
+    D = inputs$D_m,
+    V = inputs$V,
+    t = inputs$t_day
   )
 }
 
@@ -361,13 +363,22 @@ calc_infinite_aquifer_drawdown_ratio <- function(
     well_diam <- units::set_units(0, "ft")
   }
   
-  .theis_aquifer_drawdown_ratio(
-    distance = distance,
-    K = K,
-    D = D,
-    V = V,
-    t = t,
-    well_diam = well_diam
+  # Validate physical inputs and strip units after normalization to meters/days.
+  inputs <- .prepare_analytical_inputs(
+    list(distance = distance), K, D, V, t, well_diam
+  )
+  response_day_per_m2 <- .theis_aquifer_drawdown_ratio(
+    distance = inputs$distance_m,
+    K = inputs$K_m_per_day,
+    D = inputs$D_m,
+    V = inputs$V,
+    t = inputs$t_day,
+    well_diam = inputs$well_diam_m
+  )
+  # Restore the caller-facing response units after numeric calculation.
+  units::set_units(
+    units::set_units(response_day_per_m2, "day/m^2"),
+    inputs$output_response_units, mode = "standard"
   )
 }
 
@@ -435,14 +446,23 @@ calc_straight_stream_drawdown_ratio <- function(
     well_diam <- units::set_units(0, "m")
   }
 
-  .glover_aquifer_drawdown_ratio(
-    x1 = x1,
-    x2 = x2,
-    y_diff = y_diff,
-    K = K,
-    D = D,
-    V = V,
-    t = t,
-    well_diam = well_diam
+  # Validate physical inputs and strip units after normalization to meters/days.
+  inputs <- .prepare_analytical_inputs(
+    list(x1 = x1, x2 = x2, y_diff = y_diff), K, D, V, t, well_diam
+  )
+  response_day_per_m2 <- .glover_aquifer_drawdown_ratio(
+    x1 = inputs$x1_m,
+    x2 = inputs$x2_m,
+    y_diff = inputs$y_diff_m,
+    K = inputs$K_m_per_day,
+    D = inputs$D_m,
+    V = inputs$V,
+    t = inputs$t_day,
+    well_diam = inputs$well_diam_m
+  )
+  # Restore the caller-facing response units after numeric calculation.
+  units::set_units(
+    units::set_units(response_day_per_m2, "day/m^2"),
+    inputs$output_response_units, mode = "standard"
   )
 }

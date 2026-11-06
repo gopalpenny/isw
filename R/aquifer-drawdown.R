@@ -758,6 +758,51 @@ generate_stream_injection_schedule <- function(
     adf_stream_depletion = NULL,
     quadrature_order = 16L) {
 
+  # Validate external tables/units before preparing numeric meters, days and rates.
+  method <- match.arg(method)
+  .validate_pumping_schedules(pumping_schedules, pumping_wells)
+  .validate_stream_segments(stream_segments)
+  .validate_quadrature_order(quadrature_order)
+  times <- .prepare_numeric_model_times(
+    pumping_schedules, evaluation_times, injection_times
+  )
+  if (method == "adf") {
+    if (is.null(stream_apportionment)) {
+      stop('stream_apportionment is required when method = "adf".')
+    }
+    .validate_stream_depletion_apportionment(stream_apportionment, pumping_wells)
+    .validate_stream_apportionment_segments(stream_apportionment, stream_segments)
+    apportionment <- .prepare_numeric_apportionment(stream_apportionment, pumping_wells)
+    depletion <- if (!is.null(adf_stream_depletion)) {
+      .prepare_numeric_depletion(
+        adf_stream_depletion, pumping_wells, pumping_schedules,
+        stream_apportionment, times$time_origin
+      )
+    } else NULL
+  } else {
+    if (!is.null(adf_stream_depletion)) {
+      stop('adf_stream_depletion can only be supplied when method = "adf".')
+    }
+    .get_aquifer_groups(pumping_wells, allow_n_aquifer_parameter_sets)
+    apportionment <- NULL
+    depletion <- NULL
+  }
+  .generate_stream_injection_schedule(
+    .prepare_numeric_wells(pumping_wells),
+    .prepare_numeric_schedule(pumping_schedules, pumping_wells, times),
+    .prepare_numeric_segments(stream_segments),
+    times$evaluation_time_day, times$injection_time_day, method,
+    apportionment, allow_n_aquifer_parameter_sets, depletion, quadrature_order
+  )
+}
+
+# Existing unit-bearing implementation; its checks remain until migration.
+.generate_stream_injection_schedule <- function(
+    pumping_wells, pumping_schedules, stream_segments, evaluation_times = NULL,
+    injection_times = NULL, method = c("adf", "constant_head"),
+    stream_apportionment = NULL, allow_n_aquifer_parameter_sets = 5,
+    adf_stream_depletion = NULL, quadrature_order = 16L) {
+
   method <- match.arg(method)
   .validate_pumping_schedules(pumping_schedules, pumping_wells)
   .validate_stream_segments(stream_segments)
@@ -1331,6 +1376,59 @@ model_aquifer_water_level_change <- function(
     injection_method = c("adf", "constant_head"),
     stream_apportionment = NULL,
     allow_n_aquifer_parameter_sets = 5,
+    quadrature_order = 16L) {
+
+  # Validate original inputs, including supplied intermediates, before stripping units.
+  injection_method <- match.arg(injection_method)
+  .validate_pumping_schedules(pumping_schedules, pumping_wells)
+  .validate_observation_wells(observation_wells)
+  .validate_stream_segments(stream_segments)
+  if (!is.null(stream_injection_schedule) && !is.null(injection_times)) {
+    stop("injection_times must be NULL when a stream-injection schedule is supplied.")
+  }
+  times <- .prepare_numeric_model_times(
+    pumping_schedules, evaluation_times, injection_times
+  )
+  if (!is.null(stream_injection_schedule)) {
+    quadrature_order <- .resolve_schedule_quadrature_order(
+      stream_injection_schedule, quadrature_order, !missing(quadrature_order)
+    )
+    injection_schedule <- .prepare_numeric_injection(
+      stream_injection_schedule, pumping_wells, pumping_schedules,
+      stream_segments, evaluation_times, times$time_origin
+    )
+    apportionment <- NULL
+  } else if (injection_method == "adf") {
+    if (is.null(stream_apportionment)) {
+      stop('stream_apportionment is required when method = "adf".')
+    }
+    .validate_stream_depletion_apportionment(stream_apportionment, pumping_wells)
+    .validate_stream_apportionment_segments(stream_apportionment, stream_segments)
+    apportionment <- .prepare_numeric_apportionment(stream_apportionment, pumping_wells)
+    injection_schedule <- NULL
+  } else {
+    .get_aquifer_groups(pumping_wells, allow_n_aquifer_parameter_sets)
+    apportionment <- NULL
+    injection_schedule <- NULL
+  }
+  .validate_quadrature_order(quadrature_order)
+  .model_aquifer_water_level_change(
+    .prepare_numeric_wells(pumping_wells),
+    .prepare_numeric_schedule(pumping_schedules, pumping_wells, times),
+    observation_wells,
+    .prepare_numeric_segments(stream_segments),
+    times$evaluation_time_day, times$injection_time_day,
+    injection_schedule, injection_method, apportionment,
+    allow_n_aquifer_parameter_sets, quadrature_order
+  )
+}
+
+# Existing unit-bearing implementation; its checks remain until migration.
+.model_aquifer_water_level_change <- function(
+    pumping_wells, pumping_schedules, observation_wells, stream_segments,
+    evaluation_times = NULL, injection_times = NULL,
+    stream_injection_schedule = NULL, injection_method = c("adf", "constant_head"),
+    stream_apportionment = NULL, allow_n_aquifer_parameter_sets = 5,
     quadrature_order = 16L) {
 
   injection_method <- match.arg(injection_method)

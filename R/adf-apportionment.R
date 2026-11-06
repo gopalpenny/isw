@@ -59,6 +59,30 @@ prep_adf_stream_apportionment <- function(
     method = c("web_squared", "web"),
     maximum_distance = NULL) {
 
+  # Validate unit-bearing inputs before preparing numeric meter/day columns.
+  method <- match.arg(method)
+  .validate_pumping_wells(pumping_wells)
+  .validate_stream_segments(stream_segments)
+  .validate_positive_length(sample_spacing, "sample_spacing")
+  if (!is.null(maximum_distance)) {
+    .validate_positive_length(maximum_distance, "maximum_distance")
+  }
+  sample_spacing_m <- .numeric_in_standard_units(sample_spacing, "m", "sample_spacing")
+  maximum_distance_m <- if (!is.null(maximum_distance)) {
+    .numeric_in_standard_units(maximum_distance, "m", "maximum_distance")
+  } else NULL
+  .prep_adf_stream_apportionment(
+    .prepare_numeric_wells(pumping_wells),
+    .prepare_numeric_segments(stream_segments),
+    sample_spacing_m, method, maximum_distance_m
+  )
+}
+
+# Existing unit-bearing implementation; its checks remain until migration.
+.prep_adf_stream_apportionment <- function(
+    pumping_wells, stream_segments, sample_spacing,
+    method = c("web_squared", "web"), maximum_distance = NULL) {
+
   method <- match.arg(method)
   .validate_pumping_wells(pumping_wells)
   .validate_stream_segments(stream_segments)
@@ -603,10 +627,14 @@ model_adf_stream_depletion <- function(
     stream_apportionment,
     evaluation_times = NULL) {
 
+  # Validate original inputs, then strip units using the shared meter/day boundary.
+  .validate_pumping_schedules(pumping_schedules, pumping_wells)
+  .validate_stream_depletion_apportionment(stream_apportionment, pumping_wells)
+  times <- .prepare_numeric_model_times(pumping_schedules, evaluation_times)
   .calculate_adf_stream_depletion(
-    pumping_wells,
-    pumping_schedules,
-    stream_apportionment,
-    evaluation_times
+    .prepare_numeric_wells(pumping_wells),
+    .prepare_numeric_schedule(pumping_schedules, pumping_wells, times),
+    .prepare_numeric_apportionment(stream_apportionment, pumping_wells),
+    times$evaluation_time_day
   )
 }

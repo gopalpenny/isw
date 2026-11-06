@@ -88,7 +88,11 @@ fetch_usgs_stream_reaches <- function(
     stop("keep_attributes must be TRUE or FALSE.")
   }
 
-  query_area <- .make_usgs_stream_query_area(aoi, buffer_distance)
+  # AOI and buffer dimensions are checked above; normalize/strip buffer to meters.
+  buffer_distance_m <- if (!is.null(buffer_distance)) {
+    .numeric_in_standard_units(buffer_distance, "m", "buffer_distance")
+  } else NULL
+  query_area <- .make_usgs_stream_query_area(aoi, buffer_distance_m)
 
   stream_reaches <- .fetch_3dhp_flowlines(query_area)
 

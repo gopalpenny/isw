@@ -357,6 +357,29 @@ prep_stream_segments <- function(
     analysis_crs = NULL,
     stream_width = NULL) {
 
+  # Validate geometry and physical dimensions before stripping length units.
+  selected_crs <- .select_stream_analysis_crs(stream_reaches, analysis_crs)
+  .validate_positive_length(reach_spacing, "reach_spacing")
+  reserved_columns <- intersect(
+    c("reach_segment_id", "represented_length", "model_point"),
+    names(stream_reaches)
+  )
+  if (length(reserved_columns)) {
+    stop("stream_reaches contains columns reserved for model discretization: ",
+         paste(reserved_columns, collapse = ", "), ".")
+  }
+  checked_reaches <- .set_stream_width(stream_reaches, stream_width)
+  reach_spacing_m <- .numeric_in_standard_units(reach_spacing, "m", "reach_spacing")
+  .prep_stream_segments(
+    .prepare_numeric_columns(checked_reaches, c(stream_width = "m")),
+    reach_spacing_m, selected_crs, NULL
+  )
+}
+
+# Existing unit-bearing implementation; its checks remain until migration.
+.prep_stream_segments <- function(
+    stream_reaches, reach_spacing, analysis_crs = NULL, stream_width = NULL) {
+
   selected_crs <- .select_stream_analysis_crs(
     stream_reaches,
     analysis_crs
@@ -945,6 +968,19 @@ prep_stream_segments <- function(
 #'
 #' @export
 prep_stream_sample_points <- function(stream_segments, sample_spacing) {
+
+  # Validate the sampling contract before converting lengths to numeric meters.
+  .validate_stream_sampling_inputs(stream_segments, sample_spacing)
+  sample_spacing_m <- .numeric_in_standard_units(sample_spacing, "m", "sample_spacing")
+  .prep_stream_sample_points(
+    .prepare_numeric_columns(stream_segments,
+                             c(represented_length = "m", stream_width = "m")),
+    sample_spacing_m
+  )
+}
+
+# Existing unit-bearing implementation; its checks remain until migration.
+.prep_stream_sample_points <- function(stream_segments, sample_spacing) {
 
   if (!inherits(stream_segments, "sf")) {
     stop("stream_segments must be an sf object.")
