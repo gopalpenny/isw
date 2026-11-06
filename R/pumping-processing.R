@@ -2,7 +2,7 @@
 .get_pumping_rate_changes <- function(pumping_schedules, pump_ids) {
   # Validated numeric schedule: t_day and pump columns suffixed _m3_per_day.
   # Convert each pump's scheduled rates into nonzero rate-change events.
-  parts <- lapply(pump_ids, function(pump_id) {
+  pumping_events_by_pump <- lapply(pump_ids, function(pump_id) {
     rate_m3_per_day <- pumping_schedules[[paste0(pump_id, "_m3_per_day")]]
     change_m3_per_day <- diff(c(0, rate_m3_per_day))
     changed <- which(change_m3_per_day != 0)
@@ -12,7 +12,7 @@
       pumping_rate_change_m3_per_day = change_m3_per_day[changed]
     )
   })
-  do.call(rbind, parts)
+  do.call(rbind, pumping_events_by_pump)
 }
 
 # Pair already-prepared events with strictly later requested evaluation times.

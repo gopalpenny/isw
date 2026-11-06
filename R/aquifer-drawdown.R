@@ -425,7 +425,7 @@
                             interval_start_day = numeric(), interval_end_day = numeric(), injection_rate_m3_per_day = numeric())
   keys <- unique(depletion_at_schedule_boundaries[c("pump_id", "reach_segment_id")])
   # Convert boundary depletion to interval rates separately for each pump-segment pair.
-  parts <- lapply(seq_len(nrow(keys)), function(index) {
+  injection_schedules_by_pump_segment <- lapply(seq_len(nrow(keys)), function(index) {
     rows <- which(depletion_at_schedule_boundaries$pump_id == keys$pump_id[[index]] &
                   depletion_at_schedule_boundaries$reach_segment_id == keys$reach_segment_id[[index]])
     # Order endpoint rates chronologically before averaging adjacent boundaries.
@@ -441,7 +441,7 @@
       injection_rate_m3_per_day = (utils::head(endpoint_rate_m3_per_day, -1L) + utils::tail(endpoint_rate_m3_per_day, -1L)) / 2
     )
   })
-  do.call(rbind, c(list(template), parts))
+  do.call(rbind, c(list(template), injection_schedules_by_pump_segment))
 }
 
 .get_injection_rate_changes <- function(injection_schedule) {
@@ -450,7 +450,7 @@
                             injection_time_day = numeric(), injection_rate_change_m3_per_day = numeric())
   keys <- unique(injection_schedule[c("pump_id", "reach_segment_id")])
   # Convert each pump-segment interval schedule into nonzero rate-change events.
-  parts <- lapply(seq_len(nrow(keys)), function(index) {
+  injection_events_by_pump_segment <- lapply(seq_len(nrow(keys)), function(index) {
     rows <- which(injection_schedule$pump_id == keys$pump_id[[index]] &
                   injection_schedule$reach_segment_id == keys$reach_segment_id[[index]])
     rows <- rows[order(injection_schedule$interval_start_day[rows])]
@@ -466,7 +466,7 @@
       injection_rate_change_m3_per_day = change_m3_per_day[changed]
     )
   })
-  do.call(rbind, c(list(template), parts))
+  do.call(rbind, c(list(template), injection_events_by_pump_segment))
 }
 
 .get_interval_average_injection_rate_changes <- function(stream_depletion, pumping_schedules) {

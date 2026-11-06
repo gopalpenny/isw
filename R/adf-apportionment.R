@@ -299,7 +299,7 @@ prep_adf_stream_apportionment <- function(
     pumping_wells, pumping_response_times, stream_apportionment) {
   # Validated numeric distances/thickness are m, conductivity m/day and event ages day.
   # Build reusable fractions for every pump, segment and distinct elapsed response time.
-  parts <- lapply(seq_len(nrow(pumping_wells)), function(pump_row) {
+  depletion_fraction_lookups_by_pump <- lapply(seq_len(nrow(pumping_wells)), function(pump_row) {
     pump_id <- pumping_wells$pump_id[[pump_row]]
     elapsed_time_day <- sort(unique(pumping_response_times$elapsed_time_day[
       pumping_response_times$pump_id == pump_id
@@ -321,7 +321,7 @@ prep_adf_stream_apportionment <- function(
       stream_depletion_fraction = stream_depletion_fractions
     )
   })
-  do.call(rbind, parts)
+  do.call(rbind, depletion_fraction_lookups_by_pump)
 }
 
 .calculate_adf_stream_depletion <- function(
@@ -336,7 +336,7 @@ prep_adf_stream_apportionment <- function(
   } else .get_pumping_response_times(pumping_events, evaluation_time_day)
   # Precalculate distinct temporal fractions before pump-specific superposition.
   depletion_fraction_lookup <- .get_stream_depletion_fraction_lookup(pumping_wells, pumping_response_times, stream_apportionment)
-  parts <- lapply(pumping_wells$pump_id, function(pump_id) {
+  stream_depletion_by_pump <- lapply(pumping_wells$pump_id, function(pump_id) {
     pump_apportionment <- stream_apportionment[stream_apportionment$pump_id == pump_id, ]
     pump_responses <- pumping_response_times[pumping_response_times$pump_id == pump_id, ]
     pump_lookup <- depletion_fraction_lookup[depletion_fraction_lookup$pump_id == pump_id, ]
@@ -362,7 +362,7 @@ prep_adf_stream_apportionment <- function(
       stream_depletion_rate_m3_per_day = as.numeric(stream_depletion_rates_m3_per_day)
     )
   })
-  do.call(rbind, parts)
+  do.call(rbind, stream_depletion_by_pump)
 }
 
 #' Model ADF stream depletion
