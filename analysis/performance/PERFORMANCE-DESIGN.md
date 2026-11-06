@@ -4,7 +4,7 @@ Design document for branch `performance`. The tables below inventory the 61
 named, top-level functions present before the refactor; proposed helpers are
 identified separately.
 
-## Implementation status: public boundaries and analytical kernels
+## Implementation status: public boundaries, analytical kernels and spatial preparation
 
 The first implementation stage adds validated numeric preparation to all ten
 public entry points. Physical inputs are converted before stripping, numeric
@@ -30,11 +30,24 @@ Boundary tests use captured internal calls to verify numeric preparation without
 depending on the not-yet-migrated calculations. The baseline full suite passed
 before implementation. The latest boundary-only run passed 76 expectations.
 The existing standalone analytical tests, new numeric-kernel regression tests,
-and boundary tests pass. The latest full suite reports 42 test blocks with errors
-from unmigrated paths, 340 passed expectations and zero failed expectations.
+and boundary tests pass. Stage 2 was committed as `431bfcd`.
+
+Stage 3 restores segmentation, sampling and ADF apportionment with shared UTM
+geometry, numeric physical columns internally and unit-bearing public outputs.
+Existing meter-based UTM stream CRSs are retained; other input CRSs are
+transformed, and explicit analysis overrides must be UTM in meters. All sfc
+columns are transformed, including secondary model points. Spatial objects keep
+their sf class/CRS. Distance matrices, width regularization, line quadrature,
+numeric response evaluation and response caches are prepared for reuse.
+Injection-event extraction was updated to consume those numeric matrices.
+Scheduled-model callers will adopt the new interfaces in subsequent stages.
+
+Spatial, line-response and boundary tests pass. The latest full suite reports
+17 test blocks with errors from unmigrated paths, 464 passed expectations and
+zero failed expectations.
 These counts are a transition snapshot, not a passing package result. Vignette
 explanations of completed model internals remain pending until end-to-end paths
-work. Shared UTM/sf preparation is the next implementation stage.
+work. Numeric time and pumping-event processing is the next implementation stage.
 
 ## Internal contract
 
@@ -129,7 +142,8 @@ antimeridian cases. Geographic coordinates used in selection/service queries
 are not meter coordinates.
 
 Choose the analysis CRS once for a prepared workflow. Segment preparation
-establishes it from the available stream extent, or an enclosing preparation
+retains an existing meter-based UTM CRS or selects one from the stream extent;
+an enclosing preparation
 step can choose it from the combined extent. Downstream public functions reuse
 the stream network's analysis CRS rather than independently selecting a new
 zone when wells/observations are added. Both the active segment geometry and
@@ -305,8 +319,8 @@ numerical implementations.
 | 0. Baseline and profiling | Preserve original behavior as a reference; establish reproducible ADF/constant-head profiles | Original full suite passed before changes; profiling setup exists. Add missing regression cases as each layer migrates. |
 | 1. Public boundaries | Validate external inputs, normalize/strip physical quantities with suffixes, retain output metadata; keep old internal checks | Implemented and boundary-tested. No adapter; branch intentionally has failing end-to-end paths. Audit these boundaries as later layers establish their exact contracts. |
 | 2. Analytical kernels | Migrate Glover, Theis, direct/image-well and local finite-line kernels to numeric meters/days; preserve regularization and underflow logic | Implemented and tested. Standalone public analytical functions work with equivalent input units and unchanged output-unit behavior. |
-| 3. Spatial preparation | Consolidate shared UTM selection, retain sf/CRS, migrate segmentation/sampling/apportionment, prepare reusable line operators and numeric meter distances | Next. Spatial public functions must work independently; mixed CRSs and zone crossings must work; secondary model-point geometry needs explicit handling. |
-| 4. Time and pumping events | Numeric day/rate tables, event changes, evaluation indices, shared Date origin, aquifer groups | Pending. Helpers no longer renormalize inputs or reconstruct the same events repeatedly. |
+| 3. Spatial preparation | Consolidate shared UTM selection, retain sf/CRS, migrate segmentation/sampling/apportionment, prepare reusable line operators and numeric meter distances | Implemented and tested. Spatial public functions work independently; mixed CRSs and zone crossings work; secondary model-point geometry is transformed explicitly. Numeric cache/extraction interfaces migrated alongside operators. |
+| 4. Time and pumping events | Numeric day/rate tables, event changes, evaluation indices, shared Date origin, aquifer groups | Next. Helpers must no longer renormalize inputs or reconstruct the same events repeatedly. |
 | 5. ADF workflow | Migrate fraction lookup, event superposition, interval averaging and private schedule coordinator | Pending. Public depletion/schedule outputs retain shapes, dates, units and missing-time completion behavior. |
 | 6. Constant-head workflow | Numeric response/cache keys, precomputed pump-to-stream distances, numeric history accumulation; retain QR/factorization reuse | Pending. Match baseline rates, signs and boundary residuals; retain numerical diagnostics. |
 | 7. Aquifer workflow | Numeric direct pumping and injection superposition; reuse prepared geometry, events and response matrices | Pending. Full public wrapper and supplied-schedule paths work; observations no longer trigger repeated spatial preparation in time loops. |

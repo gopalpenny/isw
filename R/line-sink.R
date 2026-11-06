@@ -85,10 +85,10 @@
 
 # Expand finite line elements into reusable quadrature source points.
 .prepare_line_elements <- function(stream_segments, quadrature_order = 16L) {
-  .validate_stream_segments(stream_segments)
+  # Validated shared-UTM sf geometry retains CRS; stream widths are numeric meters.
   rule <- .get_gauss_legendre_rule(quadrature_order)
   geometry <- sf::st_geometry(stream_segments)
-  quadrature_coordinates <- list()
+  quadrature_coordinates_m <- list()
   quadrature_weights <- numeric()
   segment_index <- integer()
   point_index <- 0L
@@ -97,61 +97,56 @@
   # Place `quadrature_order` points along each positive-length straight section
   # and scale their weights by the section's share of the total segment length.
   for (index in seq_len(nrow(stream_segments))) {
-    coordinates <- sf::st_coordinates(geometry[[index]])[, 1:2, drop = FALSE]
-    starts <- coordinates[-nrow(coordinates), , drop = FALSE]
-    ends <- coordinates[-1L, , drop = FALSE]
-    edge_vectors <- ends - starts
-    edge_lengths <- sqrt(rowSums(edge_vectors^2))
-    positive_edges <- which(edge_lengths > 0)
-    total_length <- sum(edge_lengths[positive_edges])
+    coordinates_m <- sf::st_coordinates(geometry[[index]])[, 1:2, drop = FALSE]
+    starts_m <- coordinates_m[-nrow(coordinates_m), , drop = FALSE]
+    ends_m <- coordinates_m[-1L, , drop = FALSE]
+    edge_vectors_m <- ends_m - starts_m
+    edge_lengths_m <- sqrt(rowSums(edge_vectors_m^2))
+    positive_edges <- which(edge_lengths_m > 0)
+    total_length_m <- sum(edge_lengths_m[positive_edges])
 
-    if (!is.finite(total_length) || total_length <= 0) {
+    if (!is.finite(total_length_m) || total_length_m <= 0) {
       stop("Every line element must contain at least one positive-length edge.")
     }
 
     # Place the quadrature rule along each edge and scale its weights by the
     # fraction of the segment's total length represented by that edge.
     for (edge_index in positive_edges) {
-      edge_midpoint <- (starts[edge_index, ] + ends[edge_index, ]) / 2
-      edge_points <- sweep(
-        outer(rule$node, edge_vectors[edge_index, ]),
+      edge_midpoint_m <- (starts_m[edge_index, ] + ends_m[edge_index, ]) / 2
+      edge_points_m <- sweep(
+        outer(rule$node, edge_vectors_m[edge_index, ]),
         2,
-        edge_midpoint,
+        edge_midpoint_m,
         "+"
       )
 
       # Store each coordinate as an sf point for later distance calculations.
-      for (node_index in seq_len(nrow(edge_points))) {
+      for (node_index in seq_len(nrow(edge_points_m))) {
         point_index <- point_index + 1L
-        quadrature_coordinates[[point_index]] <- edge_points[node_index, ]
+        quadrature_coordinates_m[[point_index]] <- edge_points_m[node_index, ]
       }
 
       quadrature_weights <- c(
         quadrature_weights,
-        rule$weight * edge_lengths[[edge_index]] / total_length
+        rule$weight * edge_lengths_m[[edge_index]] / total_length_m
       )
       segment_index <- c(
         segment_index,
-        rep(index, nrow(edge_points))
+        rep(index, nrow(edge_points_m))
       )
     }
   }
 
-  # Convert the stored coordinates to point geometries, then create an `sf`
+  # Convert the stored coordinates_m to point geometries, then create an `sf`
   # object linking each point to its parent segment, weight, and stream width.
   quadrature_geometry <- sf::st_sfc(
-    lapply(quadrature_coordinates, sf::st_point),
+    lapply(quadrature_coordinates_m, sf::st_point),
     crs = sf::st_crs(stream_segments)
   )
-  width_unit <- units::deparse_unit(stream_segments$stream_width)
   quadrature_points <- sf::st_sf(
     segment_index = segment_index,
     weight = quadrature_weights,
-    stream_width = units::set_units(
-      stream_segments$stream_width[segment_index],
-      width_unit,
-      mode = "standard"
-    ),
+    stream_width_m = stream_segments$stream_width_m[segment_index],
     geometry = quadrature_geometry
   )
 
@@ -169,175 +164,65 @@
 
 # Precompute target-to-quadrature distances for repeated hydraulic evaluation.
 .prepare_line_response_operator <- function(target_points, line_elements) {
-  if (!inherits(line_elements, "isw_prepared_line_elements")) {
-    stop("line_elements must be returned by .prepare_line_elements().")
-  }
-
-  if (inherits(target_points, "sfc")) {
-    target_points <- sf::st_sf(geometry = target_points)
-  }
-  .validate_point_sf(target_points, "target_points")
-
-  prepared_targets <- sf::st_transform(
-    sf::st_zm(target_points, drop = TRUE, what = "ZM"),
-    line_elements$crs
+  # Validated sf targets retain CRS; prepare reusable numeric distances in meters.
+  if (inherits(target_points, "sfc")) target_points <- sf::st_sf(geometry = target_points)
+  prepared_targets <- .transform_spatial_geometry(target_points, line_elements$crs)
+  # Normalize sf measurements before dropping units; preserve matrix dimensions.
+  distances_m <- as.matrix(units::drop_units(units::set_units(
+    sf::st_distance(prepared_targets, line_elements$quadrature_points), "m"
+  )))
+  stream_width_m <- line_elements$quadrature_points$stream_width_m
+  effective_distances_m <- matrix(
+    pmax(as.numeric(distances_m), rep(stream_width_m / 2, each = nrow(prepared_targets))),
+    nrow = nrow(prepared_targets)
   )
-
-  structure(
-    list(
-      distances = sf::st_distance(
-        prepared_targets,
-        line_elements$quadrature_points
-      ),
-      segment_index = line_elements$quadrature_points$segment_index,
-      weights = line_elements$quadrature_points$weight,
-      stream_width = line_elements$quadrature_points$stream_width,
-      segment_ids = line_elements$segment_ids,
-      number_of_targets = nrow(prepared_targets),
-      number_of_segments = line_elements$number_of_segments
-    ),
-    class = "isw_line_response_operator"
-  )
+  structure(list(
+    distances_m = distances_m,
+    effective_distances_m = effective_distances_m,
+    segment_index = line_elements$quadrature_points$segment_index,
+    weights = line_elements$quadrature_points$weight,
+    stream_width_m = stream_width_m,
+    segment_columns = lapply(seq_len(line_elements$number_of_segments), function(index) {
+      which(line_elements$quadrature_points$segment_index == index)
+    }),
+    segment_ids = line_elements$segment_ids,
+    number_of_targets = nrow(prepared_targets),
+    number_of_segments = line_elements$number_of_segments
+  ), class = "isw_line_response_operator")
 }
 
-# Evaluate a prepared target-by-line response matrix. Hydraulic inputs may use
-# any compatible units; the returned matrix retains units normalized to
-# days/m^2.
-.evaluate_line_response_operator <- function(operator, K, D, V, elapsed_time) {
-  if (!inherits(operator, "isw_line_response_operator")) {
-    stop("operator must be returned by .prepare_line_response_operator().")
-  }
-  if (length(K) != 1 || length(D) != 1 || length(V) != 1 ||
-      length(elapsed_time) != 1) {
-    stop("K, D, V, and elapsed_time must be scalar for an operator evaluation.")
-  }
-  check_dimensionality(K, "m/s", "K")
-  check_dimensionality(D, "m", "D")
-  check_dimensionality(elapsed_time, "s", "elapsed_time")
-  if (!is.finite(as.numeric(K)) || as.numeric(K) <= 0 ||
-      !is.finite(as.numeric(D)) || as.numeric(D) <= 0 ||
-      !is.finite(V) || V <= 0 ||
-      !is.finite(as.numeric(elapsed_time)) || as.numeric(elapsed_time) <= 0) {
-    stop("K, D, V, and elapsed_time must be finite and positive.")
-  }
-
-  number_of_targets <- operator$number_of_targets
-  distance_unit <- units::deparse_unit(operator$distances)
-  distances <- as.numeric(operator$distances)
-  radii <- rep(
-    as.numeric(units::set_units(
-      operator$stream_width / 2,
-      distance_unit,
-      mode = "standard"
-    )),
-    each = number_of_targets
-  )
-  effective_distances <- units::set_units(
-    pmax(distances, radii),
-    distance_unit,
-    mode = "standard"
-  )
-  point_response <- .theis_response_at_distance(
-    effective_distances,
-    K,
-    D,
-    V,
-    elapsed_time
-  )
-  point_response <- matrix(
-    as.numeric(units::set_units(
-      point_response,
-      "days/m^2",
-      mode = "standard"
-    )),
-    nrow = number_of_targets
-  )
-  point_response <- sweep(point_response, 2, operator$weights, "*")
-  response <- matrix(
-    0,
-    nrow = number_of_targets,
-    ncol = operator$number_of_segments
-  )
-
-  # Combine the weighted quadrature-point responses into one response column
-  # for each source segment.
+.evaluate_line_response_operator <- function(operator, K_m_per_day, D_m, V, elapsed_time_day) {
+  # Prepared numeric distances are m, conductivity m/day, time day; returns day/m^2.
+  point_response_day_per_m2 <- matrix(.theis_response_at_distance(
+    as.numeric(operator$effective_distances_m), K_m_per_day, D_m, V, elapsed_time_day
+  ), nrow = operator$number_of_targets)
+  point_response_day_per_m2 <- sweep(point_response_day_per_m2, 2, operator$weights, "*")
+  response_day_per_m2 <- matrix(0, operator$number_of_targets, operator$number_of_segments)
   for (segment in seq_len(operator$number_of_segments)) {
-    response[, segment] <- rowSums(
-      point_response[, operator$segment_index == segment, drop = FALSE]
+    response_day_per_m2[, segment] <- rowSums(
+      point_response_day_per_m2[, operator$segment_columns[[segment]], drop = FALSE]
     )
   }
-
-  dimnames(response) <- list(NULL, operator$segment_ids)
-  units::set_units(response, "days/m^2", mode = "standard")
+  dimnames(response_day_per_m2) <- list(NULL, operator$segment_ids)
+  response_day_per_m2
 }
 
-# Retrieve or calculate a units-bearing line-response matrix for one aquifer
-# parameter set and elapsed time. response_operator is prepared once by
-# .prepare_line_response_operator(). Its distances matrix has one row per
-# target point and one column per stream quadrature point. The parallel
-# weights and stream_width vectors describe those quadrature points, while
-# segment_index maps them into the segment columns named by segment_ids;
-# number_of_targets and number_of_segments define the output dimensions.
-# K (hydraulic conductivity), D (aquifer thickness), and V (drainable porosity)
-# determine the hydraulic response. Cache entries are indexed by K, D, V, and
-# elapsed_time. The cache is also bound to its first operator so entries cannot
-# be reused with another set of targets, stream elements, or quadrature rules.
+# Cache numeric day/m^2 matrices by prepared hydraulic parameters and elapsed days.
 .get_cached_line_response_matrix <- function(
-    response_operator,
-    response_cache,
-    K,
-    D,
-    V,
-    elapsed_time) {
-
-  if (!is.environment(response_cache)) {
-    stop("response_cache must be an environment.")
-  }
-  if (!inherits(response_operator, "isw_line_response_operator")) {
-    stop(
-      "response_operator must be returned by ",
-      ".prepare_line_response_operator()."
-    )
-  }
-
-  cached_operator <- attr(
-    response_cache,
-    "isw_line_response_operator",
-    exact = TRUE
-  )
+    response_operator, response_cache, K_m_per_day, D_m, V, elapsed_time_day) {
+  # Prepared numeric inputs use m, m/day and day; retain cache-ownership diagnostics.
+  cached_operator <- attr(response_cache, "isw_line_response_operator", exact = TRUE)
   if (is.null(cached_operator)) {
     attr(response_cache, "isw_line_response_operator") <- response_operator
   } else if (!identical(response_operator, cached_operator)) {
     stop("response_cache cannot be reused with a different response_operator.")
   }
-
-  parameter_key <- paste(
-    format(as.numeric(units::set_units(
-      K, "m/day", mode = "standard"
-    )), digits = 17),
-    format(as.numeric(units::set_units(
-      D, "m", mode = "standard"
-    )), digits = 17),
-    format(V, digits = 17),
-    format(as.numeric(units::set_units(
-      elapsed_time, "days", mode = "standard"
-    )), digits = 17),
-    sep = "\r"
-  )
-
+  parameter_key <- paste(format(K_m_per_day, digits = 17), format(D_m, digits = 17),
+                         format(V, digits = 17), format(elapsed_time_day, digits = 17), sep = "\r")
   if (!exists(parameter_key, envir = response_cache, inherits = FALSE)) {
-    assign(
-      parameter_key,
-      .evaluate_line_response_operator(
-        response_operator,
-        K = K,
-        D = D,
-        V = V,
-        elapsed_time = elapsed_time
-      ),
-      envir = response_cache
-    )
+    assign(parameter_key, .evaluate_line_response_operator(
+      response_operator, K_m_per_day, D_m, V, elapsed_time_day
+    ), envir = response_cache)
   }
-
   get(parameter_key, envir = response_cache, inherits = FALSE)
 }

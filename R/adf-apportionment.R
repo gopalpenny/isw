@@ -71,126 +71,65 @@ prep_adf_stream_apportionment <- function(
   maximum_distance_m <- if (!is.null(maximum_distance)) {
     .numeric_in_standard_units(maximum_distance, "m", "maximum_distance")
   } else NULL
-  .prep_adf_stream_apportionment(
-    .prepare_numeric_wells(pumping_wells),
-    .prepare_numeric_segments(stream_segments),
+  segments <- .prepare_numeric_segments(stream_segments)
+  result <- .prep_adf_stream_apportionment(
+    .prepare_numeric_wells(pumping_wells, sf::st_crs(segments)),
+    segments,
     sample_spacing_m, method, maximum_distance_m
   )
+  # Restore public distance units after numeric apportionment.
+  .restore_spatial_columns(result, c(pump_to_reach_distance = "m"))
 }
 
-# Existing unit-bearing implementation; its checks remain until migration.
 .prep_adf_stream_apportionment <- function(
-    pumping_wells, stream_segments, sample_spacing,
-    method = c("web_squared", "web"), maximum_distance = NULL) {
-
-  method <- match.arg(method)
-  .validate_pumping_wells(pumping_wells)
-  .validate_stream_segments(stream_segments)
-
-  if (!is.null(maximum_distance)) {
-    check_dimensionality(maximum_distance, "m", "maximum_distance")
-
-    if (length(maximum_distance) != 1 ||
-        !is.finite(as.numeric(maximum_distance)) ||
-        as.numeric(maximum_distance) <= 0) {
-      stop("maximum_distance must be NULL or a finite, positive scalar length.")
-    }
-  }
-
-  prepared_pumping_wells <- sf::st_transform(
-    sf::st_zm(pumping_wells, drop = TRUE, what = "ZM"),
-    sf::st_crs(stream_segments)
-  )
-  sample_points <- prep_stream_sample_points(
-    stream_segments,
-    sample_spacing
-  )
+    pumping_wells, stream_segments, sample_spacing_m,
+    method = "web_squared", maximum_distance_m = NULL) {
+  # Validated sf inputs retain CRS; lengths/distances and sample spacing are numeric meters.
+  pumping_wells <- .transform_spatial_geometry(pumping_wells, sf::st_crs(stream_segments))
+  sample_points <- .prep_stream_sample_points(stream_segments, sample_spacing_m)
+  # Measure all pumps once; strip sf distance units only after meter normalization.
+  pump_to_sample_distance_m <- as.matrix(units::drop_units(units::set_units(
+    sf::st_distance(pumping_wells, sample_points), "m"
+  )))
+  pump_to_segment_distance_m <- as.matrix(units::drop_units(units::set_units(
+    sf::st_distance(pumping_wells, stream_segments), "m"
+  )))
   distance_exponent <- if (method == "web_squared") 2 else 1
-  number_of_pumps <- nrow(prepared_pumping_wells)
+  number_of_pumps <- nrow(pumping_wells)
   number_of_segments <- nrow(stream_segments)
-  segment_fractions <- matrix(
-    0,
-    nrow = number_of_pumps,
-    ncol = number_of_segments
-  )
-  exact_distances <- vector("list", number_of_pumps)
-
-  # For each pump, weight the sampled stream lengths by distance and then
-  # aggregate those weights to the modeled stream segments.
+  segment_fractions <- matrix(0, nrow = number_of_pumps, ncol = number_of_segments)
   for (pump_index in seq_len(number_of_pumps)) {
-    point_distances <- sf::st_distance(
-      prepared_pumping_wells[pump_index, ],
-      sample_points
-    )[1, ]
-    exact_distances[[pump_index]] <- sf::st_distance(
-      prepared_pumping_wells[pump_index, ],
-      stream_segments
-    )[1, ]
-    distance_units <- units::deparse_unit(point_distances)
-    point_distance_values <- as.numeric(point_distances)
-    # Each sample point represents the surrounding portion of its stream segment.
-    sampled_length_values <- as.numeric(units::set_units(
-      sample_points$sampled_length,
-      distance_units,
-      mode = "standard"
-    ))
-    # All sample points are eligible unless maximum_distance excludes points
-    # that are too far from this pump.
-    eligible <- rep(TRUE, length(point_distances))
-
-    if (!is.null(maximum_distance)) {
-      eligible <- point_distance_values <= as.numeric(units::set_units(
-        maximum_distance,
-        distance_units,
-        mode = "standard"
-      ))
+    point_distance_m <- pump_to_sample_distance_m[pump_index, ]
+    eligible <- if (is.null(maximum_distance_m)) rep(TRUE, length(point_distance_m)) else {
+      point_distance_m <= maximum_distance_m
     }
-
     if (!any(eligible)) {
-      stop(
-        "No stream sample points are within maximum_distance for pump_id ",
-        prepared_pumping_wells$pump_id[[pump_index]],
-        "."
-      )
+      stop("No stream sample points are within maximum_distance for pump_id ",
+           pumping_wells$pump_id[[pump_index]], ".")
     }
-
-    # Weight eligible points by represented stream length divided by distance^p.
-    # If any are colocated with the pump, only those points receive weight.
-    raw_weights <- numeric(length(point_distances))
-    zero_distance <- eligible & point_distance_values == 0
-
+    raw_weights <- numeric(length(point_distance_m))
+    zero_distance <- eligible & point_distance_m == 0
     if (any(zero_distance)) {
-      raw_weights[zero_distance] <- sampled_length_values[zero_distance]
+      raw_weights[zero_distance] <- sample_points$sampled_length_m[zero_distance]
     } else {
-      raw_weights[eligible] <- sampled_length_values[eligible] /
-        point_distance_values[eligible]^distance_exponent
+      raw_weights[eligible] <- sample_points$sampled_length_m[eligible] /
+        point_distance_m[eligible]^distance_exponent
     }
-
     point_fractions <- raw_weights / sum(raw_weights)
-
-    # Sum the normalized sample-point weights belonging to each segment.
     for (segment_index in seq_len(number_of_segments)) {
-      segment_fractions[pump_index, segment_index] <- sum(
-        point_fractions[
-          sample_points$reach_segment_id ==
-            stream_segments$reach_segment_id[[segment_index]]
-        ]
-      )
+      segment_fractions[pump_index, segment_index] <- sum(point_fractions[
+        sample_points$reach_segment_id == stream_segments$reach_segment_id[[segment_index]]
+      ])
     }
   }
-
   segment_rows <- rep(seq_len(number_of_segments), times = number_of_pumps)
-  stream_apportionment <- tibble::tibble(
-    pump_id = rep(
-      prepared_pumping_wells$pump_id,
-      each = number_of_segments
-    ),
+  tibble::tibble(
+    pump_id = rep(pumping_wells$pump_id, each = number_of_segments),
     reach_id = stream_segments$reach_id[segment_rows],
     reach_segment_id = stream_segments$reach_segment_id[segment_rows],
-    pump_to_reach_distance = do.call(c, exact_distances),
+    pump_to_reach_distance_m = as.numeric(t(pump_to_segment_distance_m)),
     apportionment_fraction = as.vector(t(segment_fractions))
   )
-  stream_apportionment
 }
 
 # Validate a stream-depletion apportionment object.

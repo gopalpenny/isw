@@ -787,10 +787,11 @@ generate_stream_injection_schedule <- function(
     apportionment <- NULL
     depletion <- NULL
   }
+  segments <- .prepare_numeric_segments(stream_segments)
   .generate_stream_injection_schedule(
-    .prepare_numeric_wells(pumping_wells),
+    .prepare_numeric_wells(pumping_wells, sf::st_crs(segments)),
     .prepare_numeric_schedule(pumping_schedules, pumping_wells, times),
-    .prepare_numeric_segments(stream_segments),
+    segments,
     times$evaluation_time_day, times$injection_time_day, method,
     apportionment, allow_n_aquifer_parameter_sets, depletion, quadrature_order
   )
@@ -963,87 +964,22 @@ generate_stream_injection_schedule <- function(
   injection_schedule
 }
 
-# Return one response ratio for each contributing segment injection-rate-change
-# event at the current observation well and evaluation time.
-#
-# response_operator describes the fixed spatial problem. Evaluating it produces
-# an n_observation_wells by n_stream_segments response matrix for a specified
-# aquifer parameter set and elapsed time. Internally, the operator stores an
-# n_observation_wells by n_quadrature_points distance matrix, together with one
-# weight, stream width, and segment index for each quadrature point.
-#
-# elapsed_times and segment_columns are parallel vectors of length n_events.
-# Each position represents one contributing injection event: elapsed_times
-# gives that event's age at the current evaluation time, and segment_columns
-# gives the response-matrix column of the segment where the event occurred.
-# observation_well_index selects the single response-matrix row being modeled.
-#
-# The returned response_ratios vector also has length n_events and remains in
-# the original event order. Each value is the response for one event's elapsed
-# time, its stream segment, and the current observation well. It can therefore
-# be multiplied element-by-element by the corresponding injection-rate changes.
+# Extract event responses from reusable numeric spatial response matrices.
 .get_response_ratios_for_injection_events <- function(
-    response_operator,
-    response_cache,
-    K,
-    D,
-    V,
-    observation_well_index,
-    elapsed_times,
-    segment_columns) {
-
-  # One elapsed time and one segment-column index are required for each event.
-  if (length(elapsed_times) == 0L ||
-      length(elapsed_times) != length(segment_columns)) {
-    stop("elapsed_times and segment_columns must have equal, positive length.")
-  }
-
-  # Allocate the length-n_events output after obtaining its units from the
-  # first set of calculated responses.
-  response_ratios <- NULL
-
-  # There may be fewer distinct elapsed times than events because simultaneous
-  # rate changes on different stream segments have the same age.
-  distinct_elapsed_times <- unique(elapsed_times)
-  for (elapsed_time_index in seq_along(distinct_elapsed_times)) {
-    elapsed_time <- distinct_elapsed_times[[elapsed_time_index]]
-
-    # These positions in the length-n_events inputs identify all events having
-    # the current elapsed time.
-    injection_event_indices <- which(elapsed_times == elapsed_time)
-
-    # This matrix has n_observation_wells rows and n_stream_segments columns
-    # for the current elapsed time.
-    response_matrix <- .get_cached_line_response_matrix(
-      response_operator = response_operator,
-      response_cache = response_cache,
-      K = K,
-      D = D,
-      V = V,
-      elapsed_time = elapsed_time
+    response_operator, response_cache, K_m_per_day, D_m, V,
+    observation_well_index, elapsed_times_day, segment_columns) {
+  # Validated event indices and numeric m/day, m, day inputs; returns numeric day/m^2.
+  response_ratios_day_per_m2 <- numeric(length(elapsed_times_day))
+  for (elapsed_time_day in unique(elapsed_times_day)) {
+    event_indices <- which(elapsed_times_day == elapsed_time_day)
+    response_matrix_day_per_m2 <- .get_cached_line_response_matrix(
+      response_operator, response_cache, K_m_per_day, D_m, V, elapsed_time_day
     )
-
-    # The two-column index matrix contains one [observation row, segment column]
-    # pair per event having this elapsed time. event_responses therefore has
-    # length equal to length(injection_event_indices).
-    event_responses <- response_matrix[cbind(
-      rep(observation_well_index, length(injection_event_indices)),
-      segment_columns[injection_event_indices]
+    response_ratios_day_per_m2[event_indices] <- response_matrix_day_per_m2[cbind(
+      rep(observation_well_index, length(event_indices)), segment_columns[event_indices]
     )]
-    if (is.null(response_ratios)) {
-      response_ratios <- rep(
-        event_responses[0],
-        length.out = length(elapsed_times)
-      )
-    }
-
-    # Place these responses back into their original event positions.
-    response_ratios[injection_event_indices] <- event_responses
   }
-
-  # Return a length-n_events units vector aligned with the contributing
-  # injection-event rows and their injection-rate changes.
-  unname(response_ratios)
+  unname(response_ratios_day_per_m2)
 }
 
 # Superimpose pumping and finite-line injection responses at observations.
@@ -1412,11 +1348,12 @@ model_aquifer_water_level_change <- function(
     injection_schedule <- NULL
   }
   .validate_quadrature_order(quadrature_order)
+  segments <- .prepare_numeric_segments(stream_segments)
   .model_aquifer_water_level_change(
-    .prepare_numeric_wells(pumping_wells),
+    .prepare_numeric_wells(pumping_wells, sf::st_crs(segments)),
     .prepare_numeric_schedule(pumping_schedules, pumping_wells, times),
-    observation_wells,
-    .prepare_numeric_segments(stream_segments),
+    .transform_spatial_geometry(observation_wells, sf::st_crs(segments)),
+    segments,
     times$evaluation_time_day, times$injection_time_day,
     injection_schedule, injection_method, apportionment,
     allow_n_aquifer_parameter_sets, quadrature_order

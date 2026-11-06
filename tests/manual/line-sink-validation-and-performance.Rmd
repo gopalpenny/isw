@@ -510,7 +510,7 @@ benchmark_segment_count <- function(number_of_segments) {
 
   prepare_seconds <- elapsed({
     line_elements <- isw:::.prepare_line_elements(
-      stream_segments,
+      isw:::.prepare_numeric_segments(stream_segments),
       quadrature_order = quadrature_order
     )
   })
@@ -523,18 +523,14 @@ benchmark_segment_count <- function(number_of_segments) {
   response_seconds <- elapsed({
     response_matrix <- isw:::.evaluate_line_response_operator(
       response_operator,
-      K = K,
-      D = D,
+      K_m_per_day = as.numeric(set_units(K, "m/day")),
+      D_m = as.numeric(set_units(D, "m")),
       V = V,
-      elapsed_time = elapsed_time
+      elapsed_time_day = as.numeric(set_units(elapsed_time, "day"))
     )
   })
   factor_and_solve_seconds <- elapsed({
-    numeric_response_matrix <- units::drop_units(units::set_units(
-      response_matrix,
-      "days/m^2",
-      mode = "standard"
-    ))
+    numeric_response_matrix <- response_matrix
     response_qr <- qr(numeric_response_matrix)
     condition_number <- kappa(response_qr, exact = FALSE)
     solved_rates <- qr.coef(

@@ -20,10 +20,10 @@ reach-level \code{stream_width} column must have length units.}
 \item{reach_spacing}{A scalar \code{units} length giving the maximum length of a
 model segment.}
 
-\item{analysis_crs}{Either \code{NULL} or a projected coordinate reference
-system accepted by \code{\link[sf:st_crs]{sf::st_crs()}}. When \code{NULL}, an existing projected
-stream CRS is retained; geographic streams are transformed to a local UTM
-CRS selected from their extent.}
+\item{analysis_crs}{Either \code{NULL} or a UTM coordinate reference system in
+meters accepted by \code{\link[sf:st_crs]{sf::st_crs()}}. When \code{NULL}, an existing UTM stream CRS
+is retained; other input CRSs are transformed to a local UTM CRS selected
+from their extent. Crossing a zone boundary does not trigger a warning.}
 
 \item{stream_width}{Either \code{NULL} or a positive scalar \code{units} length. A
 supplied value is applied to every reach. When \code{NULL}, an existing

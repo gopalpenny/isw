@@ -1,3 +1,7 @@
+make_numeric_line_elements <- function(stream_segments, quadrature_order = 16L) {
+  isw:::.prepare_line_elements(isw:::.prepare_numeric_segments(stream_segments), quadrature_order)
+}
+
 make_line_sink_segments <- function(coordinates, stream_width = 10) {
   geometry <- sf::st_sfc(
     sf::st_linestring(matrix(coordinates, ncol = 2, byrow = TRUE)),
@@ -90,19 +94,19 @@ test_that("prepared operator is rotation invariant", {
     data.frame(x = -30, y = 20), coords = c("x", "y"), crs = 32615
   )
   hydraulics <- list(
-    K = units::set_units(10, "m/day"),
-    D = units::set_units(20, "m"),
+    K_m_per_day = 10,
+    D_m = 20,
     V = 0.15,
-    elapsed_time = units::set_units(10, "days")
+    elapsed_time_day = 10
   )
 
   horizontal_operator <- isw:::.prepare_line_response_operator(
     horizontal_target,
-    isw:::.prepare_line_elements(horizontal)
+    make_numeric_line_elements(horizontal)
   )
   vertical_operator <- isw:::.prepare_line_response_operator(
     vertical_target,
-    isw:::.prepare_line_elements(vertical)
+    make_numeric_line_elements(vertical)
   )
 
   expect_equal(
@@ -127,10 +131,10 @@ test_that("line responses are invariant to reversed vertex order", {
     crs = 32615
   )
   hydraulics <- list(
-    K = units::set_units(10, "m/day"),
-    D = units::set_units(20, "m"),
+    K_m_per_day = 10,
+    D_m = 20,
     V = 0.15,
-    elapsed_time = units::set_units(10, "days")
+    elapsed_time_day = 10
   )
   coordinate_pairs <- list(
     list(
@@ -149,11 +153,11 @@ test_that("line responses are invariant to reversed vertex order", {
 
     forward_operator <- isw:::.prepare_line_response_operator(
       targets,
-      isw:::.prepare_line_elements(forward_segments)
+      make_numeric_line_elements(forward_segments)
     )
     reversed_operator <- isw:::.prepare_line_response_operator(
       targets,
-      isw:::.prepare_line_elements(reversed_segments)
+      make_numeric_line_elements(reversed_segments)
     )
     forward_response <- do.call(
       isw:::.evaluate_line_response_operator,
@@ -179,105 +183,22 @@ test_that("prepared straight-line operator matches the local-coordinate kernel",
   )
   operator <- isw:::.prepare_line_response_operator(
     target,
-    isw:::.prepare_line_elements(segments, quadrature_order = 16)
+    make_numeric_line_elements(segments, quadrature_order = 16)
   )
   operator_response <- isw:::.evaluate_line_response_operator(
     operator,
-    units::set_units(10, "m/day"),
-    units::set_units(20, "m"),
+    10,
+    20,
     0.15,
-    units::set_units(10, "days")
+    10
   )
   local_response_day_per_m2 <- isw:::.line_sink_aquifer_drawdown_ratio(
     20, 30, 100, 10, 20, 0.15, 10, 10, quadrature_order = 16
   )
 
-  expect_s3_class(operator_response, "units")
-  expect_equal(units::deparse_unit(operator_response), "d m-2")
+  expect_type(operator_response, "double")
+  expect_false(inherits(operator_response, "units"))
   expect_equal(as.numeric(operator_response[[1]]), local_response_day_per_m2)
-})
-
-test_that("prepared finite-line operators are invariant to equivalent input units", {
-  convert_units <- function(x, new_units) {
-    units::set_units(x, new_units, mode = "standard")
-  }
-  metric_inputs <- list(
-    along_distance = units::set_units(20, "m"),
-    perpendicular_distance = units::set_units(3, "m"),
-    line_length = units::set_units(100, "m"),
-    K = units::set_units(10, "m/day"),
-    D = units::set_units(20, "m"),
-    V = 0.15,
-    t = units::set_units(10, "days"),
-    stream_width = units::set_units(5, "m"),
-    quadrature_order = 16L
-  )
-  mixed_unit_inputs <- metric_inputs
-  mixed_unit_inputs$along_distance <- convert_units(
-    metric_inputs$along_distance,
-    "ft"
-  )
-  mixed_unit_inputs$perpendicular_distance <- convert_units(
-    metric_inputs$perpendicular_distance,
-    "ft"
-  )
-  mixed_unit_inputs$line_length <- convert_units(
-    metric_inputs$line_length,
-    "ft"
-  )
-  mixed_unit_inputs$K <- convert_units(metric_inputs$K, "ft/hour")
-  mixed_unit_inputs$D <- convert_units(metric_inputs$D, "ft")
-  mixed_unit_inputs$t <- convert_units(metric_inputs$t, "hour")
-  mixed_unit_inputs$stream_width <- convert_units(
-    metric_inputs$stream_width,
-    "ft"
-  )
-
-  metric_segments <- make_line_sink_segments(
-    c(-50, 0, 50, 0),
-    stream_width = 5
-  )
-  mixed_unit_segments <- metric_segments
-  mixed_unit_segments$stream_width <- convert_units(
-    metric_segments$stream_width,
-    "ft"
-  )
-  targets <- sf::st_as_sf(
-    tibble::tibble(
-      target_id = c("target_1", "target_2"),
-      x = c(20, -35),
-      y = c(3, 70)
-    ),
-    coords = c("x", "y"),
-    crs = 32615
-  )
-  metric_operator <- isw:::.prepare_line_response_operator(
-    targets,
-    isw:::.prepare_line_elements(metric_segments)
-  )
-  mixed_unit_operator <- isw:::.prepare_line_response_operator(
-    targets,
-    isw:::.prepare_line_elements(mixed_unit_segments)
-  )
-  metric_operator_response <- isw:::.evaluate_line_response_operator(
-    metric_operator,
-    K = metric_inputs$K,
-    D = metric_inputs$D,
-    V = metric_inputs$V,
-    elapsed_time = metric_inputs$t
-  )
-  mixed_unit_operator_response <- isw:::.evaluate_line_response_operator(
-    mixed_unit_operator,
-    K = mixed_unit_inputs$K,
-    D = mixed_unit_inputs$D,
-    V = mixed_unit_inputs$V,
-    elapsed_time = mixed_unit_inputs$t
-  )
-  expect_equal(
-    metric_operator_response,
-    mixed_unit_operator_response,
-    tolerance = 1e-12
-  )
 })
 
 test_that("response matrix rows are targets and columns are source segments", {
@@ -312,15 +233,15 @@ test_that("response matrix rows are targets and columns are source segments", {
     crs = 32615
   )
   hydraulics <- list(
-    K = units::set_units(10, "m/day"),
-    D = units::set_units(20, "m"),
+    K_m_per_day = 10,
+    D_m = 20,
     V = 0.15,
-    elapsed_time = units::set_units(10, "days")
+    elapsed_time_day = 10
   )
 
   combined_operator <- isw:::.prepare_line_response_operator(
     targets,
-    isw:::.prepare_line_elements(stream_segments)
+    make_numeric_line_elements(stream_segments)
   )
   combined_response <- do.call(
     isw:::.evaluate_line_response_operator,
@@ -340,7 +261,7 @@ test_that("response matrix rows are targets and columns are source segments", {
     for (source_index in seq_len(nrow(stream_segments))) {
       single_operator <- isw:::.prepare_line_response_operator(
         targets[target_index, , drop = FALSE],
-        isw:::.prepare_line_elements(
+        make_numeric_line_elements(
           stream_segments[source_index, , drop = FALSE]
         )
       )
@@ -364,22 +285,22 @@ test_that("prepared geometry and distances are reusable across evaluations", {
     data.frame(x = c(0, 25), y = c(0, 50)),
     coords = c("x", "y"), crs = 32615
   )
-  elements <- isw:::.prepare_line_elements(segments, quadrature_order = 8)
+  elements <- make_numeric_line_elements(segments, quadrature_order = 8)
   operator <- isw:::.prepare_line_response_operator(targets, elements)
 
   early <- isw:::.evaluate_line_response_operator(
     operator,
-    units::set_units(10, "m/day"),
-    units::set_units(20, "m"),
+    10,
+    20,
     0.15,
-    units::set_units(1, "day")
+    1
   )
   late <- isw:::.evaluate_line_response_operator(
     operator,
-    units::set_units(10, "m/day"),
-    units::set_units(20, "m"),
+    10,
+    20,
     0.15,
-    units::set_units(100, "days")
+    100
   )
 
   expect_equal(dim(early), c(2, 1))
@@ -402,30 +323,30 @@ test_that("cached line responses support injection-event extraction", {
   )
   operator <- isw:::.prepare_line_response_operator(
     target,
-    isw:::.prepare_line_elements(segments, quadrature_order = 8)
+    make_numeric_line_elements(segments, quadrature_order = 8)
   )
   response_cache <- new.env(parent = emptyenv())
   hydraulics <- list(
-    K = units::set_units(10, "m/day"),
-    D = units::set_units(20, "m"),
+    K_m_per_day = 10,
+    D_m = 20,
     V = 0.15
   )
 
   first_response <- isw:::.get_cached_line_response_matrix(
     response_operator = operator,
     response_cache = response_cache,
-    K = hydraulics$K,
-    D = hydraulics$D,
+    K_m_per_day = hydraulics$K_m_per_day,
+    D_m = hydraulics$D_m,
     V = hydraulics$V,
-    elapsed_time = units::set_units(1, "day")
+    elapsed_time_day = 1
   )
   repeated_response <- isw:::.get_cached_line_response_matrix(
     response_operator = operator,
     response_cache = response_cache,
-    K = hydraulics$K,
-    D = hydraulics$D,
+    K_m_per_day = hydraulics$K_m_per_day,
+    D_m = hydraulics$D_m,
     V = hydraulics$V,
-    elapsed_time = units::set_units(1, "day")
+    elapsed_time_day = 1
   )
 
   expect_equal(repeated_response, first_response)
@@ -435,16 +356,16 @@ test_that("cached line responses support injection-event extraction", {
     sf::st_as_sf(
       data.frame(x = 25, y = 30), coords = c("x", "y"), crs = 32615
     ),
-    isw:::.prepare_line_elements(segments, quadrature_order = 8)
+    make_numeric_line_elements(segments, quadrature_order = 8)
   )
   expect_error(
     isw:::.get_cached_line_response_matrix(
       response_operator = other_operator,
       response_cache = response_cache,
-      K = hydraulics$K,
-      D = hydraulics$D,
+      K_m_per_day = hydraulics$K_m_per_day,
+      D_m = hydraulics$D_m,
       V = hydraulics$V,
-      elapsed_time = units::set_units(1, "day")
+      elapsed_time_day = 1
     ),
     "cannot be reused with a different response_operator"
   )
@@ -452,23 +373,23 @@ test_that("cached line responses support injection-event extraction", {
   response_ratios <- isw:::.get_response_ratios_for_injection_events(
     response_operator = operator,
     response_cache = response_cache,
-    K = hydraulics$K,
-    D = hydraulics$D,
+    K_m_per_day = hydraulics$K_m_per_day,
+    D_m = hydraulics$D_m,
     V = hydraulics$V,
     observation_well_index = 1L,
-    elapsed_times = units::set_units(c(10, 1, 10), "days"),
+    elapsed_times_day = c(10, 1, 10),
     segment_columns = c(1L, 1L, 1L)
   )
   late_response <- isw:::.get_cached_line_response_matrix(
     response_operator = operator,
     response_cache = response_cache,
-    K = hydraulics$K,
-    D = hydraulics$D,
+    K_m_per_day = hydraulics$K_m_per_day,
+    D_m = hydraulics$D_m,
     V = hydraulics$V,
-    elapsed_time = units::set_units(10, "days")
+    elapsed_time_day = 10
   )
 
-  expect_s3_class(response_ratios, "units")
+  expect_type(response_ratios, "double")
   expect_equal(
     response_ratios,
     c(late_response[[1]], first_response[[1]], late_response[[1]])
@@ -476,42 +397,18 @@ test_that("cached line responses support injection-event extraction", {
   expect_length(ls(envir = response_cache, all.names = TRUE), 2)
 })
 
-test_that("response operators reject invalid target points", {
-  segments <- make_line_sink_segments(c(-50, 0, 50, 0))
-  elements <- isw:::.prepare_line_elements(segments)
-
-  expect_error(
-    isw:::.prepare_line_response_operator(
-      sf::st_sfc(sf::st_point(), crs = 32615),
-      elements
-    ),
-    "cannot contain empty geometries"
-  )
-  expect_error(
-    isw:::.prepare_line_response_operator(
-      sf::st_sfc(sf::st_point(c(Inf, 0)), crs = 32615),
-      elements
-    ),
-    "nonfinite coordinates"
-  )
-  expect_error(
-    isw:::.prepare_line_response_operator(
-      sf::st_sfc(sf::st_point(c(0, 0))),
-      elements
-    ),
-    "must have a defined CRS"
-  )
-
-  operator <- isw:::.prepare_line_response_operator(
-    sf::st_sfc(sf::st_point(c(0, 0)), crs = 32615),
-    elements
-  )
-  expect_s3_class(operator, "isw_line_response_operator")
+test_that("target boundary validation rejects invalid geometries", {
+  expect_error(isw:::.validate_point_sf(sf::st_sf(geometry = sf::st_sfc(sf::st_point(), crs=32615)),
+                                      "target_points"), "cannot contain empty geometries")
+  expect_error(isw:::.validate_point_sf(sf::st_sf(geometry = sf::st_sfc(sf::st_point(c(Inf,0)), crs=32615)),
+                                      "target_points"), "nonfinite coordinates")
+  expect_error(isw:::.validate_point_sf(sf::st_sf(geometry = sf::st_sfc(sf::st_point(c(0,0)))),
+                                      "target_points"), "defined CRS")
 })
 
 test_that("multi-vertex line weights include edge-length fractions", {
   segments <- make_line_sink_segments(c(0, 0, 30, 0, 30, 40))
-  elements <- isw:::.prepare_line_elements(segments, quadrature_order = 4)
+  elements <- make_numeric_line_elements(segments, quadrature_order = 4)
   weights <- elements$quadrature_points$weight
 
   expect_equal(sum(weights[1:4]), 3 / 7)

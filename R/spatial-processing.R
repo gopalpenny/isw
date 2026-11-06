@@ -1,7 +1,39 @@
+.is_utm_crs <- function(crs) {
+  # CRS metadata must explicitly describe UTM coordinates in meters.
+  proj <- crs$proj4string
+  !is.na(crs) && !is.null(proj) && !is.na(proj) &&
+    grepl("\\+proj=utm( |$)", proj) && grepl("\\+units=m( |$)", proj)
+}
+
+.select_utm_crs <- function(spatial_inputs, analysis_crs = NULL, preferred_crs = NULL) {
+  # Boundary CRS selection retains sf metadata; zone crossings are permitted.
+  if (!is.null(analysis_crs)) {
+    selected <- tryCatch(suppressWarnings(sf::st_crs(analysis_crs)), error = function(e) NULL)
+    if (is.null(selected) || is.na(selected)) stop("analysis_crs must define a valid projected CRS.")
+    if (!grepl("^PROJCRS\\[", selected$wkt)) stop("analysis_crs must define a projected CRS.")
+    if (!.is_utm_crs(selected)) stop("analysis_crs must define a UTM CRS in meters.")
+    return(selected)
+  }
+  if (!is.null(preferred_crs) && .is_utm_crs(preferred_crs)) return(preferred_crs)
+  extents <- lapply(Filter(Negate(is.null), spatial_inputs), function(x) {
+    sf::st_bbox(sf::st_transform(x, 4326))
+  })
+  longitude_range <- range(vapply(extents, function(x) x[["xmin"]], numeric(1)),
+                           vapply(extents, function(x) x[["xmax"]], numeric(1)))
+  latitude_range <- range(vapply(extents, function(x) x[["ymin"]], numeric(1)),
+                          vapply(extents, function(x) x[["ymax"]], numeric(1)))
+  if (diff(longitude_range) > 180) stop("Automatic UTM selection is not supported for study areas that cross the antimeridian.")
+  if (latitude_range[[1]] < -80 || latitude_range[[2]] > 84) {
+    stop("Automatic UTM selection requires spatial inputs between 80 degrees south and 84 degrees north.")
+  }
+  zone <- max(1, min(60, floor((mean(longitude_range) + 180) / 6) + 1))
+  sf::st_crs(if (mean(latitude_range) >= 0) 32600 + zone else 32700 + zone)
+}
+
 #' Select the projected CRS used for spatial analysis
 #'
 #' Select a local UTM coordinate reference system from the spatial extent of
-#' the model inputs, or validate a projected CRS supplied by the user.
+#' the model inputs, retain an existing UTM stream CRS, or validate a supplied UTM CRS.
 #'
 #' @param pumping_wells A pumping-well object accepted by
 #'   `.validate_pumping_wells()`.
@@ -10,7 +42,7 @@
 #' @param observation_wells Either `NULL` or an observation-well object
 #'   accepted by `.validate_observation_wells()`.
 #' @param analysis_crs Either `NULL` or a coordinate reference system accepted
-#'   by [sf::st_crs()]. The supplied CRS must be projected. When `NULL`, a UTM
+#'   by [sf::st_crs()]. The supplied CRS must be UTM in meters. When `NULL`, a UTM
 #'   CRS is selected automatically.
 #'
 #' @return An `st_crs` object containing the projected analysis CRS.
@@ -24,10 +56,8 @@
 #' study centers south of the equator.
 #'
 #' Automatic selection requires every input feature to fall between 80 degrees
-#' south and 84 degrees north. A warning is issued when the combined extent
-#' spans more than one UTM zone. In that case, the center zone is still
-#' returned, but the user should consider supplying an appropriate projected
-#' `analysis_crs`.
+#' south and 84 degrees north. Crossing UTM zones is permitted without warning.
+#' An existing UTM stream CRS is retained so subsequent workflow calls share it.
 #'
 #' The input objects are validated but are not transformed or otherwise
 #' modified by this function.
@@ -43,7 +73,7 @@
 #' )
 #' automatic_crs$epsg
 #'
-#' # Alternatively, specify another projected CRS.
+#' # Alternatively, specify another UTM CRS.
 #' supplied_crs <- isw:::.select_analysis_crs(
 #'   pumping_wells,
 #'   stream_reaches,
@@ -52,93 +82,24 @@
 #' supplied_crs$epsg
 #'
 #' @noRd
-.select_analysis_crs <- function(
-    pumping_wells,
-    stream_reaches,
-    observation_wells = NULL,
-    analysis_crs = NULL) {
-
+.select_analysis_crs <- function(pumping_wells, stream_reaches,
+                                 observation_wells = NULL, analysis_crs = NULL) {
+  # Validate raw spatial inputs at preparation entry; retain sf/CRS metadata.
   .validate_pumping_wells(pumping_wells)
   .validate_stream_reaches(stream_reaches)
   .validate_observation_wells(observation_wells)
+  .select_utm_crs(list(pumping_wells, stream_reaches, observation_wells),
+                  analysis_crs, sf::st_crs(stream_reaches))
+}
 
-  if (!is.null(analysis_crs)) {
-    selected_crs <- tryCatch(
-      suppressWarnings(sf::st_crs(analysis_crs)),
-      error = function(e) NULL
-    )
-
-    if (is.null(selected_crs) || is.na(selected_crs)) {
-      stop("analysis_crs must define a valid projected CRS.")
-    }
-
-    if (!grepl("^PROJCRS\\[", selected_crs$wkt)) {
-      stop("analysis_crs must define a projected CRS.")
-    }
-
-    return(selected_crs)
+.transform_spatial_geometry <- function(x, analysis_crs) {
+  # Validated sf inputs retain CRS; transform all geometry columns, not just the active one.
+  if (is.null(x)) return(NULL)
+  geometry_columns <- names(x)[vapply(x, inherits, logical(1), "sfc")]
+  for (column in geometry_columns) {
+    x[[column]] <- sf::st_transform(sf::st_zm(x[[column]], drop = TRUE, what = "ZM"), analysis_crs)
   }
-
-  spatial_inputs <- list(pumping_wells, stream_reaches)
-
-  if (!is.null(observation_wells)) {
-    spatial_inputs <- c(spatial_inputs, list(observation_wells))
-  }
-
-  wgs84_extents <- lapply(
-    spatial_inputs,
-    function(x) sf::st_bbox(sf::st_transform(x, 4326))
-  )
-
-  longitude_range <- range(unlist(lapply(
-    wgs84_extents,
-    function(x) x[c("xmin", "xmax")]
-  )))
-  latitude_range <- range(unlist(lapply(
-    wgs84_extents,
-    function(x) x[c("ymin", "ymax")]
-  )))
-
-  if (diff(longitude_range) > 180) {
-    stop(
-      "Automatic UTM selection is not supported for study areas that cross ",
-      "the antimeridian; supply analysis_crs."
-    )
-  }
-
-  if (latitude_range[[1]] < -80 || latitude_range[[2]] > 84) {
-    stop(
-      "Automatic UTM selection requires spatial inputs between 80 degrees ",
-      "south and 84 degrees north; supply analysis_crs."
-    )
-  }
-
-  get_utm_zone <- function(longitude) {
-    pmin(60, pmax(1, floor((longitude + 180) / 6) + 1))
-  }
-
-  center_longitude <- mean(longitude_range)
-  center_latitude <- mean(latitude_range)
-  utm_zone <- get_utm_zone(center_longitude)
-  extent_zones <- unique(get_utm_zone(longitude_range))
-
-  if (length(extent_zones) > 1) {
-    warning(
-      "The spatial inputs span multiple UTM zones; zone ",
-      utm_zone,
-      " was selected from the center of the combined extent. Consider ",
-      "supplying analysis_crs.",
-      call. = FALSE
-    )
-  }
-
-  if (center_latitude >= 0) {
-    utm_epsg <- 32600 + utm_zone
-  } else {
-    utm_epsg <- 32700 + utm_zone
-  }
-
-  sf::st_crs(utm_epsg)
+  x
 }
 
 #' Prepare spatial inputs for analysis
@@ -210,8 +171,7 @@
       return(NULL)
     }
 
-    x <- sf::st_zm(x, drop = TRUE, what = "ZM")
-    sf::st_transform(x, selected_crs)
+    .transform_spatial_geometry(x, selected_crs)
   }
 
   prepared_pumping_wells <- prepare_geometry(pumping_wells)
@@ -236,74 +196,9 @@
 
 # Select the projected analysis CRS used to segment a stream network.
 .select_stream_analysis_crs <- function(stream_reaches, analysis_crs = NULL) {
+  # Boundary validation precedes shared UTM selection; retain existing UTM networks.
   .validate_stream_reaches(stream_reaches)
-
-  if (!is.null(analysis_crs)) {
-    selected_crs <- tryCatch(
-      suppressWarnings(sf::st_crs(analysis_crs)),
-      error = function(e) NULL
-    )
-
-    if (is.null(selected_crs) || is.na(selected_crs)) {
-      stop("analysis_crs must define a valid projected CRS.")
-    }
-
-    if (!grepl("^PROJCRS\\[", selected_crs$wkt)) {
-      stop("analysis_crs must define a projected CRS.")
-    }
-
-    return(selected_crs)
-  }
-
-  stream_crs <- sf::st_crs(stream_reaches)
-
-  if (grepl("^PROJCRS\\[", stream_crs$wkt)) {
-    if (identical(stream_crs$epsg, 3857L)) {
-      warning(
-        "Web Mercator is not recommended for hydraulic distance analysis; ",
-        "consider supplying a suitable projected analysis_crs.",
-        call. = FALSE
-      )
-    }
-    return(stream_crs)
-  }
-
-  wgs84_extent <- sf::st_bbox(sf::st_transform(stream_reaches, 4326))
-  longitude_range <- unname(wgs84_extent[c("xmin", "xmax")])
-  latitude_range <- unname(wgs84_extent[c("ymin", "ymax")])
-
-  if (diff(longitude_range) > 180) {
-    stop(
-      "Automatic UTM selection is not supported for streams that cross ",
-      "the antimeridian; supply analysis_crs."
-    )
-  }
-
-  if (latitude_range[[1]] < -80 || latitude_range[[2]] > 84) {
-    stop(
-      "Automatic UTM selection requires stream_reaches between 80 degrees ",
-      "south and 84 degrees north; supply analysis_crs."
-    )
-  }
-
-  get_utm_zone <- function(longitude) {
-    pmin(60, pmax(1, floor((longitude + 180) / 6) + 1))
-  }
-  center_longitude <- mean(longitude_range)
-  center_latitude <- mean(latitude_range)
-  utm_zone <- get_utm_zone(center_longitude)
-  extent_zones <- unique(get_utm_zone(longitude_range))
-
-  if (length(extent_zones) > 1) {
-    warning(
-      "stream_reaches spans multiple UTM zones; zone ", utm_zone,
-      " was selected from the center of its extent. Consider supplying ",
-      "a suitable regional analysis_crs.",
-      call. = FALSE
-    )
-  }
-
-  sf::st_crs(if (center_latitude >= 0) 32600 + utm_zone else 32700 + utm_zone)
+  .select_utm_crs(list(stream_reaches), analysis_crs, sf::st_crs(stream_reaches))
 }
 
 #' Create stream segments for analytical modeling
@@ -317,10 +212,10 @@
 #'   reach-level `stream_width` column must have length units.
 #' @param reach_spacing A scalar `units` length giving the maximum length of a
 #'   model segment.
-#' @param analysis_crs Either `NULL` or a projected coordinate reference
-#'   system accepted by [sf::st_crs()]. When `NULL`, an existing projected
-#'   stream CRS is retained; geographic streams are transformed to a local UTM
-#'   CRS selected from their extent.
+#' @param analysis_crs Either `NULL` or a UTM coordinate reference system in
+#'   meters accepted by [sf::st_crs()]. When `NULL`, an existing UTM stream CRS
+#'   is retained; other input CRSs are transformed to a local UTM CRS selected
+#'   from their extent. Crossing a zone boundary does not trigger a warning.
 #' @param stream_width Either `NULL` or a positive scalar `units` length. A
 #'   supplied value is applied to every reach. When `NULL`, an existing
 #'   reach-level `stream_width` attribute is retained; if that attribute is
@@ -370,46 +265,19 @@ prep_stream_segments <- function(
   }
   checked_reaches <- .set_stream_width(stream_reaches, stream_width)
   reach_spacing_m <- .numeric_in_standard_units(reach_spacing, "m", "reach_spacing")
-  .prep_stream_segments(
+  result <- .prep_stream_segments(
     .prepare_numeric_columns(checked_reaches, c(stream_width = "m")),
     reach_spacing_m, selected_crs, NULL
   )
+  # Reattach public length/width units; geometry keeps its UTM CRS.
+  .restore_spatial_columns(result, c(represented_length = "m", stream_width = "m"))
 }
 
-# Existing unit-bearing implementation; its checks remain until migration.
-.prep_stream_segments <- function(
-    stream_reaches, reach_spacing, analysis_crs = NULL, stream_width = NULL) {
-
-  selected_crs <- .select_stream_analysis_crs(
-    stream_reaches,
-    analysis_crs
-  )
-  prepared_reaches <- sf::st_transform(
-    sf::st_zm(stream_reaches, drop = TRUE, what = "ZM"),
-    selected_crs
-  )
-  stream_segments <- .discretize_stream_reaches(
-    prepared_reaches,
-    reach_spacing
-  )
-  stream_segments <- .set_stream_width(stream_segments, stream_width)
-  geometry_column <- attr(stream_segments, "sf_column")
-  key_columns <- c(
-    "reach_id",
-    "reach_segment_id",
-    "represented_length",
-    "stream_width"
-  )
-  additional_columns <- setdiff(
-    names(stream_segments),
-    c(key_columns, "model_point", geometry_column)
-  )
-  stream_segments[c(
-    key_columns,
-    additional_columns,
-    "model_point",
-    geometry_column
-  )]
+.prep_stream_segments <- function(stream_reaches, reach_spacing_m,
+                                  analysis_crs, stream_width_m = NULL) {
+  # Validated sf geometry retains CRS; stripped spacing/widths and derived lengths are meters.
+  prepared_reaches <- .transform_spatial_geometry(stream_reaches, analysis_crs)
+  .discretize_stream_reaches(prepared_reaches, reach_spacing_m)
 }
 
 # Attach and validate the physical width used by line-element responses.
@@ -592,24 +460,29 @@ prep_stream_segments <- function(
     )
   }
 
+  # Normalize coordinate offsets to meters for the numeric interpolation helper.
+  segment_lengths <- sf::st_length(stream_segments)
+  coordinate_unit_m <- as.numeric(units::set_units(
+    units::set_units(1, units::deparse_unit(segment_lengths), mode = "standard"), "m"
+  ))
   segment_midpoints <- sf::st_sfc(
     lapply(seq_len(nrow(stream_segments)), function(segment_index) {
-      segment_coordinates <- sf::st_coordinates(
+      segment_coordinates_m <- sf::st_coordinates(
         sf::st_geometry(stream_segments)[[segment_index]]
-      )[, 1:2, drop = FALSE]
-      coordinate_differences <-
-        segment_coordinates[-1, , drop = FALSE] -
-        segment_coordinates[-nrow(segment_coordinates), , drop = FALSE]
-      cumulative_length <- c(
+      )[, 1:2, drop = FALSE] * coordinate_unit_m
+      coordinate_differences_m <-
+        segment_coordinates_m[-1, , drop = FALSE] -
+        segment_coordinates_m[-nrow(segment_coordinates_m), , drop = FALSE]
+      cumulative_length_m <- c(
         0,
-        cumsum(sqrt(rowSums(coordinate_differences^2)))
+        cumsum(sqrt(rowSums(coordinate_differences_m^2)))
       )
 
       sf::st_point(.point_along_linestring(
-        segment_coordinates,
-        cumulative_length,
-        cumulative_length[[length(cumulative_length)]] / 2
-      ))
+        segment_coordinates_m,
+        cumulative_length_m,
+        cumulative_length_m[[length(cumulative_length_m)]] / 2
+      ) / coordinate_unit_m)
     }),
     crs = sf::st_crs(stream_segments)
   )
@@ -624,8 +497,6 @@ prep_stream_segments <- function(
       "its active segment geometry."
     )
   }
-
-  segment_lengths <- sf::st_length(stream_segments)
 
   if (!isTRUE(all.equal(
     segment_lengths,
@@ -724,43 +595,8 @@ prep_stream_segments <- function(
 #' plot_stream_discretization(stream_reaches, reach_segments)
 #'
 #' @noRd
-.discretize_stream_reaches <- function(stream_reaches, reach_spacing) {
-
-  .validate_stream_reaches(stream_reaches)
-
-  if (!grepl("^PROJCRS\\[", sf::st_crs(stream_reaches)$wkt)) {
-    stop(
-      "stream_reaches must use a projected CRS before model discretization."
-    )
-  }
-
-  check_dimensionality(
-    reach_spacing,
-    desired_units = "m",
-    variable_name = "reach_spacing"
-  )
-
-  if (length(reach_spacing) != 1 ||
-      !is.finite(as.numeric(reach_spacing)) ||
-      as.numeric(reach_spacing) <= 0) {
-    stop("reach_spacing must be a finite, positive scalar length.")
-  }
-
-  reserved_columns <- c(
-    "reach_segment_id",
-    "represented_length",
-    "model_point"
-  )
-  conflicting_columns <- intersect(reserved_columns, names(stream_reaches))
-
-  if (length(conflicting_columns) > 0) {
-    stop(
-      "stream_reaches contains columns reserved for model discretization: ",
-      paste(conflicting_columns, collapse = ", "),
-      "."
-    )
-  }
-
+.discretize_stream_reaches <- function(stream_reaches, reach_spacing_m) {
+  # Validated sf geometry is in shared UTM meters; spacing/length columns are numeric m.
   stream_reaches_xy <- sf::st_zm(
     stream_reaches,
     drop = TRUE,
@@ -770,15 +606,9 @@ prep_stream_segments <- function(
     sf::st_cast(stream_reaches_xy, "LINESTRING")
   )
 
-  part_lengths <- sf::st_length(line_parts)
-  spacing_in_crs_units <- units::set_units(
-    reach_spacing,
-    units::deparse_unit(part_lengths),
-    mode = "standard"
-  )
-  model_reaches_per_part <- ceiling(
-    as.numeric(part_lengths / spacing_in_crs_units)
-  )
+  # sf measurements have explicit units; normalize and strip once for numeric spacing.
+  part_length_m <- as.numeric(units::set_units(sf::st_length(line_parts), "m"))
+  model_reaches_per_part <- ceiling(part_length_m / reach_spacing_m)
 
   total_model_reaches <- sum(model_reaches_per_part)
   source_part_rows <- integer(total_model_reaches)
@@ -789,57 +619,57 @@ prep_stream_segments <- function(
   # Split each input linestring part into approximately equal-length model
   # segments while retaining its original path through bends.
   for (part_index in seq_len(nrow(line_parts))) {
-    coordinates <- sf::st_coordinates(
+    coordinates_m <- sf::st_coordinates(
       sf::st_geometry(line_parts)[[part_index]]
     )[, 1:2, drop = FALSE]
-    coordinate_differences <- coordinates[-1, , drop = FALSE] -
-      coordinates[-nrow(coordinates), , drop = FALSE]
-    coordinate_lengths <- sqrt(rowSums(coordinate_differences^2))
-    cumulative_length <- c(0, cumsum(coordinate_lengths))
-    break_distances <- seq(
+    coordinate_differences_m <- coordinates_m[-1, , drop = FALSE] -
+      coordinates_m[-nrow(coordinates_m), , drop = FALSE]
+    coordinate_lengths_m <- sqrt(rowSums(coordinate_differences_m^2))
+    cumulative_length_m <- c(0, cumsum(coordinate_lengths_m))
+    break_distances_m <- seq(
       0,
-      cumulative_length[[length(cumulative_length)]],
+      cumulative_length_m[[length(cumulative_length_m)]],
       length.out = model_reaches_per_part[[part_index]] + 1
     )
 
     # Construct each segment geometry and its along-line midpoint.
     for (segment_number in seq_len(model_reaches_per_part[[part_index]])) {
       output_index <- output_index + 1L
-      start_distance <- break_distances[[segment_number]]
-      end_distance <- break_distances[[segment_number + 1]]
-      midpoint_distance <- mean(c(start_distance, end_distance))
+      start_distance_m <- break_distances_m[[segment_number]]
+      end_distance_m <- break_distances_m[[segment_number + 1]]
+      midpoint_distance_m <- mean(c(start_distance_m, end_distance_m))
 
-      start_point <- .point_along_linestring(
-        coordinates,
-        cumulative_length,
-        start_distance
+      start_point_m <- .point_along_linestring(
+        coordinates_m,
+        cumulative_length_m,
+        start_distance_m
       )
-      end_point <- .point_along_linestring(
-        coordinates,
-        cumulative_length,
-        end_distance
+      end_point_m <- .point_along_linestring(
+        coordinates_m,
+        cumulative_length_m,
+        end_distance_m
       )
-      interior_coordinates <- coordinates[
-        cumulative_length > start_distance &
-          cumulative_length < end_distance,
+      interior_coordinates_m <- coordinates_m[
+        cumulative_length_m > start_distance_m &
+          cumulative_length_m < end_distance_m,
         ,
         drop = FALSE
       ]
-      segment_coordinates <- rbind(
-        start_point,
-        interior_coordinates,
-        end_point
+      segment_coordinates_m <- rbind(
+        start_point_m,
+        interior_coordinates_m,
+        end_point_m
       )
 
       source_part_rows[[output_index]] <- part_index
       model_geometries[[output_index]] <- sf::st_linestring(
-        segment_coordinates
+        segment_coordinates_m
       )
       model_points[[output_index]] <- sf::st_point(
         .point_along_linestring(
-          coordinates,
-          cumulative_length,
-          midpoint_distance
+          coordinates_m,
+          cumulative_length_m,
+          midpoint_distance_m
         )
       )
     }
@@ -860,7 +690,7 @@ prep_stream_segments <- function(
     "_segment_",
     reach_segment_numbers
   )
-  model_reaches$represented_length <- sf::st_length(model_reaches)
+  model_reaches$represented_length_m <- as.numeric(units::set_units(sf::st_length(model_reaches), "m"))
   model_reaches$model_point <- sf::st_sfc(
     model_points,
     crs = sf::st_crs(model_reaches)
@@ -870,7 +700,7 @@ prep_stream_segments <- function(
   identifying_columns <- c(
     "reach_id",
     "reach_segment_id",
-    "represented_length"
+    "represented_length_m"
   )
   additional_columns <- setdiff(
     names(model_reaches),
@@ -890,30 +720,31 @@ prep_stream_segments <- function(
 
 # Return coordinates at a distance measured along a LINESTRING.
 .point_along_linestring <- function(
-    coordinates,
-    cumulative_length,
-    distance) {
+    coordinates_m,
+    cumulative_length_m,
+    distance_m) {
+  # Prepared numeric coordinates and along-line distances are meters.
 
-  if (distance <= 0) {
-    return(coordinates[1, ])
+  if (distance_m <= 0) {
+    return(coordinates_m[1, ])
   }
 
-  if (distance >= cumulative_length[[length(cumulative_length)]]) {
-    return(coordinates[nrow(coordinates), ])
+  if (distance_m >= cumulative_length_m[[length(cumulative_length_m)]]) {
+    return(coordinates_m[nrow(coordinates_m), ])
   }
 
-  coordinate_indices <- seq_along(cumulative_length)
+  coordinate_indices <- seq_along(cumulative_length_m)
   segment_index <- max(which(
-    cumulative_length <= distance &
-      coordinate_indices < length(cumulative_length)
+    cumulative_length_m <= distance_m &
+      coordinate_indices < length(cumulative_length_m)
   ))
-  segment_length <- cumulative_length[[segment_index + 1]] -
-    cumulative_length[[segment_index]]
-  fraction <- (distance - cumulative_length[[segment_index]]) /
-    segment_length
+  segment_length_m <- cumulative_length_m[[segment_index + 1]] -
+    cumulative_length_m[[segment_index]]
+  fraction <- (distance_m - cumulative_length_m[[segment_index]]) /
+    segment_length_m
 
-  coordinates[segment_index, ] + fraction * (
-    coordinates[segment_index + 1, ] - coordinates[segment_index, ]
+  coordinates_m[segment_index, ] + fraction * (
+    coordinates_m[segment_index + 1, ] - coordinates_m[segment_index, ]
   )
 }
 
@@ -972,149 +803,54 @@ prep_stream_sample_points <- function(stream_segments, sample_spacing) {
   # Validate the sampling contract before converting lengths to numeric meters.
   .validate_stream_sampling_inputs(stream_segments, sample_spacing)
   sample_spacing_m <- .numeric_in_standard_units(sample_spacing, "m", "sample_spacing")
-  .prep_stream_sample_points(
-    .prepare_numeric_columns(stream_segments,
-                             c(represented_length = "m", stream_width = "m")),
-    sample_spacing_m
+  result <- .prep_stream_sample_points(
+    .prepare_sampling_segments(stream_segments), sample_spacing_m
   )
+  # Reattach public sampled-length units; geometry retains its shared UTM CRS.
+  .restore_spatial_columns(result, c(sampled_length = "m"))
 }
 
-# Existing unit-bearing implementation; its checks remain until migration.
-.prep_stream_sample_points <- function(stream_segments, sample_spacing) {
-
-  if (!inherits(stream_segments, "sf")) {
-    stop("stream_segments must be an sf object.")
-  }
-
-  required_columns <- c(
-    "reach_id",
-    "reach_segment_id",
-    "represented_length"
-  )
-  missing_columns <- setdiff(required_columns, names(stream_segments))
-
-  if (length(missing_columns) > 0) {
-    stop(
-      "stream_segments is missing required columns: ",
-      paste(missing_columns, collapse = ", "),
-      "."
-    )
-  }
-
-  if (nrow(stream_segments) == 0) {
-    stop("stream_segments must contain at least one feature.")
-  }
-
-  if (is.na(sf::st_crs(stream_segments)) ||
-      !grepl("^PROJCRS\\[", sf::st_crs(stream_segments)$wkt)) {
-    stop("stream_segments must use a projected CRS.")
-  }
-
-  geometry_types <- as.character(
-    sf::st_geometry_type(stream_segments, by_geometry = TRUE)
-  )
-
-  if (!all(geometry_types == "LINESTRING")) {
-    stop("Every stream_segments geometry must be a LINESTRING.")
-  }
-
-  if (!is.character(stream_segments$reach_id) ||
-      !is.character(stream_segments$reach_segment_id) ||
-      anyNA(stream_segments$reach_id) ||
-      anyNA(stream_segments$reach_segment_id) ||
-      any(trimws(stream_segments$reach_id) == "") ||
-      any(trimws(stream_segments$reach_segment_id) == "")) {
-    stop(
-      "stream_segments$reach_id and stream_segments$reach_segment_id must be ",
-      "nonmissing, nonempty character vectors."
-    )
-  }
-
-  if (anyDuplicated(stream_segments$reach_segment_id) > 0) {
-    stop("stream_segments$reach_segment_id values must be unique.")
-  }
-
-  check_dimensionality(
-    stream_segments$represented_length,
-    desired_units = "m",
-    variable_name = "stream_segments$represented_length"
-  )
-  check_dimensionality(
-    sample_spacing,
-    desired_units = "m",
-    variable_name = "sample_spacing"
-  )
-
-  if (length(sample_spacing) != 1 ||
-      !is.finite(as.numeric(sample_spacing)) ||
-      as.numeric(sample_spacing) <= 0) {
-    stop("sample_spacing must be a finite, positive scalar length.")
-  }
-
-  segment_lengths <- sf::st_length(stream_segments)
-
-  if (!isTRUE(all.equal(
-    segment_lengths,
-    units::set_units(
-      stream_segments$represented_length,
-      units::deparse_unit(segment_lengths),
-      mode = "standard"
-    )
-  ))) {
-    stop(
-      "stream_segments$represented_length must equal the active geometry ",
-      "length."
-    )
-  }
-
-  spacing_in_crs_units <- units::set_units(
-    sample_spacing,
-    units::deparse_unit(segment_lengths),
-    mode = "standard"
-  )
-  points_per_segment <- ceiling(
-    as.numeric(segment_lengths / spacing_in_crs_units)
-  )
+.prep_stream_sample_points <- function(stream_segments, sample_spacing_m) {
+  # Validated shared-UTM sf geometry retains CRS; lengths/spacing are numeric meters.
+  points_per_segment <- ceiling(stream_segments$represented_length_m / sample_spacing_m)
   total_points <- sum(points_per_segment)
   source_segment_rows <- integer(total_points)
   point_numbers <- integer(total_points)
   point_geometries <- vector("list", total_points)
-  sampled_lengths <- numeric(total_points)
+  sampled_length_m <- numeric(total_points)
   output_index <- 0L
 
   # Place evenly spaced sampling points along each modeled stream segment.
   for (segment_index in seq_len(nrow(stream_segments))) {
-    coordinates <- sf::st_coordinates(
+    coordinates_m <- sf::st_coordinates(
       sf::st_geometry(stream_segments)[[segment_index]]
     )[, 1:2, drop = FALSE]
-    coordinate_differences <- coordinates[-1, , drop = FALSE] -
-      coordinates[-nrow(coordinates), , drop = FALSE]
-    cumulative_length <- c(
+    coordinate_differences_m <- coordinates_m[-1, , drop = FALSE] -
+      coordinates_m[-nrow(coordinates_m), , drop = FALSE]
+    cumulative_length_m <- c(
       0,
-      cumsum(sqrt(rowSums(coordinate_differences^2)))
+      cumsum(sqrt(rowSums(coordinate_differences_m^2)))
     )
-    segment_length <- cumulative_length[[length(cumulative_length)]]
+    segment_length_m <- cumulative_length_m[[length(cumulative_length_m)]]
     number_of_points <- points_per_segment[[segment_index]]
-    interval_length <- segment_length / number_of_points
-    point_distances <- (seq_len(number_of_points) - 0.5) * interval_length
+    interval_length_m <- segment_length_m / number_of_points
+    point_distances_m <- (seq_len(number_of_points) - 0.5) * interval_length_m
 
     # Record each sample point and the stream length that it represents.
     for (point_number in seq_len(number_of_points)) {
       output_index <- output_index + 1L
       source_segment_rows[[output_index]] <- segment_index
       point_numbers[[output_index]] <- point_number
-      sampled_lengths[[output_index]] <- interval_length
+      sampled_length_m[[output_index]] <- interval_length_m
       point_geometries[[output_index]] <- sf::st_point(
         .point_along_linestring(
-          coordinates,
-          cumulative_length,
-          point_distances[[point_number]]
+          coordinates_m,
+          cumulative_length_m,
+          point_distances_m[[point_number]]
         )
       )
     }
   }
-
-  length_units <- units::deparse_unit(segment_lengths)
 
   sf::st_sf(
     reach_id = stream_segments$reach_id[source_segment_rows],
@@ -1125,11 +861,7 @@ prep_stream_sample_points <- function(stream_segments, sample_spacing) {
       "_point_",
       point_numbers
     ),
-    sampled_length = units::set_units(
-      sampled_lengths,
-      length_units,
-      mode = "standard"
-    ),
+    sampled_length_m = sampled_length_m,
     geometry = sf::st_sfc(
       point_geometries,
       crs = sf::st_crs(stream_segments)

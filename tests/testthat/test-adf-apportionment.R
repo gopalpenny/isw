@@ -350,7 +350,7 @@ test_that("ADF depletion returns the complete pump-time-segment grid", {
 
 test_that("sampling and apportionment inputs are validated", {
   inputs <- make_adf_test_inputs()
-  reach_segments <- isw:::.discretize_stream_reaches(
+  reach_segments <- prep_stream_segments(
     inputs$stream_reaches,
     units::set_units(500, "m")
   )

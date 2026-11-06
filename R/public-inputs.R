@@ -29,9 +29,12 @@
   x
 }
 
-.prepare_numeric_wells <- function(pumping_wells) {
+.prepare_numeric_wells <- function(pumping_wells, analysis_crs = NULL) {
   # Validate unit-bearing wells; keep CRS metadata and normalize physical columns.
   .validate_pumping_wells(pumping_wells)
+  if (!is.null(analysis_crs)) {
+    pumping_wells <- .transform_spatial_geometry(pumping_wells, analysis_crs)
+  }
   if (!"well_diam" %in% names(pumping_wells)) {
     pumping_wells$well_diam <- units::set_units(0, "m")
   }
@@ -43,9 +46,31 @@
 .prepare_numeric_segments <- function(stream_segments) {
   # Validate lengths/widths and geometry; coordinates retain explicit CRS units.
   .validate_stream_segments(stream_segments)
-  .prepare_numeric_columns(
+  .prepare_sampling_segments(stream_segments)
+}
+
+.prepare_sampling_segments <- function(stream_segments) {
+  # Checked sf geometry retains all CRS columns; normalize measurements to meters.
+  analysis_crs <- .select_utm_crs(list(stream_segments), preferred_crs = sf::st_crs(stream_segments))
+  stream_segments <- .transform_spatial_geometry(stream_segments, analysis_crs)
+  stream_segments <- .prepare_numeric_columns(
     stream_segments, c(represented_length = "m", stream_width = "m")
   )
+  stream_segments$represented_length_m <- as.numeric(units::set_units(sf::st_length(stream_segments), "m"))
+  stream_segments
+}
+
+.restore_spatial_columns <- function(x, column_units) {
+  # Reattach physical units at public exits; spatial geometry and CRS remain intact.
+  suffixes <- c("m" = "m")
+  for (column in names(column_units)) {
+    numeric_column <- paste0(column, "_", suffixes[[column_units[[column]]]])
+    if (!numeric_column %in% names(x)) next
+    x[[numeric_column]] <- units::set_units(x[[numeric_column]], column_units[[column]], mode = "standard")
+    names(x)[match(numeric_column, names(x))] <- column
+  }
+  attr(x, "isw_input_units") <- NULL
+  x
 }
 
 .prepare_numeric_apportionment <- function(stream_apportionment, pumping_wells) {

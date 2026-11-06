@@ -134,7 +134,7 @@ test_that("a user-supplied CRS must be valid and projected", {
   )
 })
 
-test_that("automatic selection warns when inputs span UTM zones", {
+test_that("automatic selection permits inputs spanning UTM zones without warning", {
   inputs <- make_spatial_test_inputs(longitude = -90, latitude = 44.95)
   sf::st_geometry(inputs$stream_reaches) <- sf::st_sfc(
     sf::st_linestring(
@@ -143,13 +143,10 @@ test_that("automatic selection warns when inputs span UTM zones", {
     crs = 4326
   )
 
-  expect_warning(
-    isw:::.select_analysis_crs(
-      inputs$pumping_wells,
-      inputs$stream_reaches
-    ),
-    "span multiple UTM zones"
-  )
+  expect_silent(selected <- isw:::.select_analysis_crs(
+    inputs$pumping_wells, inputs$stream_reaches
+  ))
+  expect_identical(selected$epsg, 32616L)
 })
 
 test_that("automatic selection is limited to UTM coverage", {
@@ -521,7 +518,7 @@ test_that("stream model points remain finite and on their segment", {
 test_that("stream reaches are divided into equal reach segments", {
   stream_reaches <- make_projected_stream_reach()
 
-  model_reaches <- isw:::.discretize_stream_reaches(
+  model_reaches <- prep_stream_segments(
     stream_reaches,
     units::set_units(100, "m")
   )
@@ -556,7 +553,7 @@ test_that("stream reaches are divided into equal reach segments", {
 test_that("model points are along-line midpoints", {
   stream_reaches <- make_projected_stream_reach()
 
-  model_reaches <- isw:::.discretize_stream_reaches(
+  model_reaches <- prep_stream_segments(
     stream_reaches,
     units::set_units(100, "m")
   )
@@ -593,7 +590,7 @@ test_that("bent stream geometry is retained across reach segments", {
     )
   )
 
-  model_reaches <- isw:::.discretize_stream_reaches(
+  model_reaches <- prep_stream_segments(
     stream_reaches,
     units::set_units(75, "m")
   )
@@ -617,7 +614,7 @@ test_that("bent stream geometry is retained across reach segments", {
 test_that("short stream reaches produce one reach segment", {
   stream_reaches <- make_projected_stream_reach(length = 50)
 
-  model_reaches <- isw:::.discretize_stream_reaches(
+  model_reaches <- prep_stream_segments(
     stream_reaches,
     units::set_units(100, "m")
   )
@@ -643,7 +640,7 @@ test_that("multipart reaches receive sequential segment identifiers", {
     )
   )
 
-  model_reaches <- isw:::.discretize_stream_reaches(
+  model_reaches <- prep_stream_segments(
     stream_reaches,
     units::set_units(100, "m")
   )
@@ -663,7 +660,7 @@ test_that("multipart reaches receive sequential segment identifiers", {
 test_that("additional stream attributes are preserved", {
   stream_reaches <- make_projected_stream_reach()
 
-  model_reaches <- isw:::.discretize_stream_reaches(
+  model_reaches <- prep_stream_segments(
     stream_reaches,
     units::set_units(100, "m")
   )
@@ -677,7 +674,7 @@ test_that("additional stream attributes are preserved", {
 test_that("reach spacing accepts alternative length units", {
   stream_reaches <- make_projected_stream_reach(length = 150)
 
-  model_reaches <- isw:::.discretize_stream_reaches(
+  model_reaches <- prep_stream_segments(
     stream_reaches,
     units::set_units(300, "ft")
   )
@@ -693,25 +690,25 @@ test_that("reach spacing must be a finite positive scalar length", {
   stream_reaches <- make_projected_stream_reach()
 
   expect_error(
-    isw:::.discretize_stream_reaches(stream_reaches, 100),
+    prep_stream_segments(stream_reaches, 100),
     "not a units object"
   )
   expect_error(
-    isw:::.discretize_stream_reaches(
+    prep_stream_segments(
       stream_reaches,
       units::set_units(100, "days")
     ),
     "conversion failed"
   )
   expect_error(
-    isw:::.discretize_stream_reaches(
+    prep_stream_segments(
       stream_reaches,
       units::set_units(c(100, 200), "m")
     ),
     "finite, positive scalar length"
   )
   expect_error(
-    isw:::.discretize_stream_reaches(
+    prep_stream_segments(
       stream_reaches,
       units::set_units(0, "m")
     ),
@@ -719,16 +716,10 @@ test_that("reach spacing must be a finite positive scalar length", {
   )
 })
 
-test_that("stream reaches must use a projected CRS", {
+test_that("geographic reaches are transformed to UTM before discretization", {
   inputs <- make_spatial_test_inputs()
-
-  expect_error(
-    isw:::.discretize_stream_reaches(
-      inputs$stream_reaches,
-      units::set_units(100, "m")
-    ),
-    "must use a projected CRS"
-  )
+  result <- prep_stream_segments(inputs$stream_reaches, units::set_units(100, "m"))
+  expect_identical(sf::st_crs(result)$epsg, 32615L)
 })
 
 test_that("model-discretization column names are reserved", {
@@ -736,7 +727,7 @@ test_that("model-discretization column names are reserved", {
   stream_reaches$reach_segment_id <- "existing_id"
 
   expect_error(
-    isw:::.discretize_stream_reaches(
+    prep_stream_segments(
       stream_reaches,
       units::set_units(100, "m")
     ),
@@ -748,7 +739,7 @@ test_that("stream discretization does not modify the input object", {
   stream_reaches <- make_projected_stream_reach()
   original_stream_reaches <- stream_reaches
 
-  isw:::.discretize_stream_reaches(
+  prep_stream_segments(
     stream_reaches,
     units::set_units(100, "m")
   )
