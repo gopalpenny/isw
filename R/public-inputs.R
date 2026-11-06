@@ -1,5 +1,4 @@
-# Boundary preparation for numeric internals. Existing calculation helpers still
-# expect units objects during this first stage of the performance refactor.
+# Public-boundary validation and preparation for standard numeric internals.
 
 .numeric_in_standard_units <- function(x, standard_unit, variable_name) {
   # Check physical dimensions, normalize, then strip unit attributes.
@@ -94,8 +93,8 @@
   .validate_injection_times(injection_times, pumping_schedules$t)
   normalized <- .normalize_time_inputs(pumping_schedules$t, evaluation_times)
   list(
-    t_day = as.numeric(normalized$normalized_schedule_times),
-    evaluation_time_day = as.numeric(normalized$normalized_target_times),
+    t_day = normalized$schedule_time_day,
+    evaluation_time_day = normalized$target_time_day,
     injection_time_day = if (!is.null(injection_times)) {
       .time_in_days(injection_times, normalized$time_origin)
     } else NULL,
@@ -120,6 +119,12 @@
   attr(pumping_schedules, "isw_time_metadata") <- times[
     c("time_origin", "output_schedule_times", "output_evaluation_times")
   ]
+  # Prepare reusable numeric events/pairs once, independently of output time metadata.
+  events <- .get_pumping_rate_changes(pumping_schedules, pumping_wells$pump_id)
+  attr(pumping_schedules, "isw_pumping_events") <- events
+  attr(pumping_schedules, "isw_pumping_response_times") <- .get_pumping_response_times(
+    events, times$evaluation_time_day
+  )
   pumping_schedules
 }
 

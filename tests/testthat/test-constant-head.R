@@ -208,7 +208,7 @@ test_that("explicit aquifer identifiers must match hydraulic properties", {
   inputs$pumping_wells$K[[2]] <- units::set_units(12, "m/day")
 
   expect_error(
-    isw:::.get_aquifer_groups(inputs$pumping_wells),
+    isw:::.prepare_aquifer_groups(inputs$pumping_wells),
     "identical K, D, and V"
   )
 })
@@ -218,7 +218,7 @@ test_that("the aquifer parameter-set limit is configurable", {
   inputs$pumping_wells$K[[2]] <- units::set_units(12, "m/day")
 
   expect_warning(
-    groups <- isw:::.get_aquifer_groups(inputs$pumping_wells),
+    groups <- isw:::.prepare_aquifer_groups(inputs$pumping_wells),
     "2 pump-specific aquifer parameter sets"
   )
   expect_identical(length(unique(groups$aquifer_id)), 2L)
@@ -228,11 +228,11 @@ test_that("the aquifer parameter-set limit is configurable", {
   many_wells$K <- units::set_units(seq_len(6), "m/day")
 
   expect_error(
-    suppressWarnings(isw:::.get_aquifer_groups(many_wells)),
+    suppressWarnings(isw:::.prepare_aquifer_groups(many_wells)),
     "allow_n_aquifer_parameter_sets = 5"
   )
   expect_warning(
-    allowed_groups <- isw:::.get_aquifer_groups(
+    allowed_groups <- isw:::.prepare_aquifer_groups(
       many_wells,
       allow_n_aquifer_parameter_sets = 6
     ),
@@ -241,7 +241,7 @@ test_that("the aquifer parameter-set limit is configurable", {
   expect_identical(length(unique(allowed_groups$aquifer_id)), 6L)
 
   expect_warning(
-    unlimited_groups <- isw:::.get_aquifer_groups(
+    unlimited_groups <- isw:::.prepare_aquifer_groups(
       many_wells,
       allow_n_aquifer_parameter_sets = Inf
     ),
@@ -266,7 +266,7 @@ test_that("the aquifer parameter-set limit is validated", {
 
   for (invalid_limit in invalid_limits) {
     expect_error(
-      isw:::.get_aquifer_groups(
+      isw:::.prepare_aquifer_groups(
         inputs$pumping_wells,
         allow_n_aquifer_parameter_sets = invalid_limit
       ),

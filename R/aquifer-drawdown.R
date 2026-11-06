@@ -118,8 +118,8 @@
     pumping_schedules$t,
     evaluation_times
   )
-  evaluation_day_values <- as.numeric(normalized_times$normalized_target_times)
-  row_evaluation_days <- if (inherits(evaluation_times, "Date")) {
+  evaluation_times_day <- as.numeric(normalized_times$target_time_day)
+  row_evaluation_time_day <- if (inherits(evaluation_times, "Date")) {
     as.numeric(stream_depletion$evaluation_time - pumping_schedules$t[[1]])
   } else {
     as.numeric(units::set_units(
@@ -132,7 +132,7 @@
   row_keys <- paste(
     stream_depletion$pump_id,
     stream_depletion$reach_segment_id,
-    row_evaluation_days,
+    row_evaluation_time_day,
     sep = "\r"
   )
 
@@ -156,13 +156,13 @@
       drop = FALSE
     ]
 
-    for (evaluation_day in evaluation_day_values) {
+    for (evaluation_time_day in evaluation_times_day) {
       expected_keys <- c(
         expected_keys,
         paste(
           pump_id,
           pump_segments$reach_segment_id,
-          evaluation_day,
+          evaluation_time_day,
           sep = "\r"
         )
       )
@@ -233,11 +233,11 @@
     pumping_schedules$t,
     evaluation_times
   )
-  schedule_start <- normalized_evaluations$normalized_schedule_times[[1]]
-  final_evaluation <- max(normalized_evaluations$normalized_target_times)
+  schedule_start_day <- normalized_evaluations$schedule_time_day[[1]]
+  final_evaluation_day <- max(normalized_evaluations$target_time_day)
 
   if (nrow(stream_injection_schedule) == 0) {
-    if (final_evaluation > schedule_start) {
+    if (final_evaluation_day > schedule_start_day) {
       stop(
         "stream_injection_schedule cannot be empty when evaluation times ",
         "extend beyond the first pumping-schedule time."
@@ -317,6 +317,9 @@
     )
   }
 
+  # Interval dimensions were checked above; strip normalized days for coverage comparisons.
+  interval_starts_day <- as.numeric(interval_starts)
+  interval_ends_day <- as.numeric(interval_ends)
   if (anyNA(interval_starts) || anyNA(interval_ends) ||
       any(!is.finite(as.numeric(interval_starts))) ||
       any(!is.finite(as.numeric(interval_ends))) ||
@@ -358,7 +361,7 @@
   # Validate continuous schedule coverage for every pump-segment pair.
   for (pair_key in unique(expected_keys)) {
     pair_rows <- which(schedule_keys == pair_key)
-    pair_rows <- pair_rows[order(as.numeric(interval_starts[pair_rows]))]
+    pair_rows <- pair_rows[order(interval_starts_day[pair_rows])]
 
     if (any(
       stream_injection_schedule$reach_id[pair_rows] !=
@@ -370,11 +373,11 @@
       )
     }
 
-    if (interval_starts[pair_rows[[1]]] != schedule_start ||
-        interval_ends[pair_rows[[length(pair_rows)]]] < final_evaluation ||
+    if (interval_starts_day[pair_rows[[1]]] != schedule_start_day ||
+        interval_ends_day[pair_rows[[length(pair_rows)]]] < final_evaluation_day ||
         (length(pair_rows) > 1 && any(
-          interval_starts[pair_rows[-1]] !=
-            interval_ends[pair_rows[-length(pair_rows)]]
+          interval_starts_day[pair_rows[-1]] !=
+            interval_ends_day[pair_rows[-length(pair_rows)]]
         ))) {
       stop(
         "stream_injection_schedule must provide continuous intervals from ",
@@ -387,57 +390,20 @@
   stream_injection_schedule
 }
 
-# Build the internal stream-injection time grid.
-.get_stream_injection_times <- function(
-    pumping_schedules,
-    evaluation_times = NULL,
-    injection_times = NULL) {
-
-  .validate_evaluation_times(evaluation_times, pumping_schedules$t)
-  .validate_injection_times(injection_times, pumping_schedules$t)
-
-  normalized_evaluations <- .normalize_time_inputs(
-    pumping_schedules$t,
-    evaluation_times
-  )
-  evaluation_days <- normalized_evaluations$normalized_target_times
-  pumping_days <- normalized_evaluations$normalized_schedule_times
-
-  if (is.null(injection_times)) {
-    refinement_days <- evaluation_days[0]
-  } else {
-    refinement_days <- .normalize_time_inputs(
-      pumping_schedules$t,
-      injection_times
-    )$normalized_target_times
-  }
-
-  final_evaluation_day <- max(evaluation_days)
-  boundary_day_values <- sort(unique(c(
-    as.numeric(pumping_days[pumping_days <= final_evaluation_day]),
-    as.numeric(evaluation_days),
-    as.numeric(refinement_days[refinement_days <= final_evaluation_day])
+# Merge prepared pumping, evaluation and refinement times into interval boundaries.
+.get_stream_injection_times <- function(pumping_schedules, evaluation_time_day = NULL,
+                                        injection_time_day = NULL) {
+  # Already-validated numeric times are days; exclude boundaries after final evaluation.
+  if (is.null(evaluation_time_day)) evaluation_time_day <- pumping_schedules$t_day
+  final_evaluation_day <- max(evaluation_time_day)
+  boundary_time_day <- sort(unique(c(
+    pumping_schedules$t_day[pumping_schedules$t_day <= final_evaluation_day],
+    evaluation_time_day, injection_time_day[injection_time_day <= final_evaluation_day]
   )))
-  boundary_days <- units::set_units(
-    boundary_day_values,
-    "days",
-    mode = "standard"
-  )
-
-  if (inherits(pumping_schedules$t, "Date")) {
-    schedule_boundaries <- pumping_schedules$t[[1]] + boundary_day_values
-  } else {
-    schedule_boundaries <- units::set_units(
-      boundary_days,
-      units::deparse_unit(pumping_schedules$t),
-      mode = "standard"
-    )
-  }
-
-  list(
-    schedule_boundaries = schedule_boundaries,
-    boundary_days = boundary_days
-  )
+  list(boundary_time_day = boundary_time_day,
+       interval_start_day = utils::head(boundary_time_day, -1L),
+       interval_end_day = utils::tail(boundary_time_day, -1L),
+       interval_duration_day = diff(boundary_time_day))
 }
 
 # Calculate interval-average stream-injection rates.
@@ -760,6 +726,7 @@ generate_stream_injection_schedule <- function(
 
   # Validate external tables/units before preparing numeric meters, days and rates.
   method <- match.arg(method)
+  aquifer_groups <- NULL
   .validate_pumping_schedules(pumping_schedules, pumping_wells)
   .validate_stream_segments(stream_segments)
   .validate_quadrature_order(quadrature_order)
@@ -783,13 +750,15 @@ generate_stream_injection_schedule <- function(
     if (!is.null(adf_stream_depletion)) {
       stop('adf_stream_depletion can only be supplied when method = "adf".')
     }
-    .get_aquifer_groups(pumping_wells, allow_n_aquifer_parameter_sets)
+    aquifer_groups <- .prepare_aquifer_groups(pumping_wells, allow_n_aquifer_parameter_sets)
     apportionment <- NULL
     depletion <- NULL
   }
   segments <- .prepare_numeric_segments(stream_segments)
+  wells <- .prepare_numeric_wells(pumping_wells, sf::st_crs(segments))
+  attr(wells, "isw_aquifer_groups") <- aquifer_groups
   .generate_stream_injection_schedule(
-    .prepare_numeric_wells(pumping_wells, sf::st_crs(segments)),
+    wells,
     .prepare_numeric_schedule(pumping_schedules, pumping_wells, times),
     segments,
     times$evaluation_time_day, times$injection_time_day, method,
@@ -1316,6 +1285,7 @@ model_aquifer_water_level_change <- function(
 
   # Validate original inputs, including supplied intermediates, before stripping units.
   injection_method <- match.arg(injection_method)
+  aquifer_groups <- NULL
   .validate_pumping_schedules(pumping_schedules, pumping_wells)
   .validate_observation_wells(observation_wells)
   .validate_stream_segments(stream_segments)
@@ -1343,14 +1313,16 @@ model_aquifer_water_level_change <- function(
     apportionment <- .prepare_numeric_apportionment(stream_apportionment, pumping_wells)
     injection_schedule <- NULL
   } else {
-    .get_aquifer_groups(pumping_wells, allow_n_aquifer_parameter_sets)
+    aquifer_groups <- .prepare_aquifer_groups(pumping_wells, allow_n_aquifer_parameter_sets)
     apportionment <- NULL
     injection_schedule <- NULL
   }
   .validate_quadrature_order(quadrature_order)
   segments <- .prepare_numeric_segments(stream_segments)
+  wells <- .prepare_numeric_wells(pumping_wells, sf::st_crs(segments))
+  attr(wells, "isw_aquifer_groups") <- aquifer_groups
   .model_aquifer_water_level_change(
-    .prepare_numeric_wells(pumping_wells, sf::st_crs(segments)),
+    wells,
     .prepare_numeric_schedule(pumping_schedules, pumping_wells, times),
     .transform_spatial_geometry(observation_wells, sf::st_crs(segments)),
     segments,

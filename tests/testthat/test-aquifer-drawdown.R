@@ -109,29 +109,14 @@ test_that("straight-stream drawdown is the real well minus its image", {
 })
 
 test_that("injection grids distinguish boundaries from evaluation times", {
-  pumping_schedules <- tibble::tibble(
-    t = units::set_units(c(0, 10, 30), "days"),
-    pump_1 = units::set_units(c(100, 50, 0), "m^3/day")
-  )
-
   schedule_grid <- isw:::.get_stream_injection_times(
-    pumping_schedules,
-    evaluation_times = units::set_units(c(0, 20, 40), "days"),
-    injection_times = units::set_units(c(5, 25, 50), "days")
+    tibble::tibble(t_day = c(0, 10, 30)),
+    evaluation_time_day = c(0, 20, 40), injection_time_day = c(5, 25, 50)
   )
-
-  expect_named(
-    schedule_grid,
-    c("schedule_boundaries", "boundary_days")
-  )
-  expect_equal(
-    schedule_grid$schedule_boundaries,
-    units::set_units(c(0, 5, 10, 20, 25, 30, 40), "days")
-  )
-  expect_equal(
-    schedule_grid$boundary_days,
-    units::set_units(c(0, 5, 10, 20, 25, 30, 40), "days")
-  )
+  expect_equal(schedule_grid$boundary_time_day, c(0, 5, 10, 20, 25, 30, 40))
+  expect_equal(schedule_grid$interval_start_day, c(0, 5, 10, 20, 25, 30))
+  expect_equal(schedule_grid$interval_end_day, c(5, 10, 20, 25, 30, 40))
+  expect_equal(schedule_grid$interval_duration_day, c(5, 5, 10, 5, 5, 10))
 })
 
 test_that("interval injection rates average depletion endpoints", {

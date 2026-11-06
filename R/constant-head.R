@@ -1,10 +1,7 @@
-# Group pumping wells by aquifer-response parameters.
-.get_aquifer_groups <- function(
-    pumping_wells,
-    allow_n_aquifer_parameter_sets = 5) {
-
+# Validate public aquifer-group controls and normalized hydraulic relationships.
+.prepare_aquifer_groups <- function(pumping_wells, allow_n_aquifer_parameter_sets = 5) {
+  # Raw wells retain units; validate and normalize before grouping numeric m/day and m fields.
   .validate_pumping_wells(pumping_wells)
-
   if (!is.numeric(allow_n_aquifer_parameter_sets) ||
       length(allow_n_aquifer_parameter_sets) != 1L ||
       is.na(allow_n_aquifer_parameter_sets) ||
@@ -18,55 +15,22 @@
     )
   }
 
-  normalized_K <- as.numeric(units::set_units(
-    pumping_wells$K,
-    "m/day",
-    mode = "standard"
-  ))
-  normalized_D <- as.numeric(units::set_units(
-    pumping_wells$D,
-    "m",
-    mode = "standard"
-  ))
-  parameter_keys <- paste(
-    format(normalized_K, digits = 17),
-    format(normalized_D, digits = 17),
-    format(pumping_wells$V, digits = 17),
-    sep = "\r"
-  )
-
+  prepared_wells <- .prepare_numeric_wells(pumping_wells)
+  groups <- .get_aquifer_groups(prepared_wells)
   if ("aquifer_id" %in% names(pumping_wells)) {
     aquifer_id <- pumping_wells$aquifer_id
-
-    if (!is.character(aquifer_id) || anyNA(aquifer_id) ||
-        any(trimws(aquifer_id) == "")) {
-      stop(
-        "pumping_wells$aquifer_id must contain nonmissing, nonempty ",
-        "character values."
-      )
+    if (!is.character(aquifer_id) || anyNA(aquifer_id) || any(trimws(aquifer_id) == "")) {
+      stop("pumping_wells$aquifer_id must contain nonmissing, nonempty character values.")
     }
-
-    inconsistent_ids <- vapply(
-      unique(aquifer_id),
-      function(id) length(unique(parameter_keys[aquifer_id == id])) != 1,
-      logical(1)
-    )
-
+    inconsistent_ids <- vapply(split(groups$parameter_key, aquifer_id), function(keys) {
+      length(unique(keys)) != 1L
+    }, logical(1))
     if (any(inconsistent_ids)) {
-      stop(
-        "Pumps sharing an aquifer_id must have identical K, D, and V; ",
-        "inconsistent aquifer_id values: ",
-        paste(unique(aquifer_id)[inconsistent_ids], collapse = ", "),
-        "."
-      )
+      stop("Pumps sharing an aquifer_id must have identical K, D, and V; inconsistent aquifer_id values: ",
+           paste(names(inconsistent_ids)[inconsistent_ids], collapse = ", "), ".")
     }
-  } else {
-    unique_keys <- unique(parameter_keys)
-    aquifer_id <- paste0("aquifer_", match(parameter_keys, unique_keys))
   }
-
-  number_of_parameter_sets <- length(unique(aquifer_id))
-
+  number_of_parameter_sets <- length(unique(groups$aquifer_id))
   if (number_of_parameter_sets > allow_n_aquifer_parameter_sets) {
     stop(
       "Constant-head injection found ", number_of_parameter_sets,
@@ -86,11 +50,19 @@
     )
   }
 
-  tibble::tibble(
-    pump_id = pumping_wells$pump_id,
-    aquifer_id = aquifer_id,
-    parameter_key = parameter_keys
-  )
+  groups
+}
+
+.get_aquifer_groups <- function(pumping_wells) {
+  # Validated numeric K_m_per_day, D_m and dimensionless V; returns identifiers/keys.
+  parameter_keys <- paste(format(pumping_wells$K_m_per_day, digits = 17),
+                          format(pumping_wells$D_m, digits = 17),
+                          format(pumping_wells$V, digits = 17), sep = "\r")
+  aquifer_id <- if ("aquifer_id" %in% names(pumping_wells)) pumping_wells$aquifer_id else {
+    paste0("aquifer_", match(parameter_keys, unique(parameter_keys)))
+  }
+  tibble::tibble(pump_id = pumping_wells$pump_id, aquifer_id = aquifer_id,
+                 parameter_key = parameter_keys)
 }
 
 # Calculate pump-specific signed head change at stream model points.

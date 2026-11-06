@@ -12,12 +12,12 @@ test_that("Date times are converted to elapsed days", {
   )
 
   expect_equal(
-    normalized_times$normalized_schedule_times,
-    units::set_units(c(0, 31, 59), "days")
+    normalized_times$schedule_time_day,
+    c(0, 31, 59)
   )
   expect_equal(
-    normalized_times$normalized_target_times,
-    units::set_units(c(0, 14, 90), "days")
+    normalized_times$target_time_day,
+    c(0, 14, 90)
   )
   expect_identical(
     normalized_times$output_target_times,
@@ -40,8 +40,8 @@ test_that("NULL target_times default to schedule_times", {
   normalized_times <- isw:::.normalize_time_inputs(schedule_times)
 
   expect_equal(
-    normalized_times$normalized_target_times,
-    normalized_times$normalized_schedule_times
+    normalized_times$target_time_day,
+    normalized_times$schedule_time_day
   )
   expect_identical(
     normalized_times$output_target_times,
@@ -59,12 +59,12 @@ test_that("unit-based times are converted to days without shifting", {
   )
 
   expect_equal(
-    normalized_times$normalized_schedule_times,
-    units::set_units(c(1, 2, 3), "days")
+    normalized_times$schedule_time_day,
+    c(1, 2, 3)
   )
   expect_equal(
-    normalized_times$normalized_target_times,
-    units::set_units(c(1, 2, 4), "days")
+    normalized_times$target_time_day,
+    c(1, 2, 4)
   )
   expect_identical(
     normalized_times$output_target_times,
@@ -93,4 +93,24 @@ test_that("normalization applies target-time validation", {
     isw:::.normalize_time_inputs(schedule_times, target_times),
     "target_times cannot occur before the first pumping-schedule time"
   )
+})
+
+test_that("output formatting restores Date origins and caller time units", {
+  origin <- as.Date("2025-01-01")
+  expect_identical(isw:::.restore_time_values(c(0, 1, 31), origin, origin),
+                   origin + c(0, 1, 31))
+  hours <- units::set_units(c(24, 48), "hour")
+  restored <- isw:::.restore_time_values(c(1, 2), hours)
+  expect_equal(restored, hours)
+  expect_identical(units::deparse_unit(restored), units::deparse_unit(hours))
+})
+
+test_that("numeric injection grids handle defaults and a single initial boundary", {
+  schedule <- tibble::tibble(t_day = c(1, 2, 3))
+  grid <- isw:::.get_stream_injection_times(schedule)
+  expect_equal(grid$boundary_time_day, c(1, 2, 3))
+  expect_equal(grid$interval_duration_day, c(1, 1))
+  initial <- isw:::.get_stream_injection_times(schedule, evaluation_time_day = 1)
+  expect_identical(initial$interval_start_day, numeric())
+  expect_identical(initial$interval_duration_day, numeric())
 })

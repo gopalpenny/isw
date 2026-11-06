@@ -4,7 +4,7 @@ Design document for branch `performance`. The tables below inventory the 61
 named, top-level functions present before the refactor; proposed helpers are
 identified separately.
 
-## Implementation status: public boundaries, analytical kernels and spatial preparation
+## Implementation status: stages 1 through 4
 
 The first implementation stage adds validated numeric preparation to all ten
 public entry points. Physical inputs are converted before stripping, numeric
@@ -41,13 +41,26 @@ their sf class/CRS. Distance matrices, width regularization, line quadrature,
 numeric response evaluation and response caches are prepared for reuse.
 Injection-event extraction was updated to consume those numeric matrices.
 Scheduled-model callers will adopt the new interfaces in subsequent stages.
+Stage 3 was committed as `9710f3e`.
 
-Spatial, line-response and boundary tests pass. The latest full suite reports
-17 test blocks with errors from unmigrated paths, 464 passed expectations and
-zero failed expectations.
+Stage 4 normalizes external dates/time quantities to numeric day vectors at the
+boundary and retains original output times/origin as metadata. Prepared numeric
+schedules carry reusable pumping-event and event/evaluation-pair tables. Events
+use explicit day and m3_per_day column suffixes, preserve signed changes, omit
+unchanged rates, and contribute only at strictly later evaluations. Numeric
+injection grids merge pumping/evaluation/refinement boundaries. Aquifer grouping
+uses normalized numeric properties; its relationship checks, limits and warnings
+live in the boundary preparer, and prepared groups are retained for reuse.
+
+The final time, event, aquifer-group and boundary runs passed 136 expectations.
+The last full suite reports 19 test blocks with errors from unmigrated paths,
+473 passed expectations and zero failed expectations (before four additional
+passing injection-grid assertions). Two additional error blocks now expose
+interval-averaging helpers that still read the former normalized-time schema;
+these are part of the next ADF migration, not repaired with a compatibility layer.
 These counts are a transition snapshot, not a passing package result. Vignette
 explanations of completed model internals remain pending until end-to-end paths
-work. Numeric time and pumping-event processing is the next implementation stage.
+work. The ADF depletion and injection-schedule workflow is the next stage.
 
 ## Internal contract
 
@@ -320,8 +333,8 @@ numerical implementations.
 | 1. Public boundaries | Validate external inputs, normalize/strip physical quantities with suffixes, retain output metadata; keep old internal checks | Implemented and boundary-tested. No adapter; branch intentionally has failing end-to-end paths. Audit these boundaries as later layers establish their exact contracts. |
 | 2. Analytical kernels | Migrate Glover, Theis, direct/image-well and local finite-line kernels to numeric meters/days; preserve regularization and underflow logic | Implemented and tested. Standalone public analytical functions work with equivalent input units and unchanged output-unit behavior. |
 | 3. Spatial preparation | Consolidate shared UTM selection, retain sf/CRS, migrate segmentation/sampling/apportionment, prepare reusable line operators and numeric meter distances | Implemented and tested. Spatial public functions work independently; mixed CRSs and zone crossings work; secondary model-point geometry is transformed explicitly. Numeric cache/extraction interfaces migrated alongside operators. |
-| 4. Time and pumping events | Numeric day/rate tables, event changes, evaluation indices, shared Date origin, aquifer groups | Next. Helpers must no longer renormalize inputs or reconstruct the same events repeatedly. |
-| 5. ADF workflow | Migrate fraction lookup, event superposition, interval averaging and private schedule coordinator | Pending. Public depletion/schedule outputs retain shapes, dates, units and missing-time completion behavior. |
+| 4. Time and pumping events | Numeric day/rate tables, event changes, evaluation indices, shared Date origin, aquifer groups | Implemented and tested. Prepared schedules retain reusable events/pairs; grouping uses normalized properties with boundary diagnostics. |
+| 5. ADF workflow | Migrate fraction lookup, event superposition, interval averaging and private schedule coordinator | Next. Public depletion/schedule outputs must retain shapes, dates, units and missing-time completion behavior. |
 | 6. Constant-head workflow | Numeric response/cache keys, precomputed pump-to-stream distances, numeric history accumulation; retain QR/factorization reuse | Pending. Match baseline rates, signs and boundary residuals; retain numerical diagnostics. |
 | 7. Aquifer workflow | Numeric direct pumping and injection superposition; reuse prepared geometry, events and response matrices | Pending. Full public wrapper and supplied-schedule paths work; observations no longer trigger repeated spatial preparation in time loops. |
 | 8. Validation and output audit | Verify every independent public route is protected; remove repeated input checks only from migrated helpers; complete output formatting | Ongoing per stage, final audit pending. Keep checks of newly supplied data and numerical/service diagnostics. |
