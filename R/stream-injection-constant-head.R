@@ -329,3 +329,60 @@
 
   do.call(rbind, schedule_parts)
 }
+
+# Read a valid quadrature order recorded on a constant-head schedule.
+.get_metadata_quadrature_order <- function(stream_injection_schedule) {
+  metadata <- attr(
+    stream_injection_schedule,
+    "isw_schedule_metadata",
+    exact = TRUE
+  )
+
+  if (!is.list(metadata) ||
+      !identical(metadata$injection_method, "constant_head")) {
+    return(NULL)
+  }
+
+  quadrature_order <- metadata$quadrature_order
+  if (!is.numeric(quadrature_order) || inherits(quadrature_order, "units") ||
+      length(quadrature_order) != 1L || is.na(quadrature_order) ||
+      !is.finite(quadrature_order) || quadrature_order < 1 ||
+      quadrature_order != as.integer(quadrature_order)) {
+    return(NULL)
+  }
+
+  as.integer(quadrature_order)
+}
+
+# Reuse schedule quadrature metadata or report an explicit mismatch.
+.resolve_schedule_quadrature_order <- function(
+    stream_injection_schedule,
+    quadrature_order,
+    quadrature_order_supplied) {
+
+  schedule_order <- .get_metadata_quadrature_order(
+    stream_injection_schedule
+  )
+  if (is.null(schedule_order)) {
+    return(quadrature_order)
+  }
+
+  if (!quadrature_order_supplied) {
+    return(schedule_order)
+  }
+
+  supplied_order_is_valid <- length(quadrature_order) == 1L &&
+    !is.na(quadrature_order) && is.finite(quadrature_order) &&
+    quadrature_order >= 1 && quadrature_order == as.integer(quadrature_order)
+  if (supplied_order_is_valid &&
+      as.integer(quadrature_order) != schedule_order) {
+    warning(
+      "quadrature_order = ", as.integer(quadrature_order),
+      " differs from the value used to construct the constant-head ",
+      "stream_injection_schedule (", schedule_order, ").",
+      call. = FALSE
+    )
+  }
+
+  quadrature_order
+}
