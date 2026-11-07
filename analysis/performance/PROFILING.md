@@ -230,3 +230,38 @@ The package default is now 4. Historical scaling/monthly fixtures explicitly
 retain order 16 in `.make_scaling_workload()` to keep their recorded comparisons
 reproducible; pass `quadrature_order = 4L` to that helper to use the new default
 order in a custom workload.
+
+## Compare point injection with the earlier order-one line path
+
+```r
+source("analysis/performance/benchmark-point-injection.R")
+point_comparison <- run_point_injection_study()
+```
+
+The baseline is `c2ed2a4`, before the point representation. The current branch
+is measured at `quadrature_order = 1` against that baseline at the same order.
+Both versions are loaded into the same R session without switching branches;
+the workload helper uses each version's own preparation and modeling functions.
+The fixture matches the ten-year monthly-changing-pumping study: 1,000
+observations, 100 straight segments, two pumps sharing K/D/V, and 121 calendar
+evaluation dates. Stream preparation is included. After warm-up and complete
+output comparison, five alternating version pairs are timed without a profiler.
+Every timed result is compared with the warmed baseline outside timing.
+
+Outputs are written to `analysis/profiles/point-injection-study/`, including
+raw timings, median/min/max/IQR summaries, numerical differences and session
+details. See [POINT-INJECTION-RESULTS.md](POINT-INJECTION-RESULTS.md). This
+straight-segment experiment does not quantify the additional effects of
+replacing multiple edge sources on curved segments with a single model point.
+
+For the smaller bundled 90-day examples (7/14 segments and two observations):
+
+```r
+run_small_point_injection_study()
+```
+
+This uses 15 alternating version pairs for both methods and both preparation
+modes, always at order 1. The cases have four/ten evaluations and two distinct
+aquifer parameter sets. Results go to
+`analysis/profiles/small-point-injection-study/`; see the smaller-example
+section in [POINT-INJECTION-RESULTS.md](POINT-INJECTION-RESULTS.md).

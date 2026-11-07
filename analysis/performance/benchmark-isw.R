@@ -17,7 +17,8 @@ pkgload::load_all(".", quiet = TRUE)
   baseline
 }
 
-.make_performance_workload <- function(api, scenario, method, include_preparation) {
+.make_performance_workload <- function(api, scenario, method, include_preparation,
+                                       quadrature_order = NULL) {
   # User-facing fixtures retain physical units and sf CRS; stripped lengths use meters.
   pumping_schedules <- tibble::tibble(
     t = units::set_units(c(0, 30, 60), "days"),
@@ -52,11 +53,14 @@ pkgload::load_all(".", quiet = TRUE)
   prepared_inputs <- prepare_inputs()
   run_model <- function() {
     model_inputs <- if (include_preparation) prepare_inputs() else prepared_inputs
-    api$model_aquifer_water_level_change(
-      isw::example_pumping_wells, pumping_schedules, observation_wells,
-      model_inputs$stream_segments, evaluation_times,
+    model_arguments <- list(
+      pumping_wells = isw::example_pumping_wells, pumping_schedules = pumping_schedules,
+      observation_wells = observation_wells, stream_segments = model_inputs$stream_segments,
+      evaluation_times = evaluation_times,
       injection_method = method, stream_apportionment = model_inputs$stream_apportionment
     )
+    if (!is.null(quadrature_order)) model_arguments$quadrature_order <- quadrature_order
+    do.call(api$model_aquifer_water_level_change, model_arguments)
   }
   list(run = run_model, number_of_segments = nrow(prepared_inputs$stream_segments),
        number_of_evaluations = length(evaluation_times),

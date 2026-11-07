@@ -3,7 +3,7 @@ pkgload::load_all(".", quiet = TRUE)
 
 .make_scaling_workload <- function(scenario, method, evaluation_times = NULL,
                                    pumping_times = NULL, pumping_rates = NULL,
-                                   quadrature_order = 16L) {
+                                   quadrature_order = 16L, api = asNamespace("isw")) {
   # Synthetic sf geometry retains its meter CRS; hydraulic inputs carry units.
   # Keep a fixed 2,800-meter straight stream and footprint across all sweeps.
   reach_endpoints_m <- seq(499000, 501800, length.out = scenario$number_of_reaches + 1L)
@@ -40,14 +40,14 @@ pkgload::load_all(".", quiet = TRUE)
   }
   if (is.null(evaluation_times)) evaluation_times <- units::set_units(seq(0, 90, by = 5), "day")
   prepare_inputs <- function() {
-    stream_segments <- prep_stream_segments(
+    stream_segments <- api$prep_stream_segments(
       stream_reaches, units::set_units(
         if (scenario$axis == "network_reaches") 100 else 2800 / scenario$number_of_segments, "m"
       ),
       stream_width = units::set_units(10, "m")
     )
     stopifnot(nrow(stream_segments) == scenario$number_of_segments)
-    stream_apportionment <- if (method == "adf") prep_adf_stream_apportionment(
+    stream_apportionment <- if (method == "adf") api$prep_adf_stream_apportionment(
       pumping_wells, stream_segments, units::set_units(50, "m")
     ) else NULL
     list(stream_segments = stream_segments, stream_apportionment = stream_apportionment)
@@ -55,7 +55,7 @@ pkgload::load_all(".", quiet = TRUE)
   prepared <- prepare_inputs()
   run_model <- function(include_preparation) {
     inputs <- if (include_preparation) prepare_inputs() else prepared
-    model_aquifer_water_level_change(
+    api$model_aquifer_water_level_change(
       pumping_wells, pumping_schedules, observation_wells, inputs$stream_segments,
       evaluation_times, injection_method = method,
       stream_apportionment = inputs$stream_apportionment,
