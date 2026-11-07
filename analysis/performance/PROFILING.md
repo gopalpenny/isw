@@ -265,3 +265,20 @@ modes, always at order 1. The cases have four/ten evaluations and two distinct
 aquifer parameter sets. Results go to
 `analysis/profiles/small-point-injection-study/`; see the smaller-example
 section in [POINT-INJECTION-RESULTS.md](POINT-INJECTION-RESULTS.md).
+
+## Compare with the point-source implementation before line sinks
+
+```r
+source("analysis/performance/benchmark-pre-line-sink.R")
+historical_comparison <- run_pre_line_sink_study()
+```
+
+The baseline `3d4dcb7` is the last pre-line-sink main-branch commit. The script
+adapts its historical function names and matches current order-one minimum
+response radii to its segment-length-based injection diameters. It compares
+the 7/14/28-segment, 2/2/20-observation 90-day cases, both methods and both
+preparation modes, using five alternating version pairs after warm-up. All
+timed results are checked outside timing. No package defaults or engine code
+are changed. Results and the matched-input rationale are documented in
+[PRE-LINE-SINK-RESULTS.md](PRE-LINE-SINK-RESULTS.md), with raw files under
+`analysis/profiles/pre-line-sink-study/`.
