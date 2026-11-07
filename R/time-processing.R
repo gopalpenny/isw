@@ -20,3 +20,9 @@
   units::set_units(units::set_units(time_day, "day"),
                    units::deparse_unit(output_times), mode = "standard")
 }
+
+.time_in_days <- function(x, time_origin = NULL) {
+  # Convert checked Date/time inputs to numeric days; Date offsets share an origin.
+  if (inherits(x, "Date")) return(as.numeric(x - time_origin))
+  .numeric_in_standard_units(x, "days", "time")
+}

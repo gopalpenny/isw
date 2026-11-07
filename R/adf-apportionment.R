@@ -443,3 +443,137 @@ model_adf_stream_depletion <- function(
   # Restore user-facing evaluation times and original pumping-rate units.
   .restore_adf_output(result, prepared_model_times, units::deparse_unit(pumping_schedules[[pumping_wells$pump_id[[1]]]]))
 }
+
+# Validate apportioned stream-depletion results for drawdown calculations.
+.validate_apportioned_stream_depletion <- function(
+    stream_depletion,
+    pumping_wells,
+    pumping_schedules,
+    stream_apportionment) {
+
+  if (!is.data.frame(stream_depletion) || nrow(stream_depletion) == 0) {
+    stop("stream_depletion must be a nonempty data frame or tibble.")
+  }
+
+  required_columns <- c(
+    "pump_id",
+    "evaluation_time",
+    "reach_id",
+    "reach_segment_id",
+    "stream_depletion_rate"
+  )
+  missing_columns <- setdiff(required_columns, names(stream_depletion))
+
+  if (length(missing_columns) > 0) {
+    stop(
+      "stream_depletion is missing required columns: ",
+      paste(missing_columns, collapse = ", "),
+      "."
+    )
+  }
+
+  # Context tables were checked at the user-facing boundary; supplied depletion is new.
+
+  evaluation_times <- sort(unique(stream_depletion$evaluation_time))
+  .validate_evaluation_times(evaluation_times, pumping_schedules$t)
+
+  if (!is.character(stream_depletion$pump_id) ||
+      !is.character(stream_depletion$reach_id) ||
+      !is.character(stream_depletion$reach_segment_id) ||
+      anyNA(stream_depletion$pump_id) ||
+      anyNA(stream_depletion$reach_id) ||
+      anyNA(stream_depletion$reach_segment_id)) {
+    stop(
+      "stream_depletion identifiers must be nonmissing character vectors."
+    )
+  }
+
+  check_dimensionality(
+    stream_depletion$stream_depletion_rate,
+    desired_units = "m^3/s",
+    variable_name = "stream_depletion$stream_depletion_rate"
+  )
+
+  if (any(!is.finite(as.numeric(
+    stream_depletion$stream_depletion_rate
+  )))) {
+    stop("stream_depletion$stream_depletion_rate must contain finite values.")
+  }
+
+  normalized_times <- .normalize_time_inputs(
+    pumping_schedules$t,
+    evaluation_times
+  )
+  evaluation_times_day <- as.numeric(normalized_times$target_time_day)
+  row_evaluation_time_day <- if (inherits(evaluation_times, "Date")) {
+    as.numeric(stream_depletion$evaluation_time - pumping_schedules$t[[1]])
+  } else {
+    as.numeric(units::set_units(
+      stream_depletion$evaluation_time,
+      "days",
+      mode = "standard"
+    ))
+  }
+
+  row_keys <- paste(
+    stream_depletion$pump_id,
+    stream_depletion$reach_segment_id,
+    row_evaluation_time_day,
+    sep = "\r"
+  )
+
+  if (anyDuplicated(row_keys) > 0) {
+    stop(
+      "stream_depletion must contain one row per pump_id, ",
+      "reach_segment_id, and evaluation_time combination."
+    )
+  }
+
+  apportionment_table <- sf::st_drop_geometry(stream_apportionment)
+  expected_keys <- character()
+  expected_reaches <- character()
+
+  # Build the complete set of pump, segment, and evaluation-time combinations
+  # required in the supplied depletion table.
+  for (pump_id in pumping_wells$pump_id) {
+    pump_segments <- apportionment_table[
+      apportionment_table$pump_id == pump_id,
+      ,
+      drop = FALSE
+    ]
+
+    for (evaluation_time_day in evaluation_times_day) {
+      expected_keys <- c(
+        expected_keys,
+        paste(
+          pump_id,
+          pump_segments$reach_segment_id,
+          evaluation_time_day,
+          sep = "\r"
+        )
+      )
+      expected_reaches <- c(expected_reaches, pump_segments$reach_id)
+    }
+  }
+
+  matched_rows <- match(expected_keys, row_keys)
+
+  if (anyNA(matched_rows) || length(row_keys) != length(expected_keys)) {
+    stop(
+      "stream_depletion must contain every pump, reach-segment, and ",
+      "evaluation-time combination in stream_apportionment."
+    )
+  }
+
+  if (!identical(
+    stream_depletion$reach_id[matched_rows],
+    expected_reaches
+  )) {
+    stop(
+      "stream_depletion$reach_id must match each reach_segment_id in ",
+      "stream_apportionment."
+    )
+  }
+
+  stream_depletion
+}

@@ -78,12 +78,6 @@
   )
 }
 
-.time_in_days <- function(x, time_origin = NULL) {
-  # Convert checked Date/time inputs to numeric days; Date offsets share an origin.
-  if (inherits(x, "Date")) return(as.numeric(x - time_origin))
-  .numeric_in_standard_units(x, "days", "time")
-}
-
 .prepare_numeric_model_times <- function(pumping_schedules, evaluation_times,
                                          injection_times = NULL) {
   # Validate times, normalize/strip to numeric days, and retain output time metadata.
@@ -213,24 +207,6 @@
   stream_injection_schedule
 }
 
-.validate_positive_length <- function(x, variable_name) {
-  # Validate physical dimensions and scalar controls while units are explicit.
-  check_dimensionality(x, "m", variable_name)
-  if (length(x) != 1L || !is.finite(as.numeric(x)) || as.numeric(x) <= 0) {
-    stop(variable_name, " must be a finite, positive scalar length.")
-  }
-}
-
-.validate_quadrature_order <- function(quadrature_order) {
-  # Dimensionless integer control, checked before calling numeric internals.
-  if (!is.numeric(quadrature_order) || inherits(quadrature_order, "units") ||
-      length(quadrature_order) != 1L ||
-      !is.finite(quadrature_order) || quadrature_order < 1 ||
-      quadrature_order != floor(quadrature_order)) {
-    stop("quadrature_order must be a positive integer.")
-  }
-}
-
 .prepare_analytical_inputs <- function(length_inputs, K, D, V, t, well_diam = NULL) {
   # Check dimensions/values before converting lengths to m, K to m/day, t to day.
   for (variable_name in names(length_inputs)) {
@@ -277,107 +253,6 @@
   # Preserve the existing user-facing response units for reattachment at the boundary.
   prepared$output_response_units <- units::deparse_unit(1 / (K * D))
   prepared
-}
-
-.validate_stream_sampling_inputs <- function(stream_segments, sample_spacing) {
-  # Boundary checks retain the existing sampling-specific geometry/unit contract.
-
-  if (!inherits(stream_segments, "sf")) {
-    stop("stream_segments must be an sf object.")
-  }
-
-  required_columns <- c(
-    "reach_id",
-    "reach_segment_id",
-    "represented_length"
-  )
-  missing_columns <- setdiff(required_columns, names(stream_segments))
-
-  if (length(missing_columns) > 0) {
-    stop(
-      "stream_segments is missing required columns: ",
-      paste(missing_columns, collapse = ", "),
-      "."
-    )
-  }
-
-  if (nrow(stream_segments) == 0) {
-    stop("stream_segments must contain at least one feature.")
-  }
-
-  if (is.na(sf::st_crs(stream_segments)) ||
-      !grepl("^PROJCRS\\[", sf::st_crs(stream_segments)$wkt)) {
-    stop("stream_segments must use a projected CRS.")
-  }
-
-  geometry_types <- as.character(
-    sf::st_geometry_type(stream_segments, by_geometry = TRUE)
-  )
-
-  if (!all(geometry_types == "LINESTRING")) {
-    stop("Every stream_segments geometry must be a LINESTRING.")
-  }
-
-  if (any(sf::st_is_empty(stream_segments)) ||
-      any(!is.finite(sf::st_coordinates(stream_segments)[, 1:2, drop = FALSE]))) {
-    stop("stream_segments must contain nonempty geometries with finite coordinates.")
-  }
-
-  if (!is.character(stream_segments$reach_id) ||
-      !is.character(stream_segments$reach_segment_id) ||
-      anyNA(stream_segments$reach_id) ||
-      anyNA(stream_segments$reach_segment_id) ||
-      any(trimws(stream_segments$reach_id) == "") ||
-      any(trimws(stream_segments$reach_segment_id) == "")) {
-    stop(
-      "stream_segments$reach_id and stream_segments$reach_segment_id must be ",
-      "nonmissing, nonempty character vectors."
-    )
-  }
-
-  if (anyDuplicated(stream_segments$reach_segment_id) > 0) {
-    stop("stream_segments$reach_segment_id values must be unique.")
-  }
-
-  check_dimensionality(
-    stream_segments$represented_length,
-    desired_units = "m",
-    variable_name = "stream_segments$represented_length"
-  )
-  check_dimensionality(
-    sample_spacing,
-    desired_units = "m",
-    variable_name = "sample_spacing"
-  )
-
-  if (length(sample_spacing) != 1 ||
-      !is.finite(as.numeric(sample_spacing)) ||
-      as.numeric(sample_spacing) <= 0) {
-    stop("sample_spacing must be a finite, positive scalar length.")
-  }
-
-  segment_lengths <- sf::st_length(stream_segments)
-
-  if (any(!is.finite(as.numeric(segment_lengths))) ||
-      any(as.numeric(segment_lengths) <= 0)) {
-    stop("stream_segments must contain finite, positive geometry lengths.")
-  }
-
-  if (!isTRUE(all.equal(
-    segment_lengths,
-    units::set_units(
-      stream_segments$represented_length,
-      units::deparse_unit(segment_lengths),
-      mode = "standard"
-    )
-  ))) {
-    stop(
-      "stream_segments$represented_length must equal the active geometry ",
-      "length."
-    )
-  }
-
-  invisible(stream_segments)
 }
 
 .restore_aquifer_output <- function(x, times, length_units) {

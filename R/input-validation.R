@@ -579,3 +579,21 @@
     "injection_times"
   )
 }
+
+.validate_positive_length <- function(x, variable_name) {
+  # Validate physical dimensions and scalar controls while units are explicit.
+  check_dimensionality(x, "m", variable_name)
+  if (length(x) != 1L || !is.finite(as.numeric(x)) || as.numeric(x) <= 0) {
+    stop(variable_name, " must be a finite, positive scalar length.")
+  }
+}
+
+.validate_quadrature_order <- function(quadrature_order) {
+  # Dimensionless integer control, checked before calling numeric internals.
+  if (!is.numeric(quadrature_order) || inherits(quadrature_order, "units") ||
+      length(quadrature_order) != 1L ||
+      !is.finite(quadrature_order) || quadrature_order < 1 ||
+      quadrature_order != floor(quadrature_order)) {
+    stop("quadrature_order must be a positive integer.")
+  }
+}
