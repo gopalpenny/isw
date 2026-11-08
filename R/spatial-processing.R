@@ -269,24 +269,12 @@ prep_stream_segments <- function(
     units::set_units(1, units::deparse_unit(segment_lengths), mode = "standard"), "m"
   ))
   segment_midpoints <- sf::st_sfc(
-    lapply(seq_len(nrow(stream_segments)), function(segment_index) {
-      segment_coordinates_m <- sf::st_coordinates(
-        sf::st_geometry(stream_segments)[[segment_index]]
-      )[, 1:2, drop = FALSE] * coordinate_unit_m
-      coordinate_differences_m <-
-        segment_coordinates_m[-1, , drop = FALSE] -
-        segment_coordinates_m[-nrow(segment_coordinates_m), , drop = FALSE]
-      cumulative_length_m <- c(
-        0,
-        cumsum(sqrt(rowSums(coordinate_differences_m^2)))
-      )
-
-      sf::st_point(.point_along_linestring(
-        segment_coordinates_m,
-        cumulative_length_m,
-        cumulative_length_m[[length(cumulative_length_m)]] / 2
-      ) / coordinate_unit_m)
-    }),
+    lapply(
+      seq_len(nrow(stream_segments)),
+      .get_segment_midpoint,
+      stream_segments = stream_segments,
+      coordinate_unit_m = coordinate_unit_m
+    ),
     crs = sf::st_crs(stream_segments)
   )
   midpoint_distance <- sf::st_distance(
@@ -316,6 +304,28 @@ prep_stream_segments <- function(
   }
 
   stream_segments
+}
+
+# Calculate one segment's midpoint by distance along its line geometry.
+.get_segment_midpoint <- function(segment_index, stream_segments, coordinate_unit_m) {
+  # sf geometry retains CRS; coordinate offsets are converted to numeric meters.
+  segment_coordinates_m <- sf::st_coordinates(
+    sf::st_geometry(stream_segments)[[segment_index]]
+  )[, 1:2, drop = FALSE] * coordinate_unit_m
+  coordinate_differences_m <-
+    segment_coordinates_m[-1, , drop = FALSE] -
+    segment_coordinates_m[-nrow(segment_coordinates_m), , drop = FALSE]
+  cumulative_length_m <- c(
+    0,
+    cumsum(sqrt(rowSums(coordinate_differences_m^2)))
+  )
+
+  # Restore native coordinate units before the caller attaches the original CRS.
+  sf::st_point(.point_along_linestring(
+    segment_coordinates_m,
+    cumulative_length_m,
+    cumulative_length_m[[length(cumulative_length_m)]] / 2
+  ) / coordinate_unit_m)
 }
 
 #' Discretize stream reaches for modeling

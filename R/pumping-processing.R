@@ -3,19 +3,28 @@
   # Validated numeric schedule: t_day and pump columns suffixed _m3_per_day.
 
   # Convert each pump's scheduled rates into nonzero rate-change events.
-  pumping_events_by_pump <- lapply(pump_ids, function(pump_id) {
-    rate_m3_per_day <- pumping_schedules[[paste0(pump_id, "_m3_per_day")]]
-    change_m3_per_day <- diff(c(0, rate_m3_per_day))
-    changed <- which(change_m3_per_day != 0)
-
-    tibble::tibble(
-      pump_id = rep(pump_id, length(changed)),
-      pumping_time_day = pumping_schedules$t_day[changed],
-      pumping_rate_change_m3_per_day = change_m3_per_day[changed]
-    )
-  })
+  pumping_events_by_pump <- lapply(
+    pump_ids,
+    .get_pumping_events_for_pump,
+    pumping_schedules = pumping_schedules
+  )
 
   do.call(rbind, pumping_events_by_pump)
+}
+
+# Construct one pump's events from its prepared schedule.
+.get_pumping_events_for_pump <- function(pump_id, pumping_schedules) {
+  # Validated numeric schedule: t_day and pump columns suffixed _m3_per_day.
+
+  rate_m3_per_day <- pumping_schedules[[paste0(pump_id, "_m3_per_day")]]
+  change_m3_per_day <- diff(c(0, rate_m3_per_day))
+  changed <- which(change_m3_per_day != 0)
+
+  tibble::tibble(
+    pump_id = rep(pump_id, length(changed)),
+    pumping_time_day = pumping_schedules$t_day[changed],
+    pumping_rate_change_m3_per_day = change_m3_per_day[changed]
+  )
 }
 
 # Pair already-prepared events with strictly later requested evaluation times.

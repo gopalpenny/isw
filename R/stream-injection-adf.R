@@ -22,7 +22,8 @@
   keys <- unique(depletion_at_schedule_boundaries[c("pump_id", "reach_segment_id")])
 
   # Convert boundary depletion to interval rates separately for each pump-segment pair.
-  injection_schedules_by_pump_segment <- lapply(seq_len(nrow(keys)), function(index) {
+  injection_schedules_by_pump_segment <- vector("list", nrow(keys))
+  for (index in seq_len(nrow(keys))) {
     rows <- which(
       depletion_at_schedule_boundaries$pump_id == keys$pump_id[[index]] &
         depletion_at_schedule_boundaries$reach_segment_id == keys$reach_segment_id[[index]]
@@ -32,9 +33,12 @@
     rows <- rows[order(depletion_at_schedule_boundaries$schedule_boundary_day[rows])]
     endpoint_rate_m3_per_day <- depletion_at_schedule_boundaries$stream_depletion_rate_m3_per_day[rows]
     if (prepend_zero) endpoint_rate_m3_per_day <- c(0, endpoint_rate_m3_per_day)
-    if (length(endpoint_rate_m3_per_day) < 2) return(template)
+    if (length(endpoint_rate_m3_per_day) < 2) {
+      injection_schedules_by_pump_segment[[index]] <- template
+      next
+    }
 
-    tibble::tibble(
+    injection_schedules_by_pump_segment[[index]] <- tibble::tibble(
       pump_id = rep(keys$pump_id[[index]], length(time_day) - 1L),
       reach_id = rep(depletion_at_schedule_boundaries$reach_id[rows[[1]]], length(time_day) - 1L),
       reach_segment_id = rep(keys$reach_segment_id[[index]], length(time_day) - 1L),
@@ -45,7 +49,7 @@
           utils::tail(endpoint_rate_m3_per_day, -1L)
       ) / 2
     )
-  })
+  }
 
   do.call(rbind, c(list(template), injection_schedules_by_pump_segment))
 }

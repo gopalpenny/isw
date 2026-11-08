@@ -235,28 +235,38 @@
   keys <- unique(injection_schedule[c("pump_id", "reach_segment_id")])
 
   # Convert each pump-segment interval schedule into nonzero rate-change events.
-  injection_events_by_pump_segment <- lapply(seq_len(nrow(keys)), function(index) {
-    rows <- which(
-      injection_schedule$pump_id == keys$pump_id[[index]] &
-        injection_schedule$reach_segment_id == keys$reach_segment_id[[index]]
-    )
-    rows <- rows[order(injection_schedule$interval_start_day[rows])]
-
-    # User-facing injection is positive from stream to aquifer; response kernels use
-    # the pumping convention, so injection enters superposition with the opposite sign.
-    change_m3_per_day <- diff(c(0, -injection_schedule$injection_rate_m3_per_day[rows]))
-    changed <- which(change_m3_per_day != 0)
-
-    tibble::tibble(
-      pump_id = rep(keys$pump_id[[index]], length(changed)),
-      reach_id = rep(injection_schedule$reach_id[rows[[1]]], length(changed)),
-      reach_segment_id = rep(keys$reach_segment_id[[index]], length(changed)),
-      injection_time_day = injection_schedule$interval_start_day[rows][changed],
-      injection_rate_change_m3_per_day = change_m3_per_day[changed]
-    )
-  })
+  injection_events_by_pump_segment <- lapply(
+    seq_len(nrow(keys)),
+    .get_injection_events_for_pump_segment,
+    keys = keys,
+    injection_schedule = injection_schedule
+  )
 
   do.call(rbind, c(list(template), injection_events_by_pump_segment))
+}
+
+# Construct signed rate-change events for one pump-segment pair.
+.get_injection_events_for_pump_segment <- function(index, keys, injection_schedule) {
+  # Validated numeric rates use m^3/day and times day.
+
+  rows <- which(
+    injection_schedule$pump_id == keys$pump_id[[index]] &
+      injection_schedule$reach_segment_id == keys$reach_segment_id[[index]]
+  )
+  rows <- rows[order(injection_schedule$interval_start_day[rows])]
+
+  # User-facing injection is positive from stream to aquifer; response kernels use
+  # the pumping convention, so injection enters superposition with the opposite sign.
+  change_m3_per_day <- diff(c(0, -injection_schedule$injection_rate_m3_per_day[rows]))
+  changed <- which(change_m3_per_day != 0)
+
+  tibble::tibble(
+    pump_id = rep(keys$pump_id[[index]], length(changed)),
+    reach_id = rep(injection_schedule$reach_id[rows[[1]]], length(changed)),
+    reach_segment_id = rep(keys$reach_segment_id[[index]], length(changed)),
+    injection_time_day = injection_schedule$interval_start_day[rows][changed],
+    injection_rate_change_m3_per_day = change_m3_per_day[changed]
+  )
 }
 
 #' Construct a stream-injection schedule
