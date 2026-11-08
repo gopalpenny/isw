@@ -2,21 +2,26 @@
 .get_stream_depletion_fraction_lookup <- function(
     pumping_wells, pumping_response_times, stream_apportionment) {
   # Validated numeric distances/thickness are m, conductivity m/day and event ages day.
+
   # Build reusable fractions for every pump, segment and distinct elapsed response time.
   depletion_fraction_lookups_by_pump <- lapply(seq_len(nrow(pumping_wells)), function(pump_row) {
     pump_id <- pumping_wells$pump_id[[pump_row]]
     elapsed_time_day <- sort(unique(pumping_response_times$elapsed_time_day[
       pumping_response_times$pump_id == pump_id
     ]))
-    pump_apportionment <- stream_apportionment[stream_apportionment$pump_id == pump_id, ]
+    pump_apportionment <- stream_apportionment[
+      stream_apportionment$pump_id == pump_id,
+    ]
     n_segments <- nrow(pump_apportionment)
     lookup_elapsed_time_day <- rep(elapsed_time_day, each = n_segments)
+
     # Batch all segment/elapsed-time combinations in one analytical call per pump.
     stream_depletion_fractions <- .glover_stream_depletion_fraction(
       rep(pump_apportionment$pump_to_reach_distance_m, times = length(elapsed_time_day)),
       pumping_wells$K_m_per_day[[pump_row]], pumping_wells$D_m[[pump_row]],
       pumping_wells$V[[pump_row]], lookup_elapsed_time_day
     )
+
     tibble::tibble(
       pump_id = rep(pump_id, length(lookup_elapsed_time_day)),
       reach_id = rep(pump_apportionment$reach_id, times = length(elapsed_time_day)),
@@ -25,6 +30,7 @@
       stream_depletion_fraction = stream_depletion_fractions
     )
   })
+
   do.call(rbind, depletion_fraction_lookups_by_pump)
 }
 
@@ -33,30 +39,58 @@
   # Prepared numeric rates are m^3/day, time day, hydraulic inputs m/day and m.
   n_evaluations <- length(evaluation_time_day)
   pumping_events <- attr(pumping_schedules, "isw_pumping_events")
+
   # Pair each nonzero rate change with later evaluations, reusing prepared pairs
   # when the requested time vector matches the user-facing boundary's preparation.
-  pumping_response_times <- if (identical(evaluation_time_day, attr(pumping_schedules, "isw_evaluation_time_day"))) {
+  pumping_response_times <- if (identical(
+    evaluation_time_day,
+    attr(pumping_schedules, "isw_evaluation_time_day")
+  )) {
     attr(pumping_schedules, "isw_pumping_response_times")
   } else .get_pumping_response_times(pumping_events, evaluation_time_day)
+
   # Precalculate distinct temporal fractions before pump-specific superposition.
-  depletion_fraction_lookup <- .get_stream_depletion_fraction_lookup(pumping_wells, pumping_response_times, stream_apportionment)
+  depletion_fraction_lookup <- .get_stream_depletion_fraction_lookup(
+    pumping_wells,
+    pumping_response_times,
+    stream_apportionment
+  )
+
   stream_depletion_by_pump <- lapply(pumping_wells$pump_id, function(pump_id) {
-    pump_apportionment <- stream_apportionment[stream_apportionment$pump_id == pump_id, ]
-    pump_responses <- pumping_response_times[pumping_response_times$pump_id == pump_id, ]
-    pump_lookup <- depletion_fraction_lookup[depletion_fraction_lookup$pump_id == pump_id, ]
+    # Select the spatial weights, event ages and response fractions for this pump.
+    pump_apportionment <- stream_apportionment[
+      stream_apportionment$pump_id == pump_id,
+    ]
+    pump_responses <- pumping_response_times[
+      pumping_response_times$pump_id == pump_id,
+    ]
+    pump_lookup <- depletion_fraction_lookup[
+      depletion_fraction_lookup$pump_id == pump_id,
+    ]
     elapsed_time_day <- unique(pump_lookup$elapsed_time_day)
+
     # Fraction rows match this pump's segments; columns identify distinct event ages.
-    stream_depletion_fractions <- matrix(pump_lookup$stream_depletion_fraction, nrow = nrow(pump_apportionment))
+    stream_depletion_fractions <- matrix(
+      pump_lookup$stream_depletion_fraction,
+      nrow = nrow(pump_apportionment)
+    )
     elapsed_indices <- match(pump_responses$elapsed_time_day, elapsed_time_day)
-    stream_depletion_rates_m3_per_day <- matrix(0, nrow(pump_apportionment), length(evaluation_time_day))
+
+    # Rate rows are segments; columns are requested evaluation times.
+    stream_depletion_rates_m3_per_day <- matrix(
+      0, nrow(pump_apportionment), length(evaluation_time_day)
+    )
     for (event in seq_len(nrow(pump_responses))) {
       column <- pump_responses$evaluation_index[[event]]
+
       # Scale each event by its temporal response and static spatial apportionment,
       # adding one segment vector to the requested evaluation column.
       stream_depletion_rates_m3_per_day[, column] <- stream_depletion_rates_m3_per_day[, column] +
         pump_responses$pumping_rate_change_m3_per_day[[event]] *
-        stream_depletion_fractions[, elapsed_indices[[event]]] * pump_apportionment$apportionment_fraction
+        stream_depletion_fractions[, elapsed_indices[[event]]] *
+        pump_apportionment$apportionment_fraction
     }
+
     # Emit one row per segment and evaluation for this pump, including zero responses.
     tibble::tibble(
       pump_id = rep(pump_id, length(stream_depletion_rates_m3_per_day)),
@@ -66,6 +100,7 @@
       stream_depletion_rate_m3_per_day = as.numeric(stream_depletion_rates_m3_per_day)
     )
   })
+
   do.call(rbind, stream_depletion_by_pump)
 }
 

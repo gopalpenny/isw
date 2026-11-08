@@ -99,6 +99,7 @@
   prepared_pumping_wells <- pumping_wells
   prepared_pumping_wells$aquifer_id <- aquifer_groups$aquifer_id
   analysis_crs <- sf::st_crs(stream_segments)
+
   # Use each segment's model point as the collocation location where the
   # constant-head solver enforces zero head change.
   stream_collocation_points <- sf::st_sf(
@@ -106,6 +107,7 @@
     reach_segment_id = stream_segments$reach_segment_id,
     geometry = sf::st_transform(stream_segments$model_point, analysis_crs)
   )
+
   # Order 1 uses model-point injection wells; higher orders integrate along lines.
   # Prepare source distances once for reuse across response times and aquifers.
   boundary_response_operator <- .prepare_stream_response_operator(
@@ -113,14 +115,20 @@
     stream_segments,
     quadrature_order
   )
+
   # Convert spatial distances to bare meters once, before the interval loop.
-  pump_to_stream_distances_m <- matrix(as.numeric(units::set_units(
-    sf::st_distance(prepared_pumping_wells, stream_collocation_points), "m"
-  )), nrow = nrow(prepared_pumping_wells))
+  pump_to_stream_distances_m <- matrix(
+    as.numeric(units::set_units(
+      sf::st_distance(prepared_pumping_wells, stream_collocation_points), "m"
+    )),
+    nrow = nrow(prepared_pumping_wells)
+  )
+
   pumping_events <- attr(pumping_schedules, "isw_pumping_events", exact = TRUE)
   pump_events <- lapply(prepared_pumping_wells$pump_id, function(id) {
     pumping_events[pumping_events$pump_id == id, , drop = FALSE]
   })
+
   time_nodes_day <- time_grid$boundary_time_day
   number_of_intervals <- length(time_nodes_day) - 1L
   if (number_of_intervals <= 0) {
@@ -135,6 +143,7 @@
   schedule_parts <- list()
   condition_diagnostics <- list()
   output_index <- 0L
+
   # These positive ages are exactly those requested by current/past interval
   # responses. Prepare keys once rather than formatting parameters on cache hits.
   response_elapsed_times_day <- unique(unlist(lapply(seq_len(number_of_intervals), function(index) {
@@ -148,10 +157,14 @@
     group_pumps <- prepared_pumping_wells[pump_rows, , drop = FALSE]
     number_of_pumps <- nrow(group_pumps)
     number_of_segments <- nrow(stream_collocation_points)
+
+    # Dimensions are segment, pump within this aquifer group, and schedule interval.
     solved_rates_m3_per_day <- array(
       0,
       dim = c(number_of_segments, number_of_pumps, number_of_intervals)
     )
+
+    # Caches belong to this aquifer group and are reused across its intervals.
     response_cache <- new.env(parent = emptyenv())
     factor_cache <- new.env(parent = emptyenv())
     prepared_response_keys <- .prepare_line_response_keys(
@@ -159,6 +172,7 @@
       group_pumps$V[[1]], response_elapsed_times_day
     )
 
+    # This local helper uses the current group's parameters, caches and prepared keys.
     get_response_matrix <- function(elapsed_time_day) {
       # Retrieve cached numeric day/m2 responses directly for the QR algebra.
       .get_cached_stream_response_matrix(
@@ -179,6 +193,8 @@
       interval_start_day <- time_nodes_day[[interval_index]]
       interval_end_day <- time_nodes_day[[interval_index + 1L]]
       interval_duration_day <- interval_end_day - interval_start_day
+
+      # Head matrices have stream collocation rows and one column per group pump.
       pumping_head_m <- matrix(
         0,
         nrow = number_of_segments,
@@ -243,6 +259,7 @@
       # Current injection must offset the combined head change from pumping
       # and injection during all preceding intervals.
       right_hand_side_m <- -(pumping_head_m + historical_head_m)
+
       # Use the QR decomposition to solve for the segment injection rates that
       # produce the required head correction at every collocation point.
       interval_rates_m3_per_day <- tryCatch(

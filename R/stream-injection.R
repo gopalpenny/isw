@@ -225,18 +225,28 @@
 
 .get_injection_rate_changes <- function(injection_schedule) {
   # Validated numeric rates use m^3/day and times day.
-  template <- tibble::tibble(pump_id = character(), reach_id = character(), reach_segment_id = character(),
-                            injection_time_day = numeric(), injection_rate_change_m3_per_day = numeric())
+  template <- tibble::tibble(
+    pump_id = character(),
+    reach_id = character(),
+    reach_segment_id = character(),
+    injection_time_day = numeric(),
+    injection_rate_change_m3_per_day = numeric()
+  )
   keys <- unique(injection_schedule[c("pump_id", "reach_segment_id")])
+
   # Convert each pump-segment interval schedule into nonzero rate-change events.
   injection_events_by_pump_segment <- lapply(seq_len(nrow(keys)), function(index) {
-    rows <- which(injection_schedule$pump_id == keys$pump_id[[index]] &
-                  injection_schedule$reach_segment_id == keys$reach_segment_id[[index]])
+    rows <- which(
+      injection_schedule$pump_id == keys$pump_id[[index]] &
+        injection_schedule$reach_segment_id == keys$reach_segment_id[[index]]
+    )
     rows <- rows[order(injection_schedule$interval_start_day[rows])]
+
     # User-facing injection is positive from stream to aquifer; response kernels use
     # the pumping convention, so injection enters superposition with the opposite sign.
     change_m3_per_day <- diff(c(0, -injection_schedule$injection_rate_m3_per_day[rows]))
     changed <- which(change_m3_per_day != 0)
+
     tibble::tibble(
       pump_id = rep(keys$pump_id[[index]], length(changed)),
       reach_id = rep(injection_schedule$reach_id[rows[[1]]], length(changed)),
@@ -245,6 +255,7 @@
       injection_rate_change_m3_per_day = change_m3_per_day[changed]
     )
   })
+
   do.call(rbind, c(list(template), injection_events_by_pump_segment))
 }
 

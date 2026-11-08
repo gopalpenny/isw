@@ -12,18 +12,22 @@
     prepared_response_keys = NULL) {
   # Validated event indices and numeric m/day, m, day inputs; returns numeric day/m^2.
   response_ratios_day_per_m2 <- numeric(length(elapsed_times_day))
+
   # Simultaneous changes on different segments share an age and response matrix.
   for (elapsed_time_day in unique(elapsed_times_day)) {
     event_indices <- which(elapsed_times_day == elapsed_time_day)
+
     response_key <- if (!is.null(prepared_response_keys)) {
       prepared_response_keys$response_keys[[match(
         elapsed_time_day, prepared_response_keys$elapsed_times_day
       )]]
     } else NULL
+
     response_matrix_day_per_m2 <- .get_cached_stream_response_matrix(
       response_operator, response_cache, K_m_per_day, D_m, V, elapsed_time_day,
       response_key = response_key
     )
+
     # Index [observation row, segment column] for each event, placing responses
     # back into the original event positions.
     response_ratios_day_per_m2[event_indices] <- response_matrix_day_per_m2[cbind(
@@ -40,27 +44,35 @@
     prepared_response_keys) {
   # Validated numeric inputs use m/day, m, day and m3/day; returns numeric meters.
   stream_recovery_m <- numeric(response_operator$number_of_targets)
+
   for (elapsed_time_day in unique(elapsed_times_day)) {
     event_indices <- which(elapsed_times_day == elapsed_time_day)
+
+    # Reuse one observation-by-segment response matrix for all events of this age.
     response_matrix_day_per_m2 <- .get_cached_stream_response_matrix(
       response_operator, response_cache, K_m_per_day, D_m, V, elapsed_time_day,
       response_key = prepared_response_keys$response_keys[[match(
         elapsed_time_day, prepared_response_keys$elapsed_times_day
       )]]
     )
+
     # Sum simultaneous changes on the same segment before applying the full
     # observation-by-segment matrix; repeated segment indices must accumulate.
     segment_rate_changes_m3_per_day <- rowsum(
       injection_rate_change_m3_per_day[event_indices],
       segment_columns[event_indices], reorder = FALSE
     )
+
+    # Expand the grouped rates to all source columns, leaving inactive segments zero.
     segment_injection_rate_changes_m3_per_day <- numeric(response_operator$number_of_segments)
     segment_injection_rate_changes_m3_per_day[as.integer(rownames(segment_rate_changes_m3_per_day))] <-
       segment_rate_changes_m3_per_day[, 1L]
+
     stream_recovery_m <- stream_recovery_m + as.numeric(
       response_matrix_day_per_m2 %*% segment_injection_rate_changes_m3_per_day
     )
   }
+
   stream_recovery_m
 }
 
@@ -69,21 +81,29 @@
     pumping_wells, pumping_schedules, observation_wells, evaluation_time_day,
     stream_injection_schedule, quadrature_order, stream_segments) {
   # Validated numeric hydraulic inputs use m, m/day, day and m3/day; sf retains CRS.
+
   # Prepare the selected source representation for observation responses once;
   # operators used during schedule generation are not retained here.
   observation_response_operator <- .prepare_stream_response_operator(
     observation_wells, stream_segments, quadrature_order
   )
+
   # Strip spatial distance units once; every subsequent head calculation uses meters.
-  pump_to_observation_distances_m <- matrix(as.numeric(units::set_units(
-    sf::st_distance(pumping_wells, observation_wells), "m"
-  )), nrow = nrow(pumping_wells))
+  pump_to_observation_distances_m <- matrix(
+    as.numeric(units::set_units(
+      sf::st_distance(pumping_wells, observation_wells), "m"
+    )),
+    nrow = nrow(pumping_wells)
+  )
+
   # Reuse pumping-rate changes paired with later evaluations. Injection events
   # come from a boundary-validated supplied schedule or a trusted private generator.
   pumping_responses <- attr(pumping_schedules, "isw_pumping_response_times", exact = TRUE)
   injection_events <- .get_injection_rate_changes(stream_injection_schedule)
   segment_columns <- match(injection_events$reach_segment_id, stream_segments$reach_segment_id)
   injection_response_cache <- new.env(parent = emptyenv())
+
+  # Preallocate output vectors in pump, observation, then evaluation-time order.
   number_of_observations <- nrow(observation_wells)
   number_of_times <- length(evaluation_time_day)
   number_of_rows <- nrow(pumping_wells) * number_of_observations * number_of_times
@@ -93,6 +113,7 @@
   # of direct pumping drawdown and recovery from that pump's stream injection.
   for (pump_row in seq_len(nrow(pumping_wells))) {
     pump_id <- pumping_wells$pump_id[[pump_row]]
+
     # Reuse event selections across observations; boundary preparation owns validation.
     pumping_rows <- lapply(seq_len(number_of_times), function(index) {
       which(pumping_responses$pump_id == pump_id & pumping_responses$evaluation_index == index)
@@ -100,6 +121,7 @@
     injection_rows <- lapply(evaluation_time_day, function(time_day) {
       which(injection_events$pump_id == pump_id & injection_events$injection_time_day < time_day)
     })
+
     # Prepare string keys before evaluations; event selection and response
     # matrices are shared across observations.
     injection_elapsed_times_day <- unlist(lapply(seq_len(number_of_times), function(index) {
@@ -109,11 +131,13 @@
       pumping_wells$K_m_per_day[[pump_row]], pumping_wells$D_m[[pump_row]],
       pumping_wells$V[[pump_row]], injection_elapsed_times_day
     )
+
     for (time_index in seq_len(number_of_times)) {
       pumping_response_rows <- pumping_rows[[time_index]]
       for (observation_index in seq_len(number_of_observations)) {
         result_index <- ((pump_row - 1L) * number_of_observations +
           observation_index - 1L) * number_of_times + time_index
+
         # Sum direct drawdown from all earlier pumping-rate changes.
         if (length(pumping_response_rows) > 0) {
           response_day_per_m2 <- .theis_aquifer_drawdown_ratio(
@@ -128,6 +152,7 @@
           )
         }
       }
+
       # Earlier injection events remain active as their elapsed ages increase.
       # Apply each age's matrix once for every observation, retaining pump attribution.
       injection_event_rows <- injection_rows[[time_index]]
@@ -146,13 +171,17 @@
       }
     }
   }
+
   # One result row per pump, observation and evaluation, in that nesting order.
   tibble::tibble(
     pump_id = rep(pumping_wells$pump_id, each = number_of_observations * number_of_times),
-    observation_id = rep(rep(observation_wells$observation_id, each = number_of_times),
-                         times = nrow(pumping_wells)),
+    observation_id = rep(
+      rep(observation_wells$observation_id, each = number_of_times),
+      times = nrow(pumping_wells)
+    ),
     evaluation_time_day = rep(evaluation_time_day, times = nrow(pumping_wells) * number_of_observations),
-    pumping_drawdown_m = pumping_drawdown_m, stream_recovery_m = stream_recovery_m,
+    pumping_drawdown_m = pumping_drawdown_m,
+    stream_recovery_m = stream_recovery_m,
     water_level_change_m = -pumping_drawdown_m + stream_recovery_m
   )
 }
