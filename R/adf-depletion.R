@@ -211,42 +211,6 @@ model_adf_stream_depletion <- function(
   stream_depletion
 }
 
-# Build one numeric Glover response for each pump, segment and distinct event age.
-.get_stream_depletion_fraction_lookup <- function(
-    pumping_wells, pumping_response_times, stream_apportionment) {
-  # Validated numeric distances/thickness are m, conductivity m/day and event ages day.
-
-  # Build reusable fractions for every pump, segment and distinct elapsed response time.
-  depletion_fraction_lookups_by_pump <- lapply(seq_len(nrow(pumping_wells)), function(pump_row) {
-    pump_id <- pumping_wells$pump_id[[pump_row]]
-    elapsed_time_day <- sort(unique(pumping_response_times$elapsed_time_day[
-      pumping_response_times$pump_id == pump_id
-    ]))
-    pump_apportionment <- stream_apportionment[
-      stream_apportionment$pump_id == pump_id,
-    ]
-    n_segments <- nrow(pump_apportionment)
-    lookup_elapsed_time_day <- rep(elapsed_time_day, each = n_segments)
-
-    # Batch all segment/elapsed-time combinations in one analytical call per pump.
-    stream_depletion_fractions <- .glover_stream_depletion_fraction(
-      rep(pump_apportionment$pump_to_reach_distance_m, times = length(elapsed_time_day)),
-      pumping_wells$K_m_per_day[[pump_row]], pumping_wells$D_m[[pump_row]],
-      pumping_wells$V[[pump_row]], lookup_elapsed_time_day
-    )
-
-    tibble::tibble(
-      pump_id = rep(pump_id, length(lookup_elapsed_time_day)),
-      reach_id = rep(pump_apportionment$reach_id, times = length(elapsed_time_day)),
-      reach_segment_id = rep(pump_apportionment$reach_segment_id, times = length(elapsed_time_day)),
-      elapsed_time_day = lookup_elapsed_time_day,
-      stream_depletion_fraction = stream_depletion_fractions
-    )
-  })
-
-  do.call(rbind, depletion_fraction_lookups_by_pump)
-}
-
 .calculate_adf_stream_depletion <- function(
     pumping_wells, pumping_schedules, stream_apportionment, evaluation_time_day) {
   # Prepared numeric rates are m^3/day, time day, hydraulic inputs m/day and m.
@@ -315,6 +279,42 @@ model_adf_stream_depletion <- function(
   })
 
   do.call(rbind, stream_depletion_by_pump)
+}
+
+# Build one numeric Glover response for each pump, segment and distinct event age.
+.get_stream_depletion_fraction_lookup <- function(
+    pumping_wells, pumping_response_times, stream_apportionment) {
+  # Validated numeric distances/thickness are m, conductivity m/day and event ages day.
+  
+  # Build reusable fractions for every pump, segment and distinct elapsed response time.
+  depletion_fraction_lookups_by_pump <- lapply(seq_len(nrow(pumping_wells)), function(pump_row) {
+    pump_id <- pumping_wells$pump_id[[pump_row]]
+    elapsed_time_day <- sort(unique(pumping_response_times$elapsed_time_day[
+      pumping_response_times$pump_id == pump_id
+    ]))
+    pump_apportionment <- stream_apportionment[
+      stream_apportionment$pump_id == pump_id,
+    ]
+    n_segments <- nrow(pump_apportionment)
+    lookup_elapsed_time_day <- rep(elapsed_time_day, each = n_segments)
+    
+    # Batch all segment/elapsed-time combinations in one analytical call per pump.
+    stream_depletion_fractions <- .glover_stream_depletion_fraction(
+      rep(pump_apportionment$pump_to_reach_distance_m, times = length(elapsed_time_day)),
+      pumping_wells$K_m_per_day[[pump_row]], pumping_wells$D_m[[pump_row]],
+      pumping_wells$V[[pump_row]], lookup_elapsed_time_day
+    )
+    
+    tibble::tibble(
+      pump_id = rep(pump_id, length(lookup_elapsed_time_day)),
+      reach_id = rep(pump_apportionment$reach_id, times = length(elapsed_time_day)),
+      reach_segment_id = rep(pump_apportionment$reach_segment_id, times = length(elapsed_time_day)),
+      elapsed_time_day = lookup_elapsed_time_day,
+      stream_depletion_fraction = stream_depletion_fractions
+    )
+  })
+  
+  do.call(rbind, depletion_fraction_lookups_by_pump)
 }
 
 
