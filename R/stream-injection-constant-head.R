@@ -86,7 +86,7 @@
 }
 
 # Construct the endpoint-collocated constant-head injection schedule.
-.get_constant_head_injection_schedule <- function(
+.generate_constant_head_injection_schedule <- function(
     pumping_wells,
     pumping_schedules,
     stream_segments,

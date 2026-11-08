@@ -431,7 +431,7 @@ generate_stream_injection_schedule <- function(
   missing_time_day <- numeric()
   if (method == "adf") {
     if (is.null(adf_stream_depletion)) {
-      depletion <- .calculate_adf_stream_depletion(
+      depletion <- .model_adf_stream_depletion(
         pumping_wells, pumping_schedules, stream_apportionment, grid$boundary_time_day
       )
     } else {
@@ -441,7 +441,7 @@ generate_stream_injection_schedule <- function(
       missing_time_day <- grid$boundary_time_day[!grid$boundary_time_day %in% adf_stream_depletion$evaluation_time_day]
       depletion <- adf_stream_depletion[adf_stream_depletion$evaluation_time_day %in% grid$boundary_time_day, ]
       if (length(missing_time_day)) {
-        depletion <- rbind(depletion, .calculate_adf_stream_depletion(
+        depletion <- rbind(depletion, .model_adf_stream_depletion(
           pumping_wells, pumping_schedules, stream_apportionment, missing_time_day
         ))
       }
@@ -453,7 +453,7 @@ generate_stream_injection_schedule <- function(
   } else {
     # Solve coupled segment rates to maintain zero head at stream model points,
     # accounting for pumping and all preceding injection intervals.
-    stream_injection_schedule <- .get_constant_head_injection_schedule(
+    stream_injection_schedule <- .generate_constant_head_injection_schedule(
       pumping_wells, pumping_schedules, stream_segments, grid,
       quadrature_order = quadrature_order
     )

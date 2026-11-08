@@ -77,7 +77,7 @@
 }
 
 # Superimpose pumping and point or finite-line injection responses at observations.
-.calculate_aquifer_water_level_change <- function(
+.superimpose_aquifer_responses <- function(
     pumping_wells, pumping_schedules, observation_wells, evaluation_time_day,
     stream_injection_schedule, quadrature_order, stream_segments) {
   # Validated numeric hydraulic inputs use m, m/day, day and m3/day; sf retains CRS.
@@ -363,7 +363,7 @@ model_aquifer_water_level_change <- function(
       quadrature_order = quadrature_order
     )
   }
-  .calculate_aquifer_water_level_change(
+  .superimpose_aquifer_responses(
     pumping_wells, pumping_schedules, observation_wells, evaluation_time_day,
     stream_injection_schedule, quadrature_order, stream_segments
   )

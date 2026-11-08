@@ -272,7 +272,7 @@ test_that("spatial user-facing boundaries strip measurements but preserve CRS", 
 
 test_that("user-facing ADF and injection boundaries prepare numeric tables and times", {
   local_mocked_bindings(
-    .calculate_adf_stream_depletion = function(pumping_wells, pumping_schedules,
+    .model_adf_stream_depletion = function(pumping_wells, pumping_schedules,
                                                stream_apportionment, evaluation_times) {
       list(wells = pumping_wells, schedules = pumping_schedules,
            apportionment = stream_apportionment, evaluation_time_day = evaluation_times)

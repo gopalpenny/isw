@@ -274,9 +274,10 @@ model, whereas stream depletion in the `"constant_head"` model is equivalent
 to the stream injection schedule.
 
 We can now construct these two interval schedules, using the same function and
-time grid. With `method = "adf"`, `generate_stream_injection_schedule()` calls
-`model_adf_stream_depletion()` at every schedule boundary and averages depletion
-at adjacent boundaries. It reports the resulting `injection_rate` as positive
+time grid. With `method = "adf"`, `generate_stream_injection_schedule()` uses
+the same ADF depletion calculation as `model_adf_stream_depletion()` at every
+schedule boundary and averages depletion at adjacent boundaries. It reports the
+resulting `injection_rate` as positive
 when water moves from the stream to the aquifer. This rate is the stream-
 depletion rate applied over the interval.
 Precalculated ADF depletion can be supplied through the

@@ -67,7 +67,7 @@ model_adf_stream_depletion <- function(
   .validate_pumping_schedules(pumping_schedules, pumping_wells)
   .validate_stream_depletion_apportionment(stream_apportionment, pumping_wells)
   prepared_model_times <- .prepare_numeric_model_times(pumping_schedules, evaluation_times)
-  result <- .calculate_adf_stream_depletion(
+  result <- .model_adf_stream_depletion(
     prepared_pumping_wells,
     .prepare_numeric_schedule(pumping_schedules, pumping_wells, prepared_model_times),
     .prepare_numeric_apportionment(stream_apportionment, pumping_wells),
@@ -211,7 +211,7 @@ model_adf_stream_depletion <- function(
   stream_depletion
 }
 
-.calculate_adf_stream_depletion <- function(
+.model_adf_stream_depletion <- function(
     pumping_wells, pumping_schedules, stream_apportionment, evaluation_time_day) {
   # Prepared numeric rates are m^3/day, time day, hydraulic inputs m/day and m.
   n_evaluations <- length(evaluation_time_day)

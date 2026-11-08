@@ -650,7 +650,7 @@ The arithmetic mean of those two rates defines the depletion magnitude for that 
 The following code reproduces the internal calculation of these rates:
 
 ```{r internal-injection-schedule}
-depletion_at_schedule_boundaries <- isw:::.calculate_adf_stream_depletion(
+depletion_at_schedule_boundaries <- isw:::.model_adf_stream_depletion(
   prepared_pumping_wells,
   prepared_pumping_schedules,
   prepared_stream_apportionment,
