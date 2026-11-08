@@ -1,5 +1,10 @@
 # Current point injection versus the pre-line-sink implementation
 
+These are historical measurements made when point mode used order 1. Point
+mode is now selected with `quadrature_order = 0`; positive orders, including 1,
+use Gaussian quadrature. The reproduction script now selects order 0 for the
+current point implementation. The recorded measurements below are unchanged.
+
 Current order-one point injection is faster than the earlier point-source
 implementation on all measured cases. This comparison includes all intervening
 performance changes, not just the recent point-source fast path.

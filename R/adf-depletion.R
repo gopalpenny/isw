@@ -233,6 +233,9 @@ model_adf_stream_depletion <- function(
     stream_apportionment
   )
 
+  # For each pump, calculate depletion for all segments by
+  # summing its pumping-rate changes over time, weighted by
+  # response fractions and spatial apportionment.
   stream_depletion_by_pump <- vector("list", nrow(pumping_wells))
   for (pump_row in seq_len(nrow(pumping_wells))) {
     pump_id <- pumping_wells$pump_id[[pump_row]]

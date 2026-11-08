@@ -128,7 +128,7 @@ retained or a conservative default of 1 m is used.
 
 In this example, injection is distributed along the line element and the
 model point is where the constant-head boundary condition is enforced. Setting
-`quadrature_order = 1` would instead use the model point as an injection well,
+`quadrature_order = 0` would instead use the model point as an injection well,
 with the same minimum response radius of `stream_width / 2`.
 
 ```{r stream-segments}

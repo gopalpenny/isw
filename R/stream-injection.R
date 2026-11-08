@@ -301,9 +301,9 @@
 #'   at required schedule boundaries are reused and results at additional times
 #'   are ignored. If required boundaries are missing, a warning is issued and
 #'   depletion is calculated internally only for the missing times.
-#' @param quadrature_order Positive integer controlling stream injection sources.
-#'   With `1`, each segment injects its total rate at its `model_point`, using
-#'   `stream_width / 2` as the minimum response radius. Larger values give the
+#' @param quadrature_order Nonnegative integer controlling stream injection sources.
+#'   With `0`, each segment injects its total rate at its `model_point`, using
+#'   `stream_width / 2` as the minimum response radius. Positive values give the
 #'   number of Gauss--Legendre points per straight edge of each finite line
 #'   element. The default is 4.
 #'
@@ -333,7 +333,7 @@
 #' warning while the missing values are calculated internally.
 #'
 #' With `method = "constant_head"`, segment model points are constant-head
-#' collocation points. Injection uses those points when `quadrature_order = 1`,
+#' collocation points. Injection uses those points when `quadrature_order = 0`,
 #' and uniform finite-line sources otherwise. One coupled response matrix is
 #' factored for each aquifer parameter set and interval duration.
 #' Pump-specific right-hand sides preserve attribution while sharing that

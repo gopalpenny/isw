@@ -16,11 +16,15 @@
 
 ## Finite-line stream representation
 
-* Setting `quadrature_order = 1` now applies each segment's entire injection
+* Point representation is now selected with `quadrature_order = 0` instead of
+  `1`. All positive orders use Gauss--Legendre quadrature; order 1 places one
+  source at each straight edge midpoint. The default remains 4.
+
+* Setting `quadrature_order = 0` now applies each segment's entire injection
   rate at its `model_point`, bypassing line-source construction and quadrature
   integration. Point sources use `stream_width / 2` as the minimum response
   radius. This applies to constant-head schedule generation and to aquifer
-  responses for either injection method. Larger orders retain finite-line
+  responses for either injection method. Positive orders retain finite-line
   integration.
 
 * The default quadrature order is reduced from 16 to 4. Higher orders remain
@@ -29,7 +33,7 @@
 
 * Stream injection is now distributed uniformly along each stream segment using
   finite-line response calculations by default. Point injection at segment
-  model points is available with `quadrature_order = 1`. The representation
+  model points is available with `quadrature_order = 0`. The representation
   affects both constant-head injection rates and stream-induced aquifer
   water-level responses.
 * Constant-head boundary conditions remain imposed at segment `model_point`
@@ -63,7 +67,7 @@
   absent. Stream-reach and stream-segment inputs no longer accept `well_diam`.
 * In `generate_stream_injection_schedule()` and
   `model_aquifer_water_level_change()`, `quadrature_order` controls the number
-  of Gauss--Legendre points per straight edge when greater than 1; order 1
+  of Gauss--Legendre points per straight edge for positive orders; order 0
   selects one injection source per segment at its model point. The default is 4.
 * The default constant-head limit changes from ten unique aquifer parameter
   sets to five. Set `allow_n_aquifer_parameter_sets = Inf` for unrestricted

@@ -573,7 +573,7 @@ patchwork::wrap_plots(
 
 In order to estimate aquifer drawdown, we represent stream depletion as
 uniform injection along finite line elements by default, or injection at segment
-model points when `quadrature_order = 1`. Each reach segment receives a
+model points when `quadrature_order = 0`. Each reach segment receives a
 total-rate schedule derived from the depletion apportioned to that segment.
 `generate_stream_injection_schedule()` returns one row per pumping well, stream reach segment, and time
 interval. Each row specifies the stream injection rate represented
@@ -724,7 +724,7 @@ Gauss-Legendre source points and weights are prepared once, then their
 distances to every observation
 well are reused for all elapsed times. The default quadrature order is `4L`.
 Set `quadrature_order` explicitly to compare higher orders when checking
-numerical convergence for a particular geometry. Setting `quadrature_order = 1`
+numerical convergence for a particular geometry. Setting `quadrature_order = 0`
 instead bypasses line construction and integration, applying each segment's
 entire injection rate at its `model_point`.
 
@@ -733,7 +733,7 @@ Both point and line responses use `stream_width`, holding the water level
 response constant inside `stream_width/2` to prevent a singular response on the stream.
 
 `isw:::.prepare_stream_response_operator()` selects point or line sources. For
-orders greater than 1, `isw:::.prepare_line_elements()` places Gauss--Legendre
+positive orders, `isw:::.prepare_line_elements()` places Gauss--Legendre
 quadrature points along each stream segment and stores their weights, segment identifiers, and
 stream widths. `isw:::.prepare_line_response_operator()` then calculates the
 distances from each observation well to those points and packages them with

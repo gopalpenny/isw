@@ -1,5 +1,10 @@
 # Point stream injection versus the earlier order-one path
 
+These are historical measurements made when point mode used order 1. Point
+mode is now selected with `quadrature_order = 0`; positive orders, including 1,
+use Gaussian quadrature. The reproduction script now selects order 0 for the
+current point implementation. The recorded measurements below are unchanged.
+
 The point representation is faster on the same ten-year monthly simulation,
 with numerically identical modeled values for this straight-segment fixture.
 Both implementations explicitly use `quadrature_order = 1`.

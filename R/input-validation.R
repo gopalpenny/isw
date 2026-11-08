@@ -592,8 +592,8 @@
   # Dimensionless integer control, checked before calling numeric internals.
   if (!is.numeric(quadrature_order) || inherits(quadrature_order, "units") ||
       length(quadrature_order) != 1L ||
-      !is.finite(quadrature_order) || quadrature_order < 1 ||
+      !is.finite(quadrature_order) || quadrature_order < 0 ||
       quadrature_order != floor(quadrature_order)) {
-    stop("quadrature_order must be a positive integer.")
+    stop("quadrature_order must be a nonnegative integer.")
   }
 }

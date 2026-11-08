@@ -219,9 +219,9 @@
 #'   the maximum number of unique aquifer parameter sets allowed when a
 #'   constant-head schedule is generated internally. The default is 5. Use
 #'   `Inf` to impose no limit.
-#' @param quadrature_order Positive integer controlling stream injection sources.
-#'   With `1`, each segment injects its total rate at its `model_point`, using
-#'   `stream_width / 2` as the minimum response radius. Larger values give the
+#' @param quadrature_order Nonnegative integer controlling stream injection sources.
+#'   With `0`, each segment injects its total rate at its `model_point`, using
+#'   `stream_width / 2` as the minimum response radius. Positive values give the
 #'   number of Gauss--Legendre points per straight edge of each finite line
 #'   element. The default is 4.
 #'   When a completed constant-head schedule is supplied and this argument is
@@ -247,8 +247,8 @@
 #' segments and therefore requires `stream_apportionment`. The constant-head
 #' path solves segment injection rates that keep segment model points as close
 #' as practical to zero head change. Pumping and stream responses are then
-#' superimposed at each observation well. With `quadrature_order = 1`, the
-#' entire segment rate is applied at its `model_point`; larger orders integrate
+#' superimposed at each observation well. With `quadrature_order = 0`, the
+#' entire segment rate is applied at its `model_point`; positive orders integrate
 #' uniform injection along the segment. Both representations use a minimum
 #' response radius of `stream_width / 2`. ADF injection rates are independent
 #' of quadrature order. Positive pumping rates produce

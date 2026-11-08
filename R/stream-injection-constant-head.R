@@ -108,7 +108,7 @@
     geometry = sf::st_transform(stream_segments$model_point, analysis_crs)
   )
 
-  # Order 1 uses model-point injection wells; higher orders integrate along lines.
+  # Order 0 uses model-point injection wells; positive orders integrate along lines.
   # Prepare source distances once for reuse across response times and aquifers.
   boundary_response_operator <- .prepare_stream_response_operator(
     stream_collocation_points,
@@ -363,7 +363,7 @@
   quadrature_order <- metadata$quadrature_order
   if (!is.numeric(quadrature_order) || inherits(quadrature_order, "units") ||
       length(quadrature_order) != 1L || is.na(quadrature_order) ||
-      !is.finite(quadrature_order) || quadrature_order < 1 ||
+      !is.finite(quadrature_order) || quadrature_order < 0 ||
       quadrature_order != as.integer(quadrature_order)) {
     return(NULL)
   }
@@ -390,7 +390,7 @@
 
   supplied_order_is_valid <- length(quadrature_order) == 1L &&
     !is.na(quadrature_order) && is.finite(quadrature_order) &&
-    quadrature_order >= 1 && quadrature_order == as.integer(quadrature_order)
+    quadrature_order >= 0 && quadrature_order == as.integer(quadrature_order)
   if (supplied_order_is_valid &&
       as.integer(quadrature_order) != schedule_order) {
     warning(

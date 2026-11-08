@@ -24,8 +24,8 @@
 #'
 #' @details
 #' `model_point` is the along-line midpoint used as the constant-head
-#' collocation location and, with `quadrature_order = 1`, the injection source.
-#' Larger orders distribute injection uniformly along the active line geometry.
+#' collocation location and, with `quadrature_order = 0`, the injection source.
+#' Positive orders distribute injection uniformly along the active line geometry.
 #' Stream validation requires it to be a finite point in the
 #' segment CRS and on the active line, and warns if it differs from the
 #' along-line midpoint. Input objects are not modified.

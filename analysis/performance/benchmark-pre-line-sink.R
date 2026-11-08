@@ -12,7 +12,7 @@ source("analysis/performance/benchmark-isw.R")
       legacy$get_stream_segments(stream_reaches, reach_spacing)
     },
     prep_adf_stream_apportionment = legacy$get_adf_stream_apportionment,
-    model_aquifer_water_level_change = function(..., quadrature_order = 1L) {
+    model_aquifer_water_level_change = function(..., quadrature_order = 0L) {
       legacy$get_aquifer_water_level_change(..., allow_many_aquifer_parameter_sets = TRUE)
     }
   )
@@ -45,7 +45,7 @@ run_pre_line_sink_study <- function(repetitions = 5L, baseline_ref = "3d4dcb7",
   )
   writeLines(c(paste("Baseline:", system2("git", c("rev-parse", baseline_ref), stdout = TRUE)),
     paste("Current:", system2("git", c("rev-parse", "HEAD"), stdout = TRUE)),
-    "Last pre-line-sink main versus current order 1; matched source minimum radius.",
+    "Last pre-line-sink main versus current order 0; matched source minimum radius.",
     "Legacy segment diameter and current segment width both equal represented_length/2.",
     "90-day bundled fixtures, two pumps/aquifers; both preparation modes included.",
     "Historical function names/allow-many option adapted; old engine remains unchanged.",
@@ -63,7 +63,7 @@ run_pre_line_sink_study <- function(repetitions = 5L, baseline_ref = "3d4dcb7",
     for (method in c("adf", "constant_head")) {
       for (include_preparation in c(FALSE, TRUE)) {
         workloads <- lapply(apis, function(api) {
-          .make_performance_workload(api, scenario, method, include_preparation, quadrature_order = 1L)
+          .make_performance_workload(api, scenario, method, include_preparation, quadrature_order = 0L)
         })
         cat("Warming", scenario$scenario, method, "include_preparation =", include_preparation, "\n")
         flush.console()

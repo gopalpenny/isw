@@ -104,7 +104,7 @@ at greater spatial resolution but increase the number of injection rates that
 must be calculated.
 
 By default, each returned line is a finite injection element. With
-`quadrature_order = 1`, its entire injection rate is instead applied at its
+`quadrature_order = 0`, its entire injection rate is instead applied at its
 `model_point`. That point is the along-line midpoint, where the constant-head
 model is calibrated. `stream_width`
 can be supplied as a physical stream width or kept as the
@@ -186,11 +186,17 @@ and adds refinement times 5, 10, and 15 days after each pumping-schedule change.
 Applications that add refinement times should inspect sensitivity to the
 resulting interval lengths.
 The `quadrature_order` sets the number of Gauss--Legendre evaluation points on
-each positive-length straight section of a stream segment when greater than
-one; this example uses four throughout. Setting it to one instead uses a single
+each positive-length straight section of a stream segment for positive orders;
+this example uses four throughout. Order 1 places one point at each straight
+edge midpoint. Setting it to zero instead uses a single
 injection well at each segment model point, with a minimum response radius of
 `stream_width / 2`. ADF schedule rates do not depend on this setting;
 constant-head rates and subsequent aquifer responses do.
+
+With `quadrature_order = 0`, segment lengths set by `reach_spacing` control
+injection-point spacing along the stream. Bends and extra vertices within a
+segment do not add injection points or require geometry simplification, though
+curvature still affects their physical locations.
 
 ```{r model-times}
 evaluation_times <- seq.Date(

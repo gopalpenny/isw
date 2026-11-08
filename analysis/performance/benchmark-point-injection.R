@@ -19,7 +19,7 @@ run_point_injection_study <- function(repetitions = 5L, baseline_ref = "c2ed2a4"
   )
   writeLines(c(paste("Baseline:", system2("git", c("rev-parse", baseline_ref), stdout = TRUE)),
     paste("Current:", system2("git", c("rev-parse", "HEAD"), stdout = TRUE)),
-    "Both use quadrature_order = 1; monthly-changing-pumping ten-year fixture.",
+    "Baseline uses quadrature_order = 1; current uses 0; monthly-changing-pumping ten-year fixture.",
     "1000 observations, 100 straight segments, 2 pumps sharing K/D/V, 121 calendar dates.",
     "Stream preparation included; warm-up excluded; alternating unprofiled version order.",
     paste("Repetitions per version per method:", repetitions),
@@ -28,10 +28,10 @@ run_point_injection_study <- function(repetitions = 5L, baseline_ref = "c2ed2a4"
   if (length(package_patch)) writeLines(package_patch, file.path(output_directory, "current-package.patch"))
   timings <- differences <- list()
   for (method in c("adf", "constant_head")) {
-    workloads <- lapply(list(baseline = baseline, current = current), function(api) {
+    workloads <- Map(function(api, order) {
       .make_scaling_workload(scenario, method, evaluation_times,
-        evaluation_times, pumping_rates, quadrature_order = 1L, api = api)
-    })
+        evaluation_times, pumping_rates, quadrature_order = order, api = api)
+    }, list(baseline = baseline, current = current), c(baseline = 1L, current = 0L))
     cat("Warming and comparing", method, "\n")
     flush.console()
     baseline_result <- workloads$baseline$run(TRUE)
@@ -88,7 +88,7 @@ run_small_point_injection_study <- function(repetitions = 15L, baseline_ref = "c
   )
   writeLines(c(paste("Baseline:", system2("git", c("rev-parse", baseline_ref), stdout = TRUE)),
     paste("Current:", system2("git", c("rev-parse", "HEAD"), stdout = TRUE)),
-    "Both use quadrature_order = 1; bundled example geometry and two pumps/aquifers.",
+    "Baseline uses quadrature_order = 1; current uses 0; bundled example geometry and two pumps/aquifers.",
     "7 segments/4 evaluations and 14 segments/10 evaluations; two observations, 90 days.",
     "Both stream-preparation modes; alternating versions; warmed unprofiled timings.",
     "Expected pump-specific aquifer parameter warnings muffled for both versions.",
@@ -104,9 +104,9 @@ run_small_point_injection_study <- function(repetitions = 15L, baseline_ref = "c
     scenario <- scenarios[scenario_index, ]
     for (method in c("adf", "constant_head")) {
       for (include_preparation in c(FALSE, TRUE)) {
-        workloads <- lapply(list(baseline = baseline, current = current), function(api) {
-          .make_performance_workload(api, scenario, method, include_preparation, quadrature_order = 1L)
-        })
+        workloads <- Map(function(api, order) {
+          .make_performance_workload(api, scenario, method, include_preparation, quadrature_order = order)
+        }, list(baseline = baseline, current = current), c(baseline = 1L, current = 0L))
         warm_results <- lapply(workloads, function(workload) quiet_expected_warning(workload$run()))
         identifiers <- c("pump_id", "observation_id", "evaluation_time")
         stopifnot(identical(warm_results$baseline[identifiers], warm_results$current[identifiers]),

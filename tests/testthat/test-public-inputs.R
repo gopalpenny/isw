@@ -113,7 +113,7 @@ test_that("user-facing boundaries reject invalid values before unchecked calcula
   dates <- inputs$schedules
   dates$t <- as.Date(c(0, Inf), origin = "2025-01-01")
   expect_error(run_model(schedules = dates), "finite dates")
-  expect_error(run_model(quadrature_order = units::set_units(16, "m")), "positive integer")
+  expect_error(run_model(quadrature_order = units::set_units(16, "m")), "nonnegative integer")
   injection <- inputs$injection
   injection$boundary_residual <- 1
   expect_error(run_model(injection = injection), "boundary_residual.*units object")
@@ -387,8 +387,8 @@ test_that("schedule boundary prepares supplied depletion and constant-head input
     expect_null(result$depletion)
     expect_error(generate_stream_injection_schedule(
       inputs$wells, inputs$schedules, inputs$segments, inputs$evaluation_times,
-      method = "constant_head", quadrature_order = 0
-    ), "positive integer")
+      method = "constant_head", quadrature_order = -1
+    ), "nonnegative integer")
   }
 })
 

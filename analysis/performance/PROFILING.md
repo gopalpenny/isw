@@ -239,7 +239,8 @@ point_comparison <- run_point_injection_study()
 ```
 
 The baseline is `c2ed2a4`, before the point representation. The current branch
-is measured at `quadrature_order = 1` against that baseline at the same order.
+is measured at `quadrature_order = 0` (point sources) against that baseline
+at order 1 (Gaussian quadrature).
 Both versions are loaded into the same R session without switching branches;
 the workload helper uses each version's own preparation and modeling functions.
 The fixture matches the ten-year monthly-changing-pumping study: 1,000
@@ -261,7 +262,7 @@ run_small_point_injection_study()
 ```
 
 This uses 15 alternating version pairs for both methods and both preparation
-modes, always at order 1. The cases have four/ten evaluations and two distinct
+modes, with current order 0 versus baseline order 1. The cases have four/ten evaluations and two distinct
 aquifer parameter sets. Results go to
 `analysis/profiles/small-point-injection-study/`; see the smaller-example
 section in [POINT-INJECTION-RESULTS.md](POINT-INJECTION-RESULTS.md).
@@ -274,7 +275,7 @@ historical_comparison <- run_pre_line_sink_study()
 ```
 
 The baseline `3d4dcb7` is the last pre-line-sink main-branch commit. The script
-adapts its historical function names and matches current order-one minimum
+adapts its historical function names and matches current point-source minimum
 response radii to its segment-length-based injection diameters. It compares
 the 7/14/28-segment, 2/2/20-observation 90-day cases, both methods and both
 preparation modes, using five alternating version pairs after warm-up. All
