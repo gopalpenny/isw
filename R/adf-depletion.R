@@ -1,3 +1,216 @@
+#' Model ADF stream depletion
+#'
+#' Apply an ADF stream apportionment to intermittent pumping schedules using
+#' Glover response fractions and superposition.
+#'
+#' @param pumping_wells A nonempty `sf` object with one point per pumping well.
+#'   It must contain unique character `pump_id` values, hydraulic conductivity
+#'   `K` with length-per-time units, aquifer thickness `D` with length units,
+#'   and dimensionless drainable porosity or specific yield `V`.
+#' @param pumping_schedules A wide data frame with a strictly increasing `t`
+#'   column and one pumping-rate column for every `pump_id`. Times must be all
+#'   `Date` values or all `units` time values. Pumping rates must have consistent
+#'   volume-per-time units.
+#' @param stream_apportionment A normalized relationship table returned by
+#'   [prep_adf_stream_apportionment()].
+#' @param evaluation_times Either `NULL`, a `Date` vector, or a `units` time
+#'   vector. When `NULL`, `pumping_schedules$t` is used. When supplied, only
+#'   these requested times are returned; pumping-schedule times are not added
+#'   automatically.
+#'
+#' @return A tibble with one row for every requested `pump_id`,
+#'   `evaluation_time`, and `reach_segment_id` combination. Columns are
+#'   `pump_id`, `evaluation_time`, `reach_id`, `reach_segment_id`, and
+#'   `stream_depletion_rate`. The rate is positive for depletion and retains
+#'   the pumping-rate units.
+#'
+#' @details
+#' Each pumping-rate change is evaluated with the Glover--Balmer response and
+#' assigned to segments using `apportionment_fraction`. Responses are summed by
+#' superposition. A change beginning exactly at an evaluation time does not
+#' contribute until a later time. Every requested pump, time, and segment is
+#' returned, including zero-response combinations.
+#'
+#' @seealso [prep_adf_stream_apportionment()],
+#'   [generate_stream_injection_schedule()]
+#'
+#' @examples
+#' stream_segments <- prep_stream_segments(
+#'   example_stream_reaches,
+#'   reach_spacing = units::set_units(100, "m")
+#' )
+#' stream_apportionment <- prep_adf_stream_apportionment(
+#'   example_pumping_wells,
+#'   stream_segments,
+#'   sample_spacing = units::set_units(25, "m")
+#' )
+#' pumping_schedules <- tibble::tibble(
+#'   t = units::set_units(c(0, 10, 20), "days"),
+#'   pump_1 = units::set_units(c(100, 100, 0), "m^3/day"),
+#'   pump_2 = units::set_units(c(0, 75, 0), "m^3/day")
+#' )
+#' model_adf_stream_depletion(
+#'   example_pumping_wells,
+#'   pumping_schedules,
+#'   stream_apportionment
+#' )
+#'
+#' @export
+model_adf_stream_depletion <- function(
+    pumping_wells,
+    pumping_schedules,
+    stream_apportionment,
+    evaluation_times = NULL) {
+  
+  # Validate original inputs, then strip units using the shared meter/day boundary.
+  prepared_pumping_wells <- .prepare_numeric_pumping_wells(pumping_wells)
+  .validate_pumping_schedules(pumping_schedules, pumping_wells)
+  .validate_stream_depletion_apportionment(stream_apportionment, pumping_wells)
+  prepared_model_times <- .prepare_numeric_model_times(pumping_schedules, evaluation_times)
+  result <- .calculate_adf_stream_depletion(
+    prepared_pumping_wells,
+    .prepare_numeric_schedule(pumping_schedules, pumping_wells, prepared_model_times),
+    .prepare_numeric_apportionment(stream_apportionment, pumping_wells),
+    prepared_model_times$evaluation_time_day
+  )
+  # Restore user-facing evaluation times and original pumping-rate units.
+  .restore_adf_output(result, prepared_model_times, units::deparse_unit(pumping_schedules[[pumping_wells$pump_id[[1]]]]))
+}
+
+# Validate apportioned stream-depletion results for drawdown calculations.
+.validate_apportioned_stream_depletion <- function(
+    stream_depletion,
+    pumping_wells,
+    pumping_schedules,
+    stream_apportionment) {
+  
+  if (!is.data.frame(stream_depletion) || nrow(stream_depletion) == 0) {
+    stop("stream_depletion must be a nonempty data frame or tibble.")
+  }
+  
+  required_columns <- c(
+    "pump_id",
+    "evaluation_time",
+    "reach_id",
+    "reach_segment_id",
+    "stream_depletion_rate"
+  )
+  missing_columns <- setdiff(required_columns, names(stream_depletion))
+  
+  if (length(missing_columns) > 0) {
+    stop(
+      "stream_depletion is missing required columns: ",
+      paste(missing_columns, collapse = ", "),
+      "."
+    )
+  }
+  
+  # Context tables were checked at the user-facing boundary; supplied depletion is new.
+  
+  evaluation_times <- sort(unique(stream_depletion$evaluation_time))
+  .validate_evaluation_times(evaluation_times, pumping_schedules$t)
+  
+  if (!is.character(stream_depletion$pump_id) ||
+      !is.character(stream_depletion$reach_id) ||
+      !is.character(stream_depletion$reach_segment_id) ||
+      anyNA(stream_depletion$pump_id) ||
+      anyNA(stream_depletion$reach_id) ||
+      anyNA(stream_depletion$reach_segment_id)) {
+    stop(
+      "stream_depletion identifiers must be nonmissing character vectors."
+    )
+  }
+  
+  check_dimensionality(
+    stream_depletion$stream_depletion_rate,
+    desired_units = "m^3/s",
+    variable_name = "stream_depletion$stream_depletion_rate"
+  )
+  
+  if (any(!is.finite(as.numeric(
+    stream_depletion$stream_depletion_rate
+  )))) {
+    stop("stream_depletion$stream_depletion_rate must contain finite values.")
+  }
+  
+  normalized_times <- .normalize_time_inputs(
+    pumping_schedules$t,
+    evaluation_times
+  )
+  evaluation_times_day <- as.numeric(normalized_times$target_time_day)
+  row_evaluation_time_day <- if (inherits(evaluation_times, "Date")) {
+    as.numeric(stream_depletion$evaluation_time - pumping_schedules$t[[1]])
+  } else {
+    as.numeric(units::set_units(
+      stream_depletion$evaluation_time,
+      "days",
+      mode = "standard"
+    ))
+  }
+  
+  row_keys <- paste(
+    stream_depletion$pump_id,
+    stream_depletion$reach_segment_id,
+    row_evaluation_time_day,
+    sep = "\r"
+  )
+  
+  if (anyDuplicated(row_keys) > 0) {
+    stop(
+      "stream_depletion must contain one row per pump_id, ",
+      "reach_segment_id, and evaluation_time combination."
+    )
+  }
+  
+  apportionment_table <- sf::st_drop_geometry(stream_apportionment)
+  expected_keys <- character()
+  expected_reaches <- character()
+  
+  # Build the complete set of pump, segment, and evaluation-time combinations
+  # required in the supplied depletion table.
+  for (pump_id in pumping_wells$pump_id) {
+    pump_segments <- apportionment_table[
+      apportionment_table$pump_id == pump_id,
+      ,
+      drop = FALSE
+    ]
+    
+    for (evaluation_time_day in evaluation_times_day) {
+      expected_keys <- c(
+        expected_keys,
+        paste(
+          pump_id,
+          pump_segments$reach_segment_id,
+          evaluation_time_day,
+          sep = "\r"
+        )
+      )
+      expected_reaches <- c(expected_reaches, pump_segments$reach_id)
+    }
+  }
+  
+  matched_rows <- match(expected_keys, row_keys)
+  
+  if (anyNA(matched_rows) || length(row_keys) != length(expected_keys)) {
+    stop(
+      "stream_depletion must contain every pump, reach-segment, and ",
+      "evaluation-time combination in stream_apportionment."
+    )
+  }
+  
+  if (!identical(
+    stream_depletion$reach_id[matched_rows],
+    expected_reaches
+  )) {
+    stop(
+      "stream_depletion$reach_id must match each reach_segment_id in ",
+      "stream_apportionment."
+    )
+  }
+  
+  stream_depletion
+}
+
 # Build one numeric Glover response for each pump, segment and distinct event age.
 .get_stream_depletion_fraction_lookup <- function(
     pumping_wells, pumping_response_times, stream_apportionment) {
@@ -104,215 +317,4 @@
   do.call(rbind, stream_depletion_by_pump)
 }
 
-#' Model ADF stream depletion
-#'
-#' Apply an ADF stream apportionment to intermittent pumping schedules using
-#' Glover response fractions and superposition.
-#'
-#' @param pumping_wells A nonempty `sf` object with one point per pumping well.
-#'   It must contain unique character `pump_id` values, hydraulic conductivity
-#'   `K` with length-per-time units, aquifer thickness `D` with length units,
-#'   and dimensionless drainable porosity or specific yield `V`.
-#' @param pumping_schedules A wide data frame with a strictly increasing `t`
-#'   column and one pumping-rate column for every `pump_id`. Times must be all
-#'   `Date` values or all `units` time values. Pumping rates must have consistent
-#'   volume-per-time units.
-#' @param stream_apportionment A normalized relationship table returned by
-#'   [prep_adf_stream_apportionment()].
-#' @param evaluation_times Either `NULL`, a `Date` vector, or a `units` time
-#'   vector. When `NULL`, `pumping_schedules$t` is used. When supplied, only
-#'   these requested times are returned; pumping-schedule times are not added
-#'   automatically.
-#'
-#' @return A tibble with one row for every requested `pump_id`,
-#'   `evaluation_time`, and `reach_segment_id` combination. Columns are
-#'   `pump_id`, `evaluation_time`, `reach_id`, `reach_segment_id`, and
-#'   `stream_depletion_rate`. The rate is positive for depletion and retains
-#'   the pumping-rate units.
-#'
-#' @details
-#' Each pumping-rate change is evaluated with the Glover--Balmer response and
-#' assigned to segments using `apportionment_fraction`. Responses are summed by
-#' superposition. A change beginning exactly at an evaluation time does not
-#' contribute until a later time. Every requested pump, time, and segment is
-#' returned, including zero-response combinations.
-#'
-#' @seealso [prep_adf_stream_apportionment()],
-#'   [generate_stream_injection_schedule()]
-#'
-#' @examples
-#' stream_segments <- prep_stream_segments(
-#'   example_stream_reaches,
-#'   reach_spacing = units::set_units(100, "m")
-#' )
-#' stream_apportionment <- prep_adf_stream_apportionment(
-#'   example_pumping_wells,
-#'   stream_segments,
-#'   sample_spacing = units::set_units(25, "m")
-#' )
-#' pumping_schedules <- tibble::tibble(
-#'   t = units::set_units(c(0, 10, 20), "days"),
-#'   pump_1 = units::set_units(c(100, 100, 0), "m^3/day"),
-#'   pump_2 = units::set_units(c(0, 75, 0), "m^3/day")
-#' )
-#' model_adf_stream_depletion(
-#'   example_pumping_wells,
-#'   pumping_schedules,
-#'   stream_apportionment
-#' )
-#'
-#' @export
-model_adf_stream_depletion <- function(
-    pumping_wells,
-    pumping_schedules,
-    stream_apportionment,
-    evaluation_times = NULL) {
 
-  # Validate original inputs, then strip units using the shared meter/day boundary.
-  prepared_pumping_wells <- .prepare_numeric_pumping_wells(pumping_wells)
-  .validate_pumping_schedules(pumping_schedules, pumping_wells)
-  .validate_stream_depletion_apportionment(stream_apportionment, pumping_wells)
-  prepared_model_times <- .prepare_numeric_model_times(pumping_schedules, evaluation_times)
-  result <- .calculate_adf_stream_depletion(
-    prepared_pumping_wells,
-    .prepare_numeric_schedule(pumping_schedules, pumping_wells, prepared_model_times),
-    .prepare_numeric_apportionment(stream_apportionment, pumping_wells),
-    prepared_model_times$evaluation_time_day
-  )
-  # Restore user-facing evaluation times and original pumping-rate units.
-  .restore_adf_output(result, prepared_model_times, units::deparse_unit(pumping_schedules[[pumping_wells$pump_id[[1]]]]))
-}
-
-# Validate apportioned stream-depletion results for drawdown calculations.
-.validate_apportioned_stream_depletion <- function(
-    stream_depletion,
-    pumping_wells,
-    pumping_schedules,
-    stream_apportionment) {
-
-  if (!is.data.frame(stream_depletion) || nrow(stream_depletion) == 0) {
-    stop("stream_depletion must be a nonempty data frame or tibble.")
-  }
-
-  required_columns <- c(
-    "pump_id",
-    "evaluation_time",
-    "reach_id",
-    "reach_segment_id",
-    "stream_depletion_rate"
-  )
-  missing_columns <- setdiff(required_columns, names(stream_depletion))
-
-  if (length(missing_columns) > 0) {
-    stop(
-      "stream_depletion is missing required columns: ",
-      paste(missing_columns, collapse = ", "),
-      "."
-    )
-  }
-
-  # Context tables were checked at the user-facing boundary; supplied depletion is new.
-
-  evaluation_times <- sort(unique(stream_depletion$evaluation_time))
-  .validate_evaluation_times(evaluation_times, pumping_schedules$t)
-
-  if (!is.character(stream_depletion$pump_id) ||
-      !is.character(stream_depletion$reach_id) ||
-      !is.character(stream_depletion$reach_segment_id) ||
-      anyNA(stream_depletion$pump_id) ||
-      anyNA(stream_depletion$reach_id) ||
-      anyNA(stream_depletion$reach_segment_id)) {
-    stop(
-      "stream_depletion identifiers must be nonmissing character vectors."
-    )
-  }
-
-  check_dimensionality(
-    stream_depletion$stream_depletion_rate,
-    desired_units = "m^3/s",
-    variable_name = "stream_depletion$stream_depletion_rate"
-  )
-
-  if (any(!is.finite(as.numeric(
-    stream_depletion$stream_depletion_rate
-  )))) {
-    stop("stream_depletion$stream_depletion_rate must contain finite values.")
-  }
-
-  normalized_times <- .normalize_time_inputs(
-    pumping_schedules$t,
-    evaluation_times
-  )
-  evaluation_times_day <- as.numeric(normalized_times$target_time_day)
-  row_evaluation_time_day <- if (inherits(evaluation_times, "Date")) {
-    as.numeric(stream_depletion$evaluation_time - pumping_schedules$t[[1]])
-  } else {
-    as.numeric(units::set_units(
-      stream_depletion$evaluation_time,
-      "days",
-      mode = "standard"
-    ))
-  }
-
-  row_keys <- paste(
-    stream_depletion$pump_id,
-    stream_depletion$reach_segment_id,
-    row_evaluation_time_day,
-    sep = "\r"
-  )
-
-  if (anyDuplicated(row_keys) > 0) {
-    stop(
-      "stream_depletion must contain one row per pump_id, ",
-      "reach_segment_id, and evaluation_time combination."
-    )
-  }
-
-  apportionment_table <- sf::st_drop_geometry(stream_apportionment)
-  expected_keys <- character()
-  expected_reaches <- character()
-
-  # Build the complete set of pump, segment, and evaluation-time combinations
-  # required in the supplied depletion table.
-  for (pump_id in pumping_wells$pump_id) {
-    pump_segments <- apportionment_table[
-      apportionment_table$pump_id == pump_id,
-      ,
-      drop = FALSE
-    ]
-
-    for (evaluation_time_day in evaluation_times_day) {
-      expected_keys <- c(
-        expected_keys,
-        paste(
-          pump_id,
-          pump_segments$reach_segment_id,
-          evaluation_time_day,
-          sep = "\r"
-        )
-      )
-      expected_reaches <- c(expected_reaches, pump_segments$reach_id)
-    }
-  }
-
-  matched_rows <- match(expected_keys, row_keys)
-
-  if (anyNA(matched_rows) || length(row_keys) != length(expected_keys)) {
-    stop(
-      "stream_depletion must contain every pump, reach-segment, and ",
-      "evaluation-time combination in stream_apportionment."
-    )
-  }
-
-  if (!identical(
-    stream_depletion$reach_id[matched_rows],
-    expected_reaches
-  )) {
-    stop(
-      "stream_depletion$reach_id must match each reach_segment_id in ",
-      "stream_apportionment."
-    )
-  }
-
-  stream_depletion
-}
