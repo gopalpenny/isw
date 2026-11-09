@@ -464,7 +464,7 @@ test_that("batched recovery matches event superposition for all observations", {
   ), expected_m[1], tolerance = 1e-12)
 })
 
-test_that("target boundary validation rejects invalid geometries", {
+test_that("target input validation rejects invalid geometries", {
   expect_error(isw:::.validate_point_sf(sf::st_sf(geometry = sf::st_sfc(sf::st_point(), crs=32615)),
                                       "target_points"), "cannot contain empty geometries")
   expect_error(isw:::.validate_point_sf(sf::st_sf(geometry = sf::st_sfc(sf::st_point(c(Inf,0)), crs=32615)),

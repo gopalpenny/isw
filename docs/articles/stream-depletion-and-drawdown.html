@@ -305,20 +305,21 @@ in this grid through the final evaluation time. The optional
 without requesting additional water-level output. This can improve the
 interval-average approximation to continuously changing ADF stream
 depletion, but it increases computation for both methods. Constant-head
-rates are solved to satisfy the boundary at each interval end. Very
-short intervals can therefore require large corrective rates, especially
-when a regular refinement grid is combined with nearby evaluation or
-pumping times. This example uses monthly evaluation times and adds
-refinement times 5, 10, and 15 days after each pumping-schedule change.
-Applications that add refinement times should inspect sensitivity to the
-resulting interval lengths. The <code>quadrature_order</code> sets the
-number of Gauss–Legendre evaluation points on each positive-length
-straight section of a stream segment for positive orders; this example
-uses four throughout. Order 1 places one point at each straight edge
-midpoint. Setting it to zero instead uses a single injection well at
-each segment model point, with a minimum response radius of
-<code>stream_width / 2</code>. ADF schedule rates do not depend on this
-setting; constant-head rates and subsequent aquifer responses do.</p>
+rates are solved to satisfy the constant-head condition at each interval
+end. Very short intervals can therefore require large corrective rates,
+especially when a regular refinement grid is combined with nearby
+evaluation or pumping times. This example uses monthly evaluation times
+and adds refinement times 5, 10, and 15 days after each pumping-schedule
+change. Applications that add refinement times should inspect
+sensitivity to the resulting interval lengths. The
+<code>quadrature_order</code> sets the number of Gauss–Legendre
+evaluation points on each positive-length straight section of a stream
+segment for positive orders; this example uses four throughout. Order 1
+places one point at each straight edge midpoint. Setting it to zero
+instead uses a single injection well at each segment model point, with a
+minimum response radius of <code>stream_width / 2</code>. ADF schedule
+rates do not depend on this setting; constant-head rates and subsequent
+aquifer responses do.</p>
 <p>With <code>quadrature_order = 0</code>, segment lengths set by
 <code>reach_spacing</code> control injection-point spacing along the
 stream. Bends and extra vertices within a segment do not add injection
@@ -459,8 +460,13 @@ interval.</p>
 <span>  quadrature_order <span class="op">=</span> <span class="va">quadrature_order</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>The constant-head result includes two diagnostics.
-<code>boundary_residual</code> is the signed water-level change
-remaining at a segment model point after the solve.
+<code>boundary_residual</code> is the signed water-level change in
+meters remaining at a segment model point at the end of an injection
+interval, after accounting for pumping and stream injection. It is
+reported separately for each pump and should be close to zero. Negative
+values indicate a decline and positive values a rise. This diagnostic
+checks the model points at interval ends; it does not guarantee zero
+water-level change between model points or throughout each interval.
 <code>matrix_condition_number</code> indicates the numerical sensitivity
 of the system; <code>isw</code> warns when it exceeds
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mn>6</mn></msup><annotation encoding="application/x-tex">10^6</annotation></semantics></math>.

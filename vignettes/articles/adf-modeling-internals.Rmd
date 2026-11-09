@@ -74,7 +74,7 @@ and CRS remain available for spatial operations, and measured distances are
 converted to numeric meters once before repeated hydraulic evaluations.
 
 Private kernels do not revalidate these prepared inputs. Supplied intermediate
-tables are validated at the user-facing boundary before conversion. User-facing output
+tables are validated by the user-facing wrapper before conversion. User-facing output
 formatters reattach physical units and restore the original time representation.
 For Dates, `time_origin` is the first pumping-schedule date; numeric days are
 offsets from it. Unit-bearing relative times are converted to days without shifting.
@@ -436,7 +436,7 @@ compared with the preceding rate. Events with no change in pumping rate are
 omitted.
 
 The user-facing wrapper checks the wells, schedule and apportionment once, then
-prepares numeric tables. The following code makes that boundary explicit:
+prepares numeric tables. The following code shows the input validation and numeric preparation explicitly:
 
 ```{r prepare-numeric-model-inputs}
 prepared_pumping_wells <- isw:::.prepare_numeric_pumping_wells(

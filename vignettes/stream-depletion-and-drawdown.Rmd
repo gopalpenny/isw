@@ -180,7 +180,7 @@ The optional `injection_times` argument can subdivide injection intervals withou
 requesting additional water-level output. This can improve the interval-average
 approximation to continuously changing ADF stream depletion, but it increases
 computation for both methods. Constant-head rates are solved to satisfy the
-boundary at each interval end. Very short intervals can therefore require large
+constant-head condition at each interval end. Very short intervals can therefore require large
 corrective rates, especially when a regular refinement grid is combined with
 nearby evaluation or pumping times. This example uses monthly evaluation times
 and adds refinement times 5, 10, and 15 days after each pumping-schedule change.
@@ -324,7 +324,12 @@ constant_head_schedule <- generate_stream_injection_schedule(
 ```
 
 The constant-head result includes two diagnostics. `boundary_residual` is the
-signed water-level change remaining at a segment model point after the solve.
+signed water-level change in meters remaining at a segment model point at the
+end of an injection interval, after accounting for pumping and stream injection.
+It is reported separately for each pump and should be close to zero. Negative
+values indicate a decline and positive values a rise. This diagnostic checks the
+model points at interval ends; it does not guarantee zero water-level change
+between model points or throughout each interval.
 `matrix_condition_number` indicates the numerical sensitivity of the system;
 `isw` warns when it exceeds \(10^6\). The resulting calculations match
 injection for each stream segment to each pumping well. But injection

@@ -94,7 +94,7 @@ test_that("constant-head schedule enforces endpoint boundary conditions", {
     ),
     geometry = inputs$stream_segments$model_point
   )
-  boundary_response <- model_aquifer_water_level_change(
+  stream_collocation_response <- model_aquifer_water_level_change(
     inputs$pumping_wells,
     inputs$pumping_schedules,
     stream_observations,
@@ -105,7 +105,7 @@ test_that("constant-head schedule enforces endpoint boundary conditions", {
 
   expect_lt(
     max(abs(as.numeric(units::set_units(
-      boundary_response$water_level_change,
+      stream_collocation_response$water_level_change,
       "m",
       mode = "standard"
     )))),

@@ -152,16 +152,16 @@ well; the other is 300 m north.
 
 ```{r observation-wells, fig.height = 6.5}
 segment_coordinates <- st_coordinates(stream_segments$model_point)
-boundary_y <- seq(origin_y - 575, origin_y + 575, by = 25)
-boundary_observations <- tibble(
-  observation_id = paste0("boundary_", seq_along(boundary_y)),
+stream_y <- seq(origin_y - 575, origin_y + 575, by = 25)
+stream_observations <- tibble(
+  observation_id = paste0("stream_", seq_along(stream_y)),
   observation_type = "stream boundary",
   transect = NA_character_,
   distance_from_stream = set_units(0, "m"),
-  distance_along_stream = set_units(boundary_y - origin_y, "m"),
+  distance_along_stream = set_units(stream_y - origin_y, "m"),
   x = origin_x,
-  y = boundary_y,
-  is_collocation = boundary_y %in% segment_coordinates[, "Y"]
+  y = stream_y,
+  is_collocation = stream_y %in% segment_coordinates[, "Y"]
 )
 
 transect_distances <- c(0, 10, 25, 50, 100, 200, 300, 500, 800)
@@ -187,7 +187,7 @@ transect_observations <- do.call(
   })
 )
 observation_table <- bind_rows(
-  boundary_observations,
+  stream_observations,
   transect_observations
 )
 observation_wells <- st_as_sf(
@@ -245,8 +245,8 @@ ggplot() +
     aes(
       plot_x,
       plot_y,
-      color = "Other boundary observation",
-      shape = "Other boundary observation"
+      color = "Other stream observation",
+      shape = "Other stream observation"
     ),
     size = 2.4
   ) +
@@ -273,13 +273,13 @@ ggplot() +
   scale_color_manual(values = c(
     "Pumping well" = "firebrick",
     "Collocation point (constant-head enforced)" = "navy",
-    "Other boundary observation" = "#009E73",
+    "Other stream observation" = "#009E73",
     "Transect observation" = "#6A3D9A"
   )) +
   scale_shape_manual(values = c(
     "Pumping well" = 8,
     "Collocation point (constant-head enforced)" = 18,
-    "Other boundary observation" = 17,
+    "Other stream observation" = 17,
     "Transect observation" = 1
   )) +
   coord_equal(xlim = c(-25, 825), ylim = c(-625, 625)) +
@@ -297,7 +297,7 @@ ggplot() +
   theme(legend.position = "bottom")
 ```
 
-Boundary observations that coincide with model points are shown only as a blue
+Stream observations that coincide with model points are shown only as a blue
 collocation point, rather than as two overlapping symbols.
 
 ## Construct ADF and constant-head schedules

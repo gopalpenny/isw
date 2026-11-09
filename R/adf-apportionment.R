@@ -164,7 +164,7 @@ prep_adf_stream_apportionment <- function(
     )
   }
 
-  # Pumping wells were checked by the user-facing boundary; validate this relationship only.
+  # Pumping wells were checked by the user-facing wrapper; validate this relationship only.
 
   if (!is.character(stream_apportionment$pump_id) ||
       !is.character(stream_apportionment$reach_id) ||

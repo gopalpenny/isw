@@ -335,7 +335,7 @@ prep_stream_segments <- function(
 #'
 #' @param stream_reaches Validated stream reaches in the shared meter-based UTM
 #'   CRS, with physical attribute columns already prepared as numeric standard
-#'   units by the user-facing stream-segmentation boundary.
+#'   units by the user-facing stream-segmentation wrapper.
 #' @param reach_spacing_m Positive numeric maximum segment length in meters.
 #'
 #' @return An `sf` object with one `LINESTRING` feature per reach segment. The
@@ -366,7 +366,7 @@ prep_stream_segments <- function(
 #' stream geometry. Additional input attributes are repeated for every model
 #' reach segment derived from the source feature.
 #'
-#' The user-facing boundary checks reserved column names before this helper runs.
+#' The user-facing wrapper checks reserved column names before this helper runs.
 #' This helper creates `reach_segment_id`, `represented_length_m` and
 #' `model_point`; the user-facing exit restores units on `represented_length`.
 #' The input object is not modified.
@@ -589,7 +589,7 @@ prep_stream_segments <- function(
 #' The number of points in each reach segment is its length divided by
 #' `sample_spacing` and rounded up. Points are placed at the along-line centers
 #' of equal-length sampling intervals. This avoids duplicated points at shared
-#' segment boundaries and assigns every point an explicit `sampled_length`.
+#' segment endpoints and assigns every point an explicit `sampled_length`.
 #'
 #' These points are distinct from the single `model_point` stored with each
 #' reach segment. `model_point` represents the segment in the model, while the
@@ -687,7 +687,7 @@ prep_stream_sample_points <- function(stream_segments, sample_spacing) {
 }
 
 .validate_stream_sampling_inputs <- function(stream_segments, sample_spacing) {
-  # Boundary checks retain the existing sampling-specific geometry/unit contract.
+  # Input checks retain the existing sampling-specific geometry/unit contract.
 
   if (!inherits(stream_segments, "sf")) {
     stop("stream_segments must be an sf object.")

@@ -43,6 +43,10 @@
 #'   additionally
 #'   contain `aquifer_id`, `boundary_residual`, and
 #'   `matrix_condition_number`.
+#'   `boundary_residual` is the signed water-level change in meters at the
+#'   segment's `model_point` at `interval_end`, attributable to the row's pump
+#'   after accounting for pumping and stream injection. Its target is zero;
+#'   negative values indicate a decline and positive values a rise.
 #'   Generated schedules carry an `isw_schedule_metadata` attribute recording
 #'   the injection method and, for constant-head schedules, quadrature order.
 #'

@@ -11,7 +11,7 @@
   areas may cross zone boundaries.
 * Pumping events, spatial distances and response matrices are reused during
   modeling. Repeated context validation is removed from internal calculations;
-  newly supplied intermediate results still receive boundary validation.
+  newly supplied intermediate results still receive input validation.
   Speed improvements will be assessed with comparable timings and profiles.
 
 ## Finite-line stream representation

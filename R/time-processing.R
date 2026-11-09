@@ -1,6 +1,6 @@
-# Normalize checked external times at the user-facing preparation boundary.
+# Normalize checked external times at the user input preparation step.
 .normalize_time_inputs <- function(schedule_times, target_times = NULL) {
-  # The boundary checked Date/time dimensions and ordering; strip to numeric days.
+  # The user-facing wrapper checked Date/time dimensions and ordering; strip to numeric days.
   output_target_times <- if (is.null(target_times)) schedule_times else target_times
   time_origin <- if (inherits(schedule_times, "Date")) schedule_times[1] else NULL
   schedule_time_day <- .time_in_days(schedule_times, time_origin)
@@ -15,7 +15,7 @@
 }
 
 .restore_time_values <- function(time_day, output_times, time_origin = NULL) {
-  # Reattach caller-facing dates or time units at user-facing output boundaries.
+  # Reattach caller-facing dates or time units during output formatting.
   if (inherits(output_times, "Date")) return(time_origin + time_day)
   units::set_units(units::set_units(time_day, "day"),
                    units::deparse_unit(output_times), mode = "standard")

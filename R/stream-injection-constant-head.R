@@ -1,6 +1,6 @@
 # Validate user-facing aquifer-group controls and normalized hydraulic relationships.
 .prepare_aquifer_groups <- function(pumping_wells, allow_n_aquifer_parameter_sets = 5) {
-  # The boundary already prepared numeric m/day and m fields; check group controls/IDs.
+  # The user-facing wrapper already prepared numeric m/day and m fields; check group controls/IDs.
   if (!is.numeric(allow_n_aquifer_parameter_sets) ||
       inherits(allow_n_aquifer_parameter_sets, "units") ||
       length(allow_n_aquifer_parameter_sets) != 1L ||
@@ -94,7 +94,7 @@
     quadrature_order = 4L) {
 
   # Prepared sf geometry retains its shared meter UTM CRS; hydraulic inputs use
-  # numeric m, m/day, day and m3/day. User-facing boundaries validate and restore units.
+  # numeric m, m/day, day and m3/day. User-facing wrappers validate and restore units.
   aquifer_groups <- attr(pumping_wells, "isw_aquifer_groups", exact = TRUE)
   prepared_pumping_wells <- pumping_wells
   prepared_pumping_wells$aquifer_id <- aquifer_groups$aquifer_id
@@ -110,13 +110,14 @@
 
   # Order 0 uses model-point injection wells; positive orders integrate along lines.
   # Prepare source distances once for reuse across response times and aquifers.
-  boundary_response_operator <- .prepare_stream_response_operator(
+  stream_collocation_response_operator <- .prepare_stream_response_operator(
     stream_collocation_points,
     stream_segments,
     quadrature_order
   )
 
-  # Convert spatial distances to bare meters once, before the interval loop.
+  # Convert pump-stream spatial distances to bare meters once,
+  # before the interval loop.
   pump_to_stream_distances_m <- matrix(
     as.numeric(units::set_units(
       sf::st_distance(prepared_pumping_wells, stream_collocation_points), "m"
@@ -176,7 +177,7 @@
     get_response_matrix <- function(elapsed_time_day) {
       # Retrieve cached numeric day/m2 responses directly for the QR algebra.
       .get_cached_stream_response_matrix(
-        response_operator = boundary_response_operator,
+        response_operator = stream_collocation_response_operator,
         response_cache = response_cache,
         K_m_per_day = group_pumps$K_m_per_day[[1]],
         D_m = group_pumps$D_m[[1]], V = group_pumps$V[[1]],

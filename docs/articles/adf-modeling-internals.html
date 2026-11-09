@@ -186,7 +186,7 @@ their CRS metadata. Geometry and CRS remain available for spatial
 operations, and measured distances are converted to numeric meters once
 before repeated hydraulic evaluations.</p>
 <p>Private kernels do not revalidate these prepared inputs. Supplied
-intermediate tables are validated at the user-facing boundary before
+intermediate tables are validated by the user-facing wrapper before
 conversion. User-facing output formatters reattach physical units and
 restore the original time representation. For Dates,
 <code>time_origin</code> is the first pumping-schedule date; numeric
@@ -738,8 +738,8 @@ rate summed together. The first scheduled rate is treated as a change
 from zero pumping, and each later rate is compared with the preceding
 rate. Events with no change in pumping rate are omitted.</p>
 <p>The user-facing wrapper checks the wells, schedule and apportionment
-once, then prepares numeric tables. The following code makes that
-boundary explicit:</p>
+once, then prepares numeric tables. The following code shows the input
+validation and numeric preparation explicitly:</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">prepared_pumping_wells</span> <span class="op">&lt;-</span> <span class="fu">isw</span><span class="fu">:::</span><span class="fu">.prepare_numeric_pumping_wells</span><span class="op">(</span></span>
 <span>  <span class="va">pumping_wells</span>, <span class="fu"><a href="https://rdrr.io/pkg/sf/man/st_crs.html" class="external-link">st_crs</a></span><span class="op">(</span><span class="va">stream_segments</span><span class="op">)</span></span>

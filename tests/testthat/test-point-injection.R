@@ -28,7 +28,7 @@ make_point_injection_inputs <- function() {
 test_that("order zero uses model points and source-specific half-widths", {
   inputs <- make_point_injection_inputs()
   segments <- isw:::.prepare_numeric_segments(inputs$segments)
-  # Public targets may need transformation back to the analysis CRS.
+  # User-supplied targets may need transformation back to the analysis CRS.
   targets <- sf::st_transform(inputs$observations, 4326)
   operator <- isw:::.prepare_stream_response_operator(targets, segments, 0L)
   expect_s3_class(operator, "isw_point_response_operator")

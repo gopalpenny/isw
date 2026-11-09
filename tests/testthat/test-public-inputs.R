@@ -1,4 +1,4 @@
-make_boundary_inputs <- function(dates = FALSE) {
+make_user_test_inputs <- function(dates = FALSE) {
   # User-facing fixtures retain units and CRS metadata; no modeling calls are needed.
   reaches <- sf::st_sf(
     reach_id = "stream", geometry = sf::st_sfc(
@@ -43,7 +43,7 @@ make_boundary_inputs <- function(dates = FALSE) {
 }
 
 test_that("user-facing workflows validate each context object once", {
-  inputs <- make_boundary_inputs()
+  inputs <- make_user_test_inputs()
   depletion <- model_adf_stream_depletion(
     inputs$wells, inputs$schedules, inputs$apportionment, inputs$evaluation_times
   )
@@ -100,8 +100,8 @@ test_that("user-facing workflows validate each context object once", {
   }
 })
 
-test_that("user-facing boundaries reject invalid values before unchecked calculations", {
-  inputs <- make_boundary_inputs()
+test_that("user-facing wrappers reject invalid values before unchecked calculations", {
+  inputs <- make_user_test_inputs()
   run_model <- function(observations = inputs$observations, schedules = inputs$schedules,
                         injection = inputs$injection, quadrature_order = 4L) {
     model_aquifer_water_level_change(
@@ -152,15 +152,15 @@ test_that("unit validation preserves caller unit options", {
   previous_mode <- units::units_options("set_units_mode")
   on.exit(units::units_options(set_units_mode = previous_mode))
   units::units_options(set_units_mode = "symbols")
-  inputs <- make_boundary_inputs()
+  inputs <- make_user_test_inputs()
   model_adf_stream_depletion(
     inputs$wells, inputs$schedules, inputs$apportionment, inputs$evaluation_times
   )
   expect_identical(units::units_options("set_units_mode"), "symbols")
 })
 
-test_that("prepared aquifer coordinators do not call boundary validators", {
-  inputs <- make_boundary_inputs()
+test_that("prepared aquifer coordinators do not call input validators", {
+  inputs <- make_user_test_inputs()
   segments <- isw:::.prepare_numeric_segments(inputs$segments)
   wells <- isw:::.prepare_numeric_pumping_wells(inputs$wells, sf::st_crs(segments))
   attr(wells, "isw_aquifer_groups") <- isw:::.prepare_aquifer_groups(wells)
@@ -173,7 +173,7 @@ test_that("prepared aquifer coordinators do not call boundary validators", {
     inputs$evaluation_times, injection_method = method,
     stream_apportionment = inputs$apportionment
   ))
-  reject_validation <- function(...) stop("unexpected internal boundary validation")
+  reject_validation <- function(...) stop("unexpected internal input validation")
   local_mocked_bindings(
     .validate_pumping_wells = reject_validation,
     .validate_pumping_schedules = reject_validation,
@@ -194,7 +194,7 @@ test_that("prepared aquifer coordinators do not call boundary validators", {
   }
 })
 
-test_that("analytical user-facing boundaries pass normalized numeric arguments", {
+test_that("analytical user-facing wrappers pass normalized numeric arguments", {
   captured <- NULL
   capture_kernel <- function(...) {
     captured <<- list(...)
@@ -234,8 +234,8 @@ test_that("analytical user-facing boundaries pass normalized numeric arguments",
                                                       D, 0.2, t), "common length")
 })
 
-test_that("spatial user-facing boundaries strip measurements but preserve CRS", {
-  inputs <- make_boundary_inputs()
+test_that("spatial user-facing wrappers strip measurements but preserve CRS", {
+  inputs <- make_user_test_inputs()
   local_mocked_bindings(
     .prep_stream_segments = function(stream_reaches, reach_spacing, ...) {
       list(reaches = stream_reaches, spacing_m = reach_spacing)
@@ -270,7 +270,7 @@ test_that("spatial user-facing boundaries strip measurements but preserve CRS", 
   expect_true("K" %in% names(inputs$wells))
 })
 
-test_that("user-facing ADF and injection boundaries prepare numeric tables and times", {
+test_that("ADF model and injection generator wrappers prepare numeric tables and times", {
   local_mocked_bindings(
     .model_adf_stream_depletion = function(pumping_wells, pumping_schedules,
                                                stream_apportionment, evaluation_times) {
@@ -287,7 +287,7 @@ test_that("user-facing ADF and injection boundaries prepare numeric tables and t
     }, .package = "isw"
   )
   for (dates in c(FALSE, TRUE)) {
-    inputs <- make_boundary_inputs(dates)
+    inputs <- make_user_test_inputs(dates)
     result <- model_adf_stream_depletion(inputs$wells, inputs$schedules,
                                         inputs$apportionment, inputs$evaluation_times)
     expect_equal(result$schedules$t_day, c(0, 1))
@@ -307,7 +307,7 @@ test_that("user-facing ADF and injection boundaries prepare numeric tables and t
   }
 })
 
-test_that("aquifer boundary validates and normalizes a supplied injection schedule", {
+test_that("aquifer model wrapper validates and normalizes a supplied injection schedule", {
   local_mocked_bindings(
     .model_aquifer_water_level_change = function(pumping_wells, pumping_schedules,
                                                  observation_wells, stream_segments,
@@ -319,7 +319,7 @@ test_that("aquifer boundary validates and normalizes a supplied injection schedu
     }, .package = "isw"
   )
   for (dates in c(FALSE, TRUE)) {
-    inputs <- make_boundary_inputs(dates)
+    inputs <- make_user_test_inputs(dates)
     attr(inputs$injection, "isw_schedule_metadata") <- list(
       injection_method = "constant_head", quadrature_order = 4L
     )
@@ -339,21 +339,21 @@ test_that("aquifer boundary validates and normalizes a supplied injection schedu
   }
 })
 
-test_that("USGS boundary passes a numeric meter buffer to its spatial adapter", {
-  inputs <- make_boundary_inputs()
+test_that("USGS fetch wrapper passes a numeric meter buffer to its spatial adapter", {
+  inputs <- make_user_test_inputs()
   captured_buffer_m <- NULL
   local_mocked_bindings(
     .make_usgs_stream_query_area = function(aoi, buffer_distance) {
       captured_buffer_m <<- buffer_distance
-      stop("query boundary reached")
+      stop("query-area preparation reached")
     }, .package = "isw"
   )
   expect_error(fetch_usgs_stream_reaches(inputs$wells, units::set_units(1, "km")),
-               "query boundary reached")
+               "query-area preparation reached")
   expect_identical(captured_buffer_m, 1000)
 })
 
-test_that("schedule boundary prepares supplied depletion and constant-head inputs", {
+test_that("schedule generator wrapper prepares supplied depletion and constant-head inputs", {
   local_mocked_bindings(
     .generate_stream_injection_schedule = function(pumping_wells, pumping_schedules,
                                                    stream_segments, evaluation_times,
@@ -366,7 +366,7 @@ test_that("schedule boundary prepares supplied depletion and constant-head input
     }, .package = "isw"
   )
   for (dates in c(FALSE, TRUE)) {
-    inputs <- make_boundary_inputs(dates)
+    inputs <- make_user_test_inputs(dates)
     depletion <- tibble::tibble(
       pump_id = "pump", reach_id = "stream", reach_segment_id = "segment",
       evaluation_time = inputs$evaluation_times,
@@ -392,7 +392,7 @@ test_that("schedule boundary prepares supplied depletion and constant-head input
   }
 })
 
-test_that("aquifer boundary prepares both generated-schedule paths", {
+test_that("aquifer model wrapper prepares both generated-schedule paths", {
   local_mocked_bindings(
     .model_aquifer_water_level_change = function(pumping_wells, pumping_schedules,
                                                  observation_wells, stream_segments,
@@ -403,7 +403,7 @@ test_that("aquifer boundary prepares both generated-schedule paths", {
            apportionment = stream_apportionment, injection = stream_injection_schedule)
     }, .package = "isw"
   )
-  inputs <- make_boundary_inputs()
+  inputs <- make_user_test_inputs()
   for (method in c("adf", "constant_head")) {
     result <- model_aquifer_water_level_change(
       inputs$wells, inputs$schedules, inputs$observations, inputs$segments,

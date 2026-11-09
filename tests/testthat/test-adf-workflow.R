@@ -79,7 +79,7 @@ test_that("zero ADF pumping preserves full grids and typed empty initial schedul
   expect_s3_class(initial$interval_start, "units")
 })
 
-test_that("numeric ADF calculations reuse prepared events without boundary checks", {
+test_that("numeric ADF calculations reuse prepared events without input checks", {
   x <- make_adf_workflow_inputs()
   times <- isw:::.prepare_numeric_model_times(x$schedules, x$evaluate, x$refine)
   schedules <- isw:::.prepare_numeric_schedule(x$schedules, x$wells, times)

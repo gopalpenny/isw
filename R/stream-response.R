@@ -3,7 +3,7 @@
 # Select the stream representation before constructing any quadrature geometry.
 .prepare_stream_response_operator <- function(
     target_points, stream_segments, quadrature_order = 4L) {
-  # Inputs are boundary-validated, with shared meter UTM geometry and numeric widths.
+  # Inputs are input-validated, with shared meter UTM geometry and numeric widths.
   if (quadrature_order == 0L) {
     return(.prepare_point_response_operator(target_points, stream_segments))
   }

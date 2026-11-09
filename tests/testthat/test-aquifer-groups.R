@@ -19,7 +19,7 @@ test_that("numeric aquifer grouping reuses normalized physical properties", {
   expect_identical(isw:::.get_aquifer_groups(prepared), metric_groups)
 })
 
-test_that("aquifer identifier relationships are checked at preparation boundaries", {
+test_that("aquifer identifier relationships are checked during input preparation", {
   wells <- example_pumping_wells
   wells$aquifer_id <- rep("shared", nrow(wells))
   wells$K[2] <- wells$K[1] * 2

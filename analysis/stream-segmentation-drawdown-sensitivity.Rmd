@@ -37,15 +37,14 @@ examines sensitivity to stream-segment spacing:
 The model reports water-level change, not absolute hydraulic head. Therefore,
 `water_level_change = 0` is the relevant constant-head boundary condition at the
 stream. Width regularization limits the near-stream response but does
-not enforce that boundary condition. A nonzero result at the stream is an ADF
-boundary residual. The separate constant-head method solves the injection
+not enforce that boundary condition. A nonzero result is the modeled water-level change at the stream. The separate constant-head method solves the injection
 rates as a coupled system; see the analysis of
 [ADF and constant-head stream injection](stream-injection-methods.Rmd)
 for that comparison.
 
 ## Construct a controlled straight-stream example
 
-A straight stream makes distance from the boundary unambiguous. The pumping
+A straight stream makes distance from the stream unambiguous. The pumping
 well is 400 m east of the stream, and the 2 km stream is long enough to reduce
 end effects near the observation transects. All coordinates are in meters in
 a projected CRS.
@@ -181,12 +180,12 @@ sensitivity_results |>
   distinct(segment_spacing_m, number_of_segments)
 ```
 
-## Inspect the stream boundary residual
+## Inspect water-level change at the stream
 
 Ideally, net drawdown is zero everywhere on a constant-head stream. This plot
-shows the modeled residual at fixed stream locations. Comparing curves reveals
+shows the modeled water-level change at fixed stream locations. Comparing curves reveals
 whether the result is converging as the stream representation is refined. A
-logarithmic y-axis separates the small positive residuals; zero itself cannot
+logarithmic y-axis separates the small positive drawdown magnitudes; zero itself cannot
 be displayed on this scale.
 
 ```{r plot-on-stream-residual}
@@ -210,7 +209,7 @@ sensitivity_results |>
   theme_minimal()
 ```
 
-A compact diagnostic is the largest absolute on-stream residual for each
+A compact diagnostic is the largest absolute water-level change at the stream for each
 scenario and evaluation time.
 
 ```{r summarize-on-stream-residual}
@@ -227,7 +226,7 @@ stream_residual_summary
 
 ## Inspect drawdown away from the stream
 
-The transect profiles show how the modeled boundary residual relates to
+The transect profiles show how the modeled water-level change at the stream relates to
 drawdown within the aquifer. The final evaluation time is used here for a
 readable spatial comparison. The pumping well lies at 400 m on the middle
 transect, so its finite physical diameter also prevents a point singularity.
@@ -269,7 +268,7 @@ apportionment samples and quadrature representation.
 
 The most useful convergence checks are:
 
-1. whether the maximum absolute on-stream residual decreases or stabilizes as
+1. whether the maximum absolute water-level change at the stream decreases or stabilizes as
    segment spacing is reduced; and
 2. whether the off-stream transect profiles become insensitive to further
    refinement.
@@ -278,5 +277,5 @@ Neither result guarantees a constant-head boundary. Injection rates are still
 assigned from apportioned stream depletion and are not solved simultaneously
 to make net drawdown zero at all stream collocation points. Use
 `method = "constant_head"` in `generate_stream_injection_schedule()` when that
-endpoint constraint is required. The residuals calculated here remain useful
+endpoint constraint is required. The stream water-level changes calculated here remain useful
 for evaluating the ADF approximation.

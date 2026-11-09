@@ -6,7 +6,7 @@
 }
 
 .select_utm_crs <- function(spatial_inputs, analysis_crs = NULL, preferred_crs = NULL) {
-  # Boundary CRS selection retains sf metadata; zone crossings are permitted.
+  # Input CRS selection retains sf metadata; zone crossings are permitted.
   if (!is.null(analysis_crs)) {
     selected <- tryCatch(suppressWarnings(sf::st_crs(analysis_crs)), error = function(e) NULL)
     if (is.null(selected) || is.na(selected)) stop("analysis_crs must define a valid projected CRS.")
@@ -196,7 +196,7 @@
 
 # Select the projected analysis CRS used to segment a stream network.
 .select_stream_analysis_crs <- function(stream_reaches, analysis_crs = NULL) {
-  # Boundary validation precedes shared UTM selection; retain existing UTM networks.
+  # Input validation precedes shared UTM selection; retain existing UTM networks.
   .validate_stream_reaches(stream_reaches)
   .select_utm_crs(list(stream_reaches), analysis_crs, sf::st_crs(stream_reaches))
 }

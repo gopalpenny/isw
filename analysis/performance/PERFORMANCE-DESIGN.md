@@ -11,7 +11,7 @@ user-facing entry points. Physical inputs are converted before stripping, numeri
 columns carry unit suffixes, and CRS/original time and unit metadata are retained.
 Analytical wrappers also define restoration of their user-facing response units.
 
-The user-facing boundary checkpoint was committed as `56de729`. Per the user's
+The user-facing wrapper checkpoint was committed as `56de729`. Per the user's
 requested staging, there is no compatibility adapter: user-facing preparation
 intentionally breaks paths whose internal calculations still expect units
 objects and the original column names. Unmigrated private coordinators retain
@@ -26,11 +26,11 @@ handling and quadrature normalization remain intact. Direct private-kernel test
 and manual-analysis calls are updated to the numeric contract. Calls from the
 unmigrated spatial/model coordinators will be updated in their respective stages.
 
-Boundary tests use captured internal calls to verify numeric preparation without
+User input tests use captured internal calls to verify numeric preparation without
 depending on the not-yet-migrated calculations. The baseline full suite passed
-before implementation. The latest boundary-only run passed 76 expectations.
+before implementation. The latest input-validation-only run passed 76 expectations.
 The existing standalone analytical tests, new numeric-kernel regression tests,
-and boundary tests pass. Stage 2 was committed as `431bfcd`.
+and user input tests pass. Stage 2 was committed as `431bfcd`.
 
 Stage 3 restores segmentation, sampling and ADF apportionment with shared UTM
 geometry, numeric physical columns internally and unit-bearing user-facing outputs.
@@ -43,16 +43,16 @@ Injection-event extraction was updated to consume those numeric matrices.
 Scheduled-model callers will adopt the new interfaces in subsequent stages.
 Stage 3 was committed as `9710f3e`.
 
-Stage 4 normalizes external dates/time quantities to numeric day vectors at the
-boundary and retains original output times/origin as metadata. Prepared numeric
+Stage 4 normalizes external dates/time quantities to numeric day vectors during
+input preparation and retains original output times/origin as metadata. Prepared numeric
 schedules carry reusable pumping-event and event/evaluation-pair tables. Events
 use explicit day and m3_per_day column suffixes, preserve signed changes, omit
 unchanged rates, and contribute only at strictly later evaluations. Numeric
 injection time grids merge pumping-schedule, evaluation and refinement times. Aquifer grouping
 uses normalized numeric properties; its relationship checks, limits and warnings
-live in the boundary preparer, and prepared groups are retained for reuse.
+live in the input preparer, and prepared groups are retained for reuse.
 
-The final time, event, aquifer-group and boundary runs passed 136 expectations.
+The final time, event, aquifer-group and user input runs passed 136 expectations.
 Stage 4 was committed as `47f3a1c`.
 
 Stage 5 restores user-facing ADF depletion and injection-schedule workflows. Numeric
@@ -80,7 +80,7 @@ converted to bare meters once; pump event tables are split once before interval
 loops. Cached response matrices use day/m2, solved rates use m3/day and head
 accumulation uses meters. User-facing formatting restores dates, rate units and meter
 residuals. Repeated input checks and unit conversion are removed from the solver;
-user-facing schedule/model boundaries protect the private entry point. QR solves,
+user-facing schedule/model wrappers protect the private entry point. QR solves,
 per-aquifer/duration factorization reuse, conditioning warnings and nonfinite
 rate diagnostics remain. Explicit matrix dimensions support one segment with
 multiple pumps during history accumulation.
@@ -97,12 +97,12 @@ incomplete package result. Stage 6 was committed as `d36088b`.
 
 Stage 7 restores aquifer observation superposition with numeric prepared wells,
 events, injection schedules and evaluation days. The private coordinator calls
-the private schedule generator; no internal user-facing boundary validation repeats.
+the private schedule generator; no internal user-facing wrapper validation repeats.
 Observation line operators and pump-to-observation distances are prepared once,
 event selections are reused across observations, and output head arrays are
 preallocated. Numeric meter heads and numeric day times are restored to the
 caller's original length units and time representation at the user-facing exit.
-Supplied schedule metadata/quadrature and coverage checks remain at that boundary.
+Supplied schedule metadata/quadrature and coverage checks remain in that user-facing wrapper.
 
 Independent comparisons match the pre-refactor results for both injection methods,
 dates/hours, imperial rates, shared/separate aquifer groups and generated/supplied
@@ -113,12 +113,12 @@ The full stage 7 suite passes: 170 test blocks, 619 expectations, zero failures
 and zero errors. This does not yet include R CMD check or vignette execution.
 Stage 7 and the restored explanatory comments were committed as `231c2e8`.
 
-Stage 8 audits all ten exported entry points. User-facing boundaries now check each
+Stage 8 audits all ten exported entry points. User-facing wrappers now check each
 context object once; table-specific validators assume that related wells,
 schedules and segments have already been checked. Numeric conversion helpers
 trust those dimension checks, and time normalization trusts the checked time
 axis/targets. Aquifer grouping consumes the already prepared numeric wells while
-retaining boundary checks for group IDs and limits. Input checks remain for
+retaining input checks for group IDs and limits. Input checks remain for
 newly supplied depletion/injection data, including coverage and metadata.
 
 The audit also rejects nonfinite Date values, NULL model observations, invalid
@@ -128,14 +128,14 @@ require appropriate physical column types. Unit checking uses an explicit
 conversion mode without changing the caller's global units options.
 
 Call-count regressions cover seven user-facing routes and confirm one validation per
-relevant context object. Prepared aquifer coordinators run with boundary
+relevant context object. Prepared aquifer coordinators run with input
 validators disabled in tests. All 638 expectations in 174 blocks pass, and the
 independent pre-refactor comparisons still match both injection methods across
 dates/hours, rates in imperial units, aquifer groups and supplied schedules.
 Vignette/manual migration and package build checks are the next stage.
 The validation/output audit was committed as `1c7cc03`.
 
-The approved naming review preserves domain meaning in prepared boundary objects
+The approved naming review preserves domain meaning in prepared input objects
 (`prepared_pumping_wells`, `prepared_stream_segments`, `prepared_model_times`,
 `prepared_stream_apportionment`) and in ADF event/fraction/rate calculations.
 Pump-specific apportionment tables are named `pump_apportionment`, not `segments`.
@@ -170,7 +170,7 @@ allocation/call-count inspections identify repeated response-cache key formattin
 and observation-specific extraction as the next targets. No further package
 optimization has been applied; proposed batching/cache changes await review.
 
-### Boundary validation ownership after the audit
+### Input validation ownership after the audit
 
 | Input/responsibility | Owner | Trusted downstream helpers |
 |---|---|---|
@@ -230,10 +230,10 @@ Every function must document its unit contract in the code. Keep comments brief
 and avoid repeating a comment on each variable or arithmetic operation.
 Preserve existing explanations of algorithms, matrix dimensions, event alignment
 and sign conventions, updating them for the new interfaces. Move comments with
-their responsibilities when validation or unit handling moves to a boundary;
+their responsibilities when validation or unit handling moves to a user-facing wrapper;
 remove comments only when their subject no longer applies or is redundant.
 
-- At boundary validation, identify the block checking physical dimensions.
+- At input validation, identify the block checking physical dimensions.
 - At conversion/stripping, state that inputs are normalized to package-standard
   units before unit attributes are removed. One comment can cover the block.
 - At output formatting, identify the block restoring units and, where relevant,
@@ -259,7 +259,7 @@ Examples (wording should match each function's actual responsibility):
 
 Use one appropriate comment per responsibility; do not add all of these to
 every function. Unit suffixes remain the primary local cue, with comments
-making each function's contract and boundary transitions explicit.
+making each function's contract and input/output conversions explicit.
 
 Convert units BEFORE stripping attributes. Retain original output-time vectors,
 time origin, identifiers, CRS information, and output-unit metadata separately.
@@ -304,7 +304,7 @@ the CRS needed to interpret their coordinates and construct user-facing outputs.
 
 1. Every exported entry point validates its own complete input contract,
    including cross-input relationships and optional arguments, through shared
-   boundary validators/preparers.
+   input validators/preparers.
 2. Preparation creates private structures containing normalized numeric arrays,
    times, event indices, geometry operators, and output metadata. Nested
    calculations consume these structures, not arbitrary user-facing input tables.
@@ -320,7 +320,7 @@ the CRS needed to interpret their coordinates and construct user-facing outputs.
    covered by tests and numerical diagnostics.
 
 "No internal validation" applies to calculation helpers, not to the private
-functions whose explicit purpose is boundary validation. Keep solver failure,
+functions whose explicit purpose is input validation. Keep solver failure,
 rank/conditioning, nonfinite-result, boundary-residual, external-service, and
 cache-ownership diagnostics where they are needed. Remove repeated checks of
 unchanged user inputs. Mathematical branches such as zero-event handling and
@@ -328,21 +328,21 @@ the expint underflow cutoff remain calculations, not redundant validation.
 
 ## Exported functions: validation remains mandatory
 
-| User-facing function | Current validation location | Proposed boundary responsibility | Calculation path / protection |
+| User-facing function | Current validation location | Proposed user-facing wrapper responsibility | Calculation path / protection |
 |---|---|---|---|
-| `calc_straight_stream_depletion_fraction` | Mostly delegated to Glover kernel's dimensional-result check; no full explicit input boundary | Validate lengths, K, D, V, positive elapsed times, and supported vector lengths; convert to numeric standard units | Call numeric `.glover_stream_depletion_fraction`; attach/return dimensionless output |
+| `calc_straight_stream_depletion_fraction` | Mostly delegated to Glover kernel's dimensional-result check; no complete input validation in the user-facing wrapper | Validate lengths, K, D, V, positive elapsed times, and supported vector lengths; convert to numeric standard units | Call numeric `.glover_stream_depletion_fraction`; attach/return dimensionless output |
 | `calc_infinite_aquifer_drawdown_ratio` | Delegated to Theis helpers; supplies default diameter | Validate distances, hydraulic properties, times, diameter, and vector lengths; supply default and normalize once | Call numeric `.theis_aquifer_drawdown_ratio`; attach response units at exit |
 | `calc_straight_stream_drawdown_ratio` | Delegated to Glover/Theis helpers; supplies default diameter | Validate coordinate distances and hydraulic/time inputs, diameter and vector lengths; normalize once | Call numeric `.glover_aquifer_drawdown_ratio`; attach response units at exit |
 | `prep_stream_segments` | CRS selector, discretizer, width helper | Validate reaches, analysis CRS, spacing, width/width columns, reserved columns; prepare meter geometry and numeric widths/spacing | New private segmentation coordinator calls unchecked spatial helpers; user-facing exit restores sf/table units and CRS contract |
 | `prep_stream_sample_points` | Inline geometry, identifier, length and spacing checks | Keep its specific sampling-input contract; normalize measured lengths and spacing | Extract private sampling implementation so apportionment does not call the validating user-facing function |
 | `prep_adf_stream_apportionment` | Inline well/segment checks, method and cutoff checks; user-facing sampling call adds checks | Validate wells, segments, sampling controls and cutoff; prepare geometry/distances in meters | Extract private apportionment implementation calling private sampling; attach distance units at user-facing exit |
-| `model_adf_stream_depletion` | Delegates to `.model_adf_stream_depletion`, which validates | Move complete well/schedule/apportionment/evaluation checks and normalization to boundary | Call unchecked `.model_adf_stream_depletion`; restore output time/rate units |
+| `model_adf_stream_depletion` | Delegates to `.model_adf_stream_depletion`, which validates | Move complete well/schedule/apportionment/evaluation checks and normalization to the user-facing wrapper | Call unchecked `.model_adf_stream_depletion`; restore output time/rate units |
 | `generate_stream_injection_schedule` | Inline checks plus validation repeated in time, ADF and constant-head helpers | Validate shared inputs, method-specific options, quadrature order, optional supplied depletion and time coverage; normalize once | Extract private schedule coordinator calling numeric ADF/constant-head helpers; attach schedule units/metadata at exit |
 | `model_aquifer_water_level_change` | Checks segments, then calls validating schedule generator and validating drawdown helper | Validate complete model inputs, observations, quadrature controls, and any supplied injection schedule; prepare shared geometry, hydraulic and time data once | Call private schedule coordinator if needed, then `.superimpose_aquifer_responses`; format output once |
-| `fetch_usgs_stream_reaches` | AOI validator, inline service/options/output checks | Keep AOI/options checks; normalize buffer to meters; retain validation of newly received remote data | Query helpers receive prepared AOI/buffer; service outputs cross a new external-data boundary |
+| `fetch_usgs_stream_reaches` | AOI validator, inline service/options/output checks | Keep AOI/options checks; normalize buffer to meters; retain validation of newly received remote data | Query helpers receive prepared AOI/buffer; new service outputs require validation |
 
-Vector-length and finite/positive-value rules must be made explicit at these
-boundaries, preserving physically valid signed coordinate distances and signed
+Vector-length and finite/positive-value rules must be made explicit in these
+user-facing wrappers, preserving physically valid signed coordinate distances and signed
 rate changes. Move existing protections before removing them from kernels; do
 not assume every user-facing function currently validates its full intended contract.
 
@@ -355,9 +355,9 @@ not assume every user-facing function currently validates its full intended cont
 | `.theis_aquifer_drawdown_ratio` | Repeated dimension checks, units arithmetic, radius handling | Numeric meter/day inputs; retain radius regularization; remove input checks | User-facing drawdown preparers or prepared pumping-model helpers |
 | `.theis_response_at_distance` | Rechecks dimensions and diffusivity; unit arithmetic | Numeric formula returning `day/m^2`; retain expint cutoff | Numeric Theis/line helpers supply effective distances and positive ages |
 | `.glover_aquifer_drawdown_ratio` | Checks coordinate dimensions, then calls checked Theis twice | Numeric direct/image distances and shared numeric Theis kernel | Prepared user-facing straight-stream drawdown inputs |
-| `.get_gauss_legendre_rule` | Positive integer order validation | Generate numeric nodes/weights without checking order repeatedly | User-facing model boundary validates order; prepared line-element construction |
+| `.get_gauss_legendre_rule` | Positive integer order validation | Generate numeric nodes/weights without checking order repeatedly | User-facing model wrapper validates order; prepared line-element construction |
 | `.line_sink_aquifer_drawdown_ratio` | Dimensional, length, finite and positivity checks; units attached to output | Numeric local geometry/quadrature and numeric output; remove input checks | Currently test/manual-only, with no production user-facing caller: migrate those callers to explicitly prepared standard-unit fixtures; document private contract |
-| `.prepare_line_elements` | Revalidates segments; geometry and width unit handling | Consume validated shared-UTM sf geometry, numeric widths and validated order; retain sf quadrature geometry/CRS and numeric weights | Private model/schedule preparation reached from user-facing model/schedule boundaries |
+| `.prepare_line_elements` | Revalidates segments; geometry and width unit handling | Consume validated shared-UTM sf geometry, numeric widths and validated order; retain sf quadrature geometry/CRS and numeric weights | Private model/schedule preparation reached from user-facing model/schedule wrappers |
 | `.prepare_line_response_operator` | Class/point checks, transformation, units-bearing distances | Consume prepared target geometry/elements; geometry adapter converts distances once to numeric meters | User-facing model/schedule preparation validates points and creates elements; preserve CRS-aware adapter behavior |
 | `.evaluate_line_response_operator` | Class, scalar, dimensional and finite/positive checks; units conversion | Numeric distances, widths, K, D, V, days; numeric response matrix; remove repeated input checks | Prepared operator and aquifer/time data from model/schedule preparation |
 | `.get_cached_line_response_matrix` | Cache/operator checks; repeated units conversion and formatted keys | Prepared numeric parameters/ages and stable aquifer/time keys; numeric matrices | Private coordinator owns cache and operator; preserve cache ownership diagnostics or structurally bind cache to operator |
@@ -366,22 +366,22 @@ not assume every user-facing function currently validates its full intended cont
 
 | Existing internal function | Current checks / units | Proposed change | Protecting caller or contract |
 |---|---|---|---|
-| `.get_pumping_rate_changes` | Revalidates schedules; normalizes checked times; units-bearing rates | Numeric prepared times/rates; no schedule validation; reuse prepared events | Any of the three user-facing model/schedule boundaries prepares schedule first |
+| `.get_pumping_rate_changes` | Revalidates schedules; normalizes checked times; units-bearing rates | Numeric prepared times/rates; no schedule validation; reuse prepared events | Any of the three user-facing model/schedule wrappers prepares schedule first |
 | `.get_pumping_response_times` | Revalidates evaluation times; rate-change helper revalidates schedules; normalizes again | Build event/evaluation indices and numeric positive ages from prepared events/times | User-facing ADF/model preparation; internal callers reuse prepared events |
-| `.normalize_time_inputs` | Validates time vectors and target relationships; returns days with units | Boundary normalization helper: convert checked external dates/units once to numeric days plus origin/output metadata; remove duplicate validation inside conversion | Shared boundary preparer explicitly validates times before conversion; never called inside hydraulic loops |
-| `.get_stream_depletion_fraction_lookup` | Unit-bearing elapsed times, distances and hydraulic values; no top-level validator | Use numeric aquifer parameters, distances and unique elapsed days | Unchecked ADF calculation receives prepared inputs from ADF/schedule/model user-facing boundary |
+| `.normalize_time_inputs` | Validates time vectors and target relationships; returns days with units | Input normalization helper: convert checked external dates/units once to numeric days plus origin/output metadata; remove duplicate validation inside conversion | Shared input preparer explicitly validates times before conversion; never called inside hydraulic loops |
+| `.get_stream_depletion_fraction_lookup` | Unit-bearing elapsed times, distances and hydraulic values; no top-level validator | Use numeric aquifer parameters, distances and unique elapsed days | Unchecked ADF calculation receives prepared inputs from ADF/schedule/model user-facing wrapper |
 | `.model_adf_stream_depletion` | Checks schedules, evaluation times and apportionment; units arithmetic | Remove validators; numeric event superposition and numeric rate table | User-facing ADF preparer or private schedule coordinator using already-prepared data |
 | `.get_stream_injection_times` | Checks evaluation/injection times; repeats time normalization | Numeric union of prepared pumping/evaluation/refinement times | User-facing schedule/model preparer validates time representations and relationships |
 | `.get_interval_average_injection_schedule` | Re-normalizes time; uses units-bearing rate/time columns | Average stream depletion rates at prepared injection times | Private ADF schedule branch; supplied depletion validated/converted at entry |
 | `.get_injection_rate_changes` | Units-bearing event construction | Numeric rates and days; preserve ordering and signs | Private schedule construction or validated/normalized supplied schedule |
-| `.get_interval_average_injection_rate_changes` | Composes interval averaging and rate-change helpers | Compose numeric helpers; no validation or units conversion | Currently test-only; migrate test fixtures to prepared numeric tables or test via user-facing boundary |
-| `.get_metadata_quadrature_order` | Reads/validates user-visible metadata | Keep metadata interpretation at boundary; carry resolved integer into prepared data | User-facing model boundary handling supplied schedule metadata |
-| `.resolve_schedule_quadrature_order` | Resolves explicit order vs metadata consistency | Keep relationship validation at boundary; do once | User-facing model boundary before line-element construction |
+| `.get_interval_average_injection_rate_changes` | Composes interval averaging and rate-change helpers | Compose numeric helpers; no validation or units conversion | Currently test-only; migrate test fixtures to prepared numeric tables or test via user-facing wrapper |
+| `.get_metadata_quadrature_order` | Reads/validates user-visible metadata | Keep metadata interpretation in the user-facing wrapper; carry resolved integer into prepared data | User-facing model wrapper handling supplied schedule metadata |
+| `.resolve_schedule_quadrature_order` | Resolves explicit order vs metadata consistency | Keep relationship validation in the user-facing wrapper; do once | User-facing model wrapper before line-element construction |
 | `.get_response_ratios_for_injection_events` | Checks event-vector lengths; units-bearing grouping/indexing and cached responses | Use prepared numeric event ages and segment indices; remove repeated input checks | Prepared event tables created by drawdown coordinator; vector alignment established during preparation |
 | `.superimpose_aquifer_responses` | Revalidates observations, schedules, segments, supplied/generated schedule; prepares geometry/times repeatedly | Consume prepared inputs, numeric schedule and operators; numeric superposition; output metadata handled separately | User-facing model preparer validates originals and supplied intermediates; private schedule branch returns trusted numeric schedule |
-| `.get_aquifer_groups` | Revalidates wells; converts/serializes parameters; checks/warns group count | Group normalized numeric K/D/V once; move allowed-count input validation to boundary; retain useful group-count diagnostic | User-facing constant-head schedule/model preparation |
+| `.get_aquifer_groups` | Revalidates wells; converts/serializes parameters; checks/warns group count | Group normalized numeric K/D/V once; move allowed-count input validation to the user-facing wrapper; retain useful group-count diagnostic | User-facing constant-head schedule/model preparation |
 | `.get_pumping_head_at_stream` | Recomputes spatial distances; calls checked Theis with units for every event | Consume precomputed numeric pump-to-stream distances and prepared events; numeric Theis | Prepared constant-head geometry, wells and pumping events |
-| `.generate_constant_head_injection_schedule` | Revalidates segments/wells/schedules through helpers; units conversion during intervals/cache accesses | Numeric prepared geometry/operators/events/time grid; QR/cache/history remain internal; no repeated input validation | Private schedule coordinator reached from validated user-facing schedule/model boundary; retain QR, conditioning and residual diagnostics |
+| `.generate_constant_head_injection_schedule` | Revalidates segments/wells/schedules through helpers; units conversion during intervals/cache accesses | Numeric prepared geometry/operators/events/time grid; QR/cache/history remain internal; no repeated input validation | Private schedule coordinator reached from validated user-facing schedule/model wrapper; retain QR, conditioning and residual diagnostics |
 
 ## Spatial and service adapters
 
@@ -392,38 +392,38 @@ explicit even when numeric measurements use meters.
 |---|---|---|---|
 | `.select_analysis_crs` | Checks wells/reaches/observations and supplied CRS | Share one UTM-selection rule with stream selection; accept zone crossings without warning; retain selection feasibility checks | Currently only `.prepare_spatial_inputs` and direct tests/examples call it; no exported workflow calls that helper today |
 | `.prepare_spatial_inputs` | Delegates validation to selector; transforms geometry; adds units-bearing default diameter | Treat as private spatial adapter; consume checked objects, produce geometry and numeric meter measurements/defaults where applicable | Currently test/example-only; migrate those callers explicitly or retire helper if unused; do not claim an existing user-facing guard |
-| `.select_stream_analysis_crs` | Validates reaches plus supplied/automatic CRS | Select shared UTM rather than automatically retaining arbitrary projected input CRSs; downstream calls reuse that selection | `prep_stream_segments` boundary |
-| `.set_stream_width` | Validates width, forbidden diameter field, positivity and reach consistency; attaches units | Split raw-input width preparation from numeric assignment; calculation helper receives checked numeric meter widths | `prep_stream_segments` boundary validates override and inherited width columns |
-| `.discretize_stream_reaches` | Revalidates reaches, projected CRS, spacing, reserved columns; converts units | Consume prepared projected geometry and numeric meter spacing; numeric lengths; remove repeated raw-input checks | `prep_stream_segments` boundary and spatial adapter establish geometry/spacing contract |
-| `.point_along_linestring` | Coordinate interpolation helper | Use consistently scaled projected/local meter coordinates, cumulative lengths and offsets; no units attributes | Prepared discretizer/sampler; boundary geometry validator may also use it with explicitly normalized coordinates |
-| `.make_usgs_stream_query_area` | Geographic/UTM preparation, latitude feasibility, unit-bearing buffer | Consume checked AOI and numeric buffer meters; retain geographic feasibility diagnostics and CRS transformations | `fetch_usgs_stream_reaches` boundary; geographic longitude/latitude remain CRS coordinates, not meter distances |
+| `.select_stream_analysis_crs` | Validates reaches plus supplied/automatic CRS | Select shared UTM rather than automatically retaining arbitrary projected input CRSs; downstream calls reuse that selection | `prep_stream_segments` wrapper |
+| `.set_stream_width` | Validates width, forbidden diameter field, positivity and reach consistency; attaches units | Split raw-input width preparation from numeric assignment; calculation helper receives checked numeric meter widths | `prep_stream_segments` wrapper validates override and inherited width columns |
+| `.discretize_stream_reaches` | Revalidates reaches, projected CRS, spacing, reserved columns; converts units | Consume prepared projected geometry and numeric meter spacing; numeric lengths; remove repeated raw-input checks | `prep_stream_segments` wrapper and spatial adapter establish geometry/spacing contract |
+| `.point_along_linestring` | Coordinate interpolation helper | Use consistently scaled projected/local meter coordinates, cumulative lengths and offsets; no units attributes | Prepared discretizer/sampler; input geometry validator may also use it with explicitly normalized coordinates |
+| `.make_usgs_stream_query_area` | Geographic/UTM preparation, latitude feasibility, unit-bearing buffer | Consume checked AOI and numeric buffer meters; retain geographic feasibility diagnostics and CRS transformations | `fetch_usgs_stream_reaches` wrapper; geographic longitude/latitude remain CRS coordinates, not meter distances |
 | `.fetch_3dhp_flowlines` | Optional dependency check and external service call | Retain dependency/service diagnostics; no hydraulic unit processing | User-facing fetch coordinator supplies prepared query polygon; validates remote result afterward |
 
-## Boundary validators: keep, compose without repeating shared checks
+## Input validators: keep, compose without repeating shared checks
 
 These private functions intentionally inspect raw units and external structures.
 They are exempt from the numeric-calculation contract. Refactor broad validators
-into shared object checks plus relationship checks where necessary, so a boundary
+into shared object checks plus relationship checks where necessary, so a user-facing wrapper
 does not validate the same object through multiple nested validators.
 
 | Existing function | Responsibility after refactor | Called from / protection provided |
 |---|---|---|
-| `check_dimensionality` | Boundary dimensional check/conversion support only; remove from all numeric kernels; avoid changing global units options repeatedly | User-facing preparers and explicit boundary validators |
-| `.validate_point_sf` | Geometry/type/CRS/coordinate checks | Well, observation and spatial boundary checks |
+| `check_dimensionality` | Input dimensional check/conversion support only; remove from all numeric kernels; avoid changing global units options repeatedly | User-facing preparers and explicit input validators |
+| `.validate_point_sf` | Geometry/type/CRS/coordinate checks | Well, observation and spatial input checks |
 | `.validate_pumping_wells` | Well IDs, geometry, hydraulic values/units, optional diameter | User-facing apportionment, ADF, schedule and aquifer preparation |
 | `.validate_observation_wells` | Observation IDs/geometry | User-facing aquifer preparation; direct private spatial fixtures explicitly prepare |
-| `.validate_stream_reaches` | Reach IDs/geometry | User-facing segmentation/fetch boundaries, including newly fetched data |
-| `.validate_time_vector` | Date/time-units validity, finiteness and ordering as appropriate | Boundary time preparation only |
+| `.validate_stream_reaches` | Reach IDs/geometry | User-facing segmentation/fetch wrappers, including newly fetched data |
+| `.validate_time_vector` | Date/time-units validity, finiteness and ordering as appropriate | Input time preparation only |
 | `.validate_pumping_schedules` | Schedule shape/IDs/rates/units/times; split relationship checks from repeated well/time checks | ADF, schedule and aquifer user-facing preparation |
-| `.validate_target_times` | Evaluation/refinement time representation and relationship to schedule; avoid rechecking schedule vector | Boundary time preparation |
-| `.validate_evaluation_times` | Evaluation-specific boundary contract | ADF, schedule and aquifer user-facing preparation |
-| `.validate_injection_times` | Refinement-time boundary contract | Schedule and aquifer user-facing preparation |
+| `.validate_target_times` | Evaluation/refinement time representation and relationship to schedule; avoid rechecking schedule vector | Input time preparation |
+| `.validate_evaluation_times` | Evaluation-specific input contract | ADF, schedule and aquifer user-facing preparation |
+| `.validate_injection_times` | Refinement-time input contract | Schedule and aquifer user-facing preparation |
 | `.validate_stream_segments` | Segment geometry, CRS, IDs, lengths, widths, collocation consistency | Sampling/apportionment/schedule/aquifer user-facing preparation; once per relevant user-facing call |
 | `.validate_stream_depletion_apportionment` | Apportionment table, distances/weights and pump relationships; avoid rechecking wells | ADF/schedule/aquifer user-facing preparation |
 | `.validate_stream_apportionment_segments` | Apportionment-to-segment ID/geometry relationships | ADF-based schedule/aquifer user-facing preparation |
-| `.validate_apportioned_stream_depletion` | Caller-supplied depletion structure, units, pump/segment/time relationships; avoid rechecking originals | Schedule boundary when supplied depletion is used; preserve missing-time completion behavior |
-| `.validate_stream_injection_schedule` | Caller-supplied schedule structure, coverage, units and relationships; avoid rechecking originals | Aquifer boundary when a schedule is supplied; generated schedules bypass this raw-input boundary |
-| `.validate_usgs_stream_aoi` | Query AOI geometry and buffer validity/units | User-facing fetch boundary |
+| `.validate_apportioned_stream_depletion` | Caller-supplied depletion structure, units, pump/segment/time relationships; avoid rechecking originals | Schedule generator wrapper when supplied depletion is used; preserve missing-time completion behavior |
+| `.validate_stream_injection_schedule` | Caller-supplied schedule structure, coverage, units and relationships; avoid rechecking originals | Aquifer model wrapper when a schedule is supplied; generated schedules bypass this raw-input validation |
+| `.validate_usgs_stream_aoi` | Query AOI geometry and buffer validity/units | User-facing fetch wrapper |
 
 ## Proposed new helpers and implementation order
 
@@ -435,7 +435,7 @@ planned numeric internals as existing behavior before the refactor is complete.
 | Document | Planned addition |
 |---|---|
 | `vignettes/stream-depletion-and-drawdown.Rmd` (main workflow) | Briefly explain that user-facing functions accept compatible unit-bearing inputs, validate and convert them at entry, calculate internally using meters and days, and return unit-bearing results. Users do not need to convert inputs to internal units themselves. |
-| `vignettes/articles/adf-modeling-internals.Rmd` (internals) | Add a shared internal-unit and validation-contract section, explicitly covering both ADF and constant-head modeling. Include the standard-unit table, numeric naming convention, user-facing boundary vs internal calculation responsibilities, output-unit restoration, Date handling, and the CRS-aware geometry boundary. |
+| `vignettes/articles/adf-modeling-internals.Rmd` (internals) | Add a shared internal-unit and validation-contract section, explicitly covering both ADF and constant-head modeling. Include the standard-unit table, numeric naming convention, user-facing wrapper vs internal calculation responsibilities, output-unit restoration, Date handling, and the CRS-aware geometry preparation. |
 
 Both explanations must preserve the distinction between internal numeric units
 and the user-facing output-unit contract. Use American spelling ("meters"). The
@@ -459,10 +459,10 @@ numerical implementations.
 | Stage | Work | Status / completion criterion |
 |---|---|---|
 | 0. Baseline and profiling | Preserve original behavior as a reference; establish reproducible ADF/constant-head profiles | Original full suite passed before changes; profiling setup exists. Add missing regression cases as each layer migrates. |
-| 1. User-facing boundaries | Validate external inputs, normalize/strip physical quantities with suffixes, retain output metadata | Implemented and tested; final validation ownership audited in stage 8. User-facing paths work end to end. |
+| 1. User-facing wrappers | Validate external inputs, normalize/strip physical quantities with suffixes, retain output metadata | Implemented and tested; final validation ownership audited in stage 8. User-facing paths work end to end. |
 | 2. Analytical kernels | Migrate Glover, Theis, direct/image-well and local finite-line kernels to numeric meters/days; preserve regularization and underflow logic | Implemented and tested. Standalone user-facing analytical functions work with equivalent input units and unchanged output-unit behavior. |
 | 3. Spatial preparation | Consolidate shared UTM selection, retain sf/CRS, migrate segmentation/sampling/apportionment, prepare reusable line operators and numeric meter distances | Implemented and tested. Spatial user-facing functions work independently; mixed CRSs and zone crossings work; secondary model-point geometry is transformed explicitly. Numeric cache/extraction interfaces migrated alongside operators. |
-| 4. Time and pumping events | Numeric day/rate tables, event changes, evaluation indices, shared Date origin, aquifer groups | Implemented and tested. Prepared schedules retain reusable events/pairs; grouping uses normalized properties with boundary diagnostics. |
+| 4. Time and pumping events | Numeric day/rate tables, event changes, evaluation indices, shared Date origin, aquifer groups | Implemented and tested. Prepared schedules retain reusable events/pairs; grouping uses normalized properties with input diagnostics. |
 | 5. ADF workflow | Migrate fraction lookup, event superposition, interval averaging and private schedule coordinator | Implemented and tested. User-facing depletion/schedule outputs retain shapes, dates, units and missing-time completion behavior; match the pre-refactor implementation. |
 | 6. Constant-head workflow | Numeric response/cache keys, precomputed pump-to-stream distances, numeric history accumulation; retain QR/factorization reuse | Implemented and tested. Matches baseline schedules; geometry and event preparation stay outside interval loops. Numeric units, QR reuse and solver diagnostics retained. |
 | 7. Aquifer workflow | Numeric direct pumping and injection superposition; reuse prepared geometry, events and response matrices | Implemented and tested. Both injection methods and supplied schedules match baseline results; geometry/operators and event selections are reused, and user-facing output units/times are restored. |

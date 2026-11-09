@@ -32,7 +32,7 @@ water-level evaluation between segment model points.
 The number of points in each reach segment is its length divided by
 \code{sample_spacing} and rounded up. Points are placed at the along-line centers
 of equal-length sampling intervals. This avoids duplicated points at shared
-segment boundaries and assigns every point an explicit \code{sampled_length}.
+segment endpoints and assigns every point an explicit \code{sampled_length}.
 
 These points are distinct from the single \code{model_point} stored with each
 reach segment. \code{model_point} represents the segment in the model, while the

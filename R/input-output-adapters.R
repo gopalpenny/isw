@@ -1,7 +1,7 @@
-# User-facing boundary validation and preparation for standard numeric internals.
+# User input validation and preparation for standard numeric internals.
 
 .numeric_in_standard_units <- function(x, standard_unit, variable_name) {
-  # Dimensions were checked by the boundary validator; normalize, then strip units.
+  # Dimensions were checked by the input validator; normalize, then strip units.
   as.numeric(units::set_units(x, standard_unit, mode = "standard"))
 }
 
@@ -72,7 +72,7 @@
 }
 
 .prepare_numeric_apportionment <- function(stream_apportionment, pumping_wells) {
-  # The user-facing boundary checked this table; strip distances after meter conversion.
+  # The user-facing wrapper checked this table; strip distances after meter conversion.
   .prepare_numeric_columns(
     stream_apportionment, c(pump_to_reach_distance = "m")
   )
@@ -97,7 +97,7 @@
 }
 
 .prepare_numeric_schedule <- function(pumping_schedules, pumping_wells, times) {
-  # The user-facing boundary checked rates/times; normalize to numeric m^3/day and days.
+  # The user-facing wrapper checked rates/times; normalize to numeric m^3/day and days.
   pumping_schedules <- .prepare_numeric_columns(
     pumping_schedules,
     stats::setNames(rep("m^3/day", nrow(pumping_wells)), pumping_wells$pump_id)
@@ -251,7 +251,7 @@
   if (!is.null(well_diam)) {
     prepared$well_diam_m <- .numeric_in_standard_units(well_diam, "m", "well_diam")
   }
-  # Preserve the existing user-facing response units for reattachment at the boundary.
+  # Preserve the existing user-facing response units for reattachment during output formatting.
   prepared$output_response_units <- units::deparse_unit(1 / (K * D))
   prepared
 }

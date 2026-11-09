@@ -62,7 +62,7 @@ model_adf_stream_depletion <- function(
     stream_apportionment,
     evaluation_times = NULL) {
   
-  # Validate original inputs, then strip units using the shared meter/day boundary.
+  # Validate original inputs, then strip units using the shared meter/day input preparation.
   prepared_pumping_wells <- .prepare_numeric_pumping_wells(pumping_wells)
   .validate_pumping_schedules(pumping_schedules, pumping_wells)
   .validate_stream_depletion_apportionment(stream_apportionment, pumping_wells)
@@ -105,7 +105,7 @@ model_adf_stream_depletion <- function(
     )
   }
   
-  # Context tables were checked at the user-facing boundary; supplied depletion is new.
+  # Context tables were checked by the user-facing wrapper; supplied depletion is new.
   
   evaluation_times <- sort(unique(stream_depletion$evaluation_time))
   .validate_evaluation_times(evaluation_times, pumping_schedules$t)
@@ -218,7 +218,7 @@ model_adf_stream_depletion <- function(
   pumping_events <- attr(pumping_schedules, "isw_pumping_events")
 
   # Pair each nonzero rate change with later evaluations, reusing prepared pairs
-  # when the requested time vector matches the user-facing boundary's preparation.
+  # when the requested time vector matches the user-facing wrapper's preparation.
   pumping_response_times <- if (identical(
     evaluation_time_day,
     attr(pumping_schedules, "isw_evaluation_time_day")
@@ -304,7 +304,7 @@ model_adf_stream_depletion <- function(
   do.call(rbind, depletion_fraction_lookups_by_pump)
 }
 
-# Build one pump's segment-by-age lookup without repeating boundary validation.
+# Build one pump's segment-by-age lookup without repeating input validation.
 .get_depletion_fraction_lookup_for_pump <- function(
     pump_row, pumping_wells, pumping_response_times, stream_apportionment) {
   # Validated numeric distances/thickness are m, conductivity m/day and event ages day.

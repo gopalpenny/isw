@@ -40,7 +40,7 @@ p_constant_head
 
 `include_preparation = FALSE` reuses the user-facing stream segments and apportionment.
 The user-facing model call still validates inputs and prepares numeric hydraulic data
-in meters and days. This option does not bypass those user-facing boundary checks.
+in meters and days. This option does not bypass those user-facing wrapper checks.
 Internal kernels consume numeric data, while `sf` geometry retains its CRS.
 
 The constant-head example warns that the wells have two pump-specific aquifer

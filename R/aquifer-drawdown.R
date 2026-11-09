@@ -97,7 +97,7 @@
   )
 
   # Reuse pumping-rate changes paired with later evaluations. Injection events
-  # come from a boundary-validated supplied schedule or a trusted private generator.
+  # come from a input-validated supplied schedule or a trusted private generator.
   pumping_responses <- attr(pumping_schedules, "isw_pumping_response_times", exact = TRUE)
   injection_events <- .get_injection_rate_changes(stream_injection_schedule)
   segment_columns <- match(injection_events$reach_segment_id, stream_segments$reach_segment_id)
@@ -114,7 +114,7 @@
   for (pump_row in seq_len(nrow(pumping_wells))) {
     pump_id <- pumping_wells$pump_id[[pump_row]]
 
-    # Reuse event selections across observations; boundary preparation owns validation.
+    # Reuse event selections across observations; the user-facing wrapper owns validation.
     pumping_rows_by_time <- lapply(seq_len(number_of_times), function(index) {
       which(pumping_responses$pump_id == pump_id & pumping_responses$evaluation_index == index)
     })

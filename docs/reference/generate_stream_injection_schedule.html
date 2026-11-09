@@ -155,6 +155,10 @@ when water moves from the stream to the aquifer. Constant-head schedules
 additionally
 contain <code>aquifer_id</code>, <code>boundary_residual</code>, and
 <code>matrix_condition_number</code>.
+<code>boundary_residual</code> is the signed water-level change in meters at the
+segment's <code>model_point</code> at <code>interval_end</code>, attributable to the row's pump
+after accounting for pumping and stream injection. Its target is zero;
+negative values indicate a decline and positive values a rise.
 Generated schedules carry an <code>isw_schedule_metadata</code> attribute recording
 the injection method and, for constant-head schedules, quadrature order.</p>
     </div>
