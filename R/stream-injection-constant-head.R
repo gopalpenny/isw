@@ -217,13 +217,10 @@
         # Accumulate the head response remaining from injection rates solved
         # for all preceding intervals.
         for (previous_index in seq_len(interval_index - 1L)) {
+          injection_start_response_day_per_m2 <- get_response_matrix(interval_end_day - time_nodes_day[[previous_index]])
+          injection_end_response_day_per_m2 <- get_response_matrix(interval_end_day - time_nodes_day[[previous_index + 1L]])
           pulse_response_day_per_m2 <-
-            get_response_matrix(
-              interval_end_day - time_nodes_day[[previous_index]]
-            ) -
-            get_response_matrix(
-              interval_end_day - time_nodes_day[[previous_index + 1L]]
-            )
+            injection_start_response_day_per_m2 - injection_end_response_day_per_m2
           previous_injection_head_m <- previous_injection_head_m +
             pulse_response_day_per_m2 %*% matrix(
               solved_rates_m3_per_day[, , previous_index],
