@@ -417,16 +417,16 @@ depletion in the <code>"constant_head"</code> model is equivalent to the
 stream injection schedule.</p>
 <p>We can now construct these two interval schedules, using the same
 function and time grid. With <code>method = "adf"</code>,
-<code><a href="../reference/generate_stream_injection_schedule.html">generate_stream_injection_schedule()</a></code> uses the same ADF
-stream depletion calculation as
-<code><a href="../reference/model_adf_stream_depletion.html">model_adf_stream_depletion()</a></code> at every injection time, then
-averages the rates at the start and end of each interval. It reports the
-resulting <code>injection_rate</code> as positive when water moves from
-the stream to the aquifer. This rate is the stream- depletion rate
-applied over the interval. Precalculated ADF stream depletion rates can
-be supplied through the <code>adf_stream_depletion</code> argument to
-avoid recalculation. Here, the supplied result contains only the monthly
-evaluation times and omits the optional refinement times.
+<code><a href="../reference/generate_stream_injection_schedule.html">generate_stream_injection_schedule()</a></code> uses the same stream
+depletion calculation as <code><a href="../reference/model_adf_stream_depletion.html">model_adf_stream_depletion()</a></code> at
+every injection time, then averages the rates at the start and end of
+each interval. It reports the resulting <code>injection_rate</code> as
+positive when water moves from the stream to the aquifer. This rate is
+the stream- depletion rate applied over the interval. Precalculated
+stream depletion rates can be supplied through the
+<code>adf_stream_depletion</code> argument to avoid recalculation. Here,
+the supplied result contains only the monthly evaluation times and omits
+the optional refinement times.
 <code><a href="../reference/generate_stream_injection_schedule.html">generate_stream_injection_schedule()</a></code> issues a warning to
 make the mismatch explicit, reuses the supplied rates, and fills in the
 missing times by calculating them within the function.</p>
@@ -441,9 +441,9 @@ missing times by calculating them within the function.</p>
 <span>  stream_apportionment <span class="op">=</span> <span class="va">stream_apportionment</span>,</span>
 <span>  adf_stream_depletion <span class="op">=</span> <span class="va">adf_depletion</span></span>
 <span><span class="op">)</span></span>
-<span><span class="co">#&gt; Warning: adf_stream_depletion is missing ADF stream depletion rates at 12</span></span>
-<span><span class="co">#&gt; required injection times (2025-01-06, 2025-01-11, 2025-01-16, 2025-02-06,</span></span>
-<span><span class="co">#&gt; 2025-02-11, ...). Rates at the missing times will be calculated internally.</span></span></code></pre></div>
+<span><span class="co">#&gt; Warning: adf_stream_depletion is missing stream depletion rates at 12 required</span></span>
+<span><span class="co">#&gt; injection times (2025-01-06, 2025-01-11, 2025-01-16, 2025-02-06, 2025-02-11,</span></span>
+<span><span class="co">#&gt; ...). Rates at the missing times will be calculated internally.</span></span></code></pre></div>
 <p>With <code>method = "constant_head"</code>, each interval rate is
 solved to satisfy the constant-head boundary condition on the
 <code>model_point</code> for each stream segment at the end of each time

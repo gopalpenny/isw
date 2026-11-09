@@ -27,8 +27,8 @@
 #'   limit.
 #' @param adf_stream_depletion Optional output from
 #'   [model_adf_stream_depletion()]. When supplied with `method = "adf"`,
-#'   ADF stream depletion rates at required injection times are reused and results at additional times
-#'   are ignored. If ADF stream depletion rates are missing at required injection
+#'   stream depletion rates at required injection times are reused and results at additional times
+#'   are ignored. If stream depletion rates are missing at required injection
 #'   times, a warning is issued and those rates are calculated internally.
 #' @param quadrature_order Nonnegative integer controlling stream injection sources.
 #'   With `0`, each segment injects its total rate at its `model_point`, using
@@ -54,16 +54,16 @@
 #' subdivide intervals; all pumping-schedule times through the final evaluation
 #' time remain in the grid.
 #'
-#' With `method = "adf"`, ADF stream depletion rates are calculated at every
+#' With `method = "adf"`, stream depletion rates are calculated at every
 #' time in the injection time grid, using the same calculation as
 #' [model_adf_stream_depletion()]. The rates at the start and end of each
 #' interval are averaged to obtain its stream injection rate.
-#' To precompute a complete `adf_stream_depletion` input, evaluate ADF stream
+#' To precompute a complete `adf_stream_depletion` input, evaluate stream
 #' depletion rates at
 #' every `evaluation_times` value and at every `pumping_schedules$t` and
 #' `injection_times` value through the final evaluation time. A supplied table
 #' that omits required injection times is reused where possible, but generates
-#' a warning while the missing ADF stream depletion rates are calculated internally.
+#' a warning while the missing stream depletion rates are calculated internally.
 #'
 #' With `method = "constant_head"`, segment model points are constant-head
 #' collocation points. Injection uses those points when `quadrature_order = 0`,

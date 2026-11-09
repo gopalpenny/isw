@@ -51,7 +51,7 @@ test_that("supplied ADF stream depletion rates are reused and rates at missing i
     expect_warning(actual <- generate_stream_injection_schedule(
       x$wells, x$schedules, x$segments, x$evaluate, x$refine,
       stream_apportionment = x$apportionment, adf_stream_depletion = supplied
-    ), "missing ADF stream depletion rates at 4 required injection times")
+    ), "missing stream depletion rates at 4 required injection times")
     expect_equal(actual, expected)
     extra <- model_adf_stream_depletion(x$wells, x$schedules, x$apportionment, x$times(c(0, 2, 5, 10, 12, 20, 30, 40)))
     expect_silent(reused <- generate_stream_injection_schedule(

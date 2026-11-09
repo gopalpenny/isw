@@ -84,7 +84,7 @@
 ## Schedule reuse
 
 * `generate_stream_injection_schedule(method = "adf")` now accepts partially
-  precomputed `adf_stream_depletion`. Available ADF stream depletion rates at
+  precomputed `adf_stream_depletion`. Available stream depletion rates at
   required injection times are reused, and rates at missing times are calculated
   internally with a warning.
 * Generated schedules record their injection method and quadrature order. When

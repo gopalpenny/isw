@@ -142,7 +142,7 @@
     missing_time_labels <- trimws(format(.restore_time_values(
       missing_time_day, times$output_schedule_times, times$time_origin
     )))
-    warning("adf_stream_depletion is missing ADF stream depletion rates at ",
+    warning("adf_stream_depletion is missing stream depletion rates at ",
             length(missing_time_labels), " required injection ",
             if (length(missing_time_labels) == 1L) "time" else "times", " (",
             paste(utils::head(missing_time_labels, 5L), collapse = ", "),

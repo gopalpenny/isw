@@ -1,9 +1,9 @@
 # Average endpoint depletion into piecewise-constant injection intervals.
 .get_interval_average_injection_schedule <- function(
     depletion_at_schedule_boundaries, pumping_schedules) {
-  # Validated numeric injection times are days and ADF stream depletion/injection rates m^3/day.
+  # Validated numeric injection times are days and stream depletion/injection rates m^3/day.
 
-  # Include an initial zero rate if ADF stream depletion begins after the schedule starts.
+  # Include an initial zero rate if stream depletion begins after the schedule starts.
   boundary_time_day <- sort(unique(
     depletion_at_schedule_boundaries$schedule_boundary_day
   ))
@@ -22,7 +22,7 @@
   )
   pump_segment_pairs <- unique(depletion_at_schedule_boundaries[c("pump_id", "reach_segment_id")])
 
-  # Convert ADF stream depletion rates at injection times to interval rates for each pump-segment pair.
+  # Convert stream depletion rates at injection times to interval rates for each pump-segment pair.
   injection_schedules_by_pump_segment <- vector("list", nrow(pump_segment_pairs))
   for (pair_index in seq_len(nrow(pump_segment_pairs))) {
     pair_rows <- which(
@@ -30,7 +30,7 @@
         depletion_at_schedule_boundaries$reach_segment_id == pump_segment_pairs$reach_segment_id[[pair_index]]
     )
 
-    # Order ADF stream depletion rates chronologically before averaging each interval's start and end rates.
+    # Order stream depletion rates chronologically before averaging each interval's start and end rates.
     pair_rows <- pair_rows[order(depletion_at_schedule_boundaries$schedule_boundary_day[pair_rows])]
     endpoint_rate_m3_per_day <- depletion_at_schedule_boundaries$stream_depletion_rate_m3_per_day[pair_rows]
     if (prepend_zero) endpoint_rate_m3_per_day <- c(0, endpoint_rate_m3_per_day)

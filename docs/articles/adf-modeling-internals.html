@@ -945,8 +945,8 @@ apportioned to that segment.
 pumping well, stream reach segment, and time interval. Each row
 specifies the stream injection rate represented during that interval;
 positive values indicate water entering the aquifer. The previously
-calculated ADF stream depletion rates cover every required injection
-time in this example, and we can supply them to avoid recalculation.</p>
+calculated stream depletion rates cover every required injection time in
+this example, and we can supply them to avoid recalculation.</p>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stream_injection_schedule</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/generate_stream_injection_schedule.html">generate_stream_injection_schedule</a></span><span class="op">(</span></span>
 <span>  <span class="va">pumping_wells</span>,</span>
@@ -1031,10 +1031,10 @@ requested evaluation times alone, define the intervals used below.</p>
 <span><span class="co">#&gt; [1] 212 243 273 304 334 365</span></span></code></pre></div>
 </div>
 <div class="section level4">
-<h4 id="approximate-continuously-changing-adf-stream-depletion-by-intervals">2. Approximate continuously changing ADF stream depletion by
-intervals<a class="anchor" aria-label="anchor" href="#approximate-continuously-changing-adf-stream-depletion-by-intervals"></a>
+<h4 id="approximate-continuously-changing-stream-depletion-by-intervals">2. Approximate continuously changing stream depletion by
+intervals<a class="anchor" aria-label="anchor" href="#approximate-continuously-changing-stream-depletion-by-intervals"></a>
 </h4>
-<p>ADF stream depletion rates are evaluated at the start and end of each
+<p>Stream depletion rates are evaluated at the start and end of each
 interval. The arithmetic mean of those two rates defines the stream
 injection rate for that interval.
 <code><a href="../reference/generate_stream_injection_schedule.html">generate_stream_injection_schedule()</a></code> reports that mean as a
@@ -1091,9 +1091,9 @@ rates:</p>
 <span>    <span class="va">restored_internal_schedule</span><span class="op">[[</span><span class="va">column</span><span class="op">]</span><span class="op">]</span>, <span class="va">stream_injection_schedule</span><span class="op">[[</span><span class="va">column</span><span class="op">]</span><span class="op">]</span></span>
 <span>  <span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p><code>depletion_at_schedule_boundaries</code> contains the ADF stream
+<p><code>depletion_at_schedule_boundaries</code> contains the stream
 depletion rates for each segment at the start and end of each interval.
-The user-facing ADF stream depletion function returns its time column as
+The user-facing stream depletion function returns its time column as
 <code>evaluation_time</code>; the numeric calculation uses
 <code>evaluation_time_day</code>, renamed
 <code>schedule_boundary_day</code> for interval averaging. The internal

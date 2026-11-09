@@ -346,7 +346,7 @@ test_that("ADF remains the default injection method", {
         evaluation_time != units::set_units(20, "days")
       )
     ),
-    "missing ADF stream depletion rates at 1 required injection time"
+    "missing stream depletion rates at 1 required injection time"
   )
   expect_equal(completed_schedule, explicit_schedule)
 
@@ -379,7 +379,7 @@ test_that("ADF remains the default injection method", {
       stream_apportionment = stream_apportionment,
       adf_stream_depletion = evaluation_only_depletion
     ),
-    "missing ADF stream depletion rates at 2 required injection times.*7 \\[d\\].*14 \\[d\\]"
+    "missing stream depletion rates at 2 required injection times.*7 \\[d\\].*14 \\[d\\]"
   )
   expect_equal(
     completed_nonmatching_schedule,

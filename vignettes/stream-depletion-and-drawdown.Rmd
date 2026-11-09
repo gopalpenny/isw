@@ -282,12 +282,12 @@ to the stream injection schedule.
 
 We can now construct these two interval schedules, using the same function and
 time grid. With `method = "adf"`, `generate_stream_injection_schedule()` uses
-the same ADF stream depletion calculation as `model_adf_stream_depletion()` at
+the same stream depletion calculation as `model_adf_stream_depletion()` at
 every injection time, then averages the rates at the start and end of each
 interval. It reports the resulting `injection_rate` as positive
 when water moves from the stream to the aquifer. This rate is the stream-
 depletion rate applied over the interval.
-Precalculated ADF stream depletion rates can be supplied through the
+Precalculated stream depletion rates can be supplied through the
 `adf_stream_depletion` argument to avoid recalculation. Here, the supplied
 result contains only the monthly evaluation times and omits the optional
 refinement times. `generate_stream_injection_schedule()` issues a

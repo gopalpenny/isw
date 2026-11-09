@@ -50,8 +50,8 @@ limit.}
 
 \item{adf_stream_depletion}{Optional output from
 \code{\link[=model_adf_stream_depletion]{model_adf_stream_depletion()}}. When supplied with \code{method = "adf"},
-ADF stream depletion rates at required injection times are reused and results at additional times
-are ignored. If ADF stream depletion rates are missing at required injection
+stream depletion rates at required injection times are reused and results at additional times
+are ignored. If stream depletion rates are missing at required injection
 times, a warning is issued and those rates are calculated internally.}
 
 \item{quadrature_order}{Nonnegative integer controlling stream injection sources.
@@ -83,16 +83,16 @@ evaluation time ends an injection interval. Optional \code{injection_times}
 subdivide intervals; all pumping-schedule times through the final evaluation
 time remain in the grid.
 
-With \code{method = "adf"}, ADF stream depletion rates are calculated at every
+With \code{method = "adf"}, stream depletion rates are calculated at every
 time in the injection time grid, using the same calculation as
 \code{\link[=model_adf_stream_depletion]{model_adf_stream_depletion()}}. The rates at the start and end of each
 interval are averaged to obtain its stream injection rate.
-To precompute a complete \code{adf_stream_depletion} input, evaluate ADF stream
+To precompute a complete \code{adf_stream_depletion} input, evaluate stream
 depletion rates at
 every \code{evaluation_times} value and at every \code{pumping_schedules$t} and
 \code{injection_times} value through the final evaluation time. A supplied table
 that omits required injection times is reused where possible, but generates
-a warning while the missing ADF stream depletion rates are calculated internally.
+a warning while the missing stream depletion rates are calculated internally.
 
 With \code{method = "constant_head"}, segment model points are constant-head
 collocation points. Injection uses those points when \code{quadrature_order = 0},

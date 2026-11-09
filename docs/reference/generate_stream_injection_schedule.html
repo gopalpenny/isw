@@ -133,8 +133,8 @@ limit.</p></dd>
 <dt id="arg-adf-stream-depletion">adf_stream_depletion<a class="anchor" aria-label="anchor" href="#arg-adf-stream-depletion"></a></dt>
 <dd><p>Optional output from
 <code><a href="model_adf_stream_depletion.html">model_adf_stream_depletion()</a></code>. When supplied with <code>method = "adf"</code>,
-ADF stream depletion rates at required injection times are reused and results at additional times
-are ignored. If ADF stream depletion rates are missing at required injection
+stream depletion rates at required injection times are reused and results at additional times
+are ignored. If stream depletion rates are missing at required injection
 times, a warning is issued and those rates are calculated internally.</p></dd>
 
 
@@ -166,16 +166,16 @@ final evaluation time, together with the evaluation times. The final
 evaluation time ends an injection interval. Optional <code>injection_times</code>
 subdivide intervals; all pumping-schedule times through the final evaluation
 time remain in the grid.</p>
-<p>With <code>method = "adf"</code>, ADF stream depletion rates are calculated at every
+<p>With <code>method = "adf"</code>, stream depletion rates are calculated at every
 time in the injection time grid, using the same calculation as
 <code><a href="model_adf_stream_depletion.html">model_adf_stream_depletion()</a></code>. The rates at the start and end of each
 interval are averaged to obtain its stream injection rate.
-To precompute a complete <code>adf_stream_depletion</code> input, evaluate ADF stream
+To precompute a complete <code>adf_stream_depletion</code> input, evaluate stream
 depletion rates at
 every <code>evaluation_times</code> value and at every <code>pumping_schedules$t</code> and
 <code>injection_times</code> value through the final evaluation time. A supplied table
 that omits required injection times is reused where possible, but generates
-a warning while the missing ADF stream depletion rates are calculated internally.</p>
+a warning while the missing stream depletion rates are calculated internally.</p>
 <p>With <code>method = "constant_head"</code>, segment model points are constant-head
 collocation points. Injection uses those points when <code>quadrature_order = 0</code>,
 and uniform finite-line sources otherwise. One coupled response matrix is
