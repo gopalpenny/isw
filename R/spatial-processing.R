@@ -419,12 +419,12 @@ prep_stream_segments <- function(
     drop = TRUE,
     what = "ZM"
   )
-  line_parts <- suppressWarnings(
+  reach_linestrings <- suppressWarnings(
     sf::st_cast(stream_reaches_xy, "LINESTRING")
   )
 
   # sf measurements have explicit units; normalize and strip once for numeric spacing.
-  part_length_m <- as.numeric(units::set_units(sf::st_length(line_parts), "m"))
+  part_length_m <- as.numeric(units::set_units(sf::st_length(reach_linestrings), "m"))
   segments_per_part <- ceiling(part_length_m / reach_spacing_m)
 
   total_segments <- sum(segments_per_part)
@@ -435,9 +435,9 @@ prep_stream_segments <- function(
 
   # Split each input linestring part into approximately equal-length model
   # segments while retaining its original path through bends.
-  for (part_index in seq_len(nrow(line_parts))) {
+  for (part_index in seq_len(nrow(reach_linestrings))) {
     coordinates_m <- sf::st_coordinates(
-      sf::st_geometry(line_parts)[[part_index]]
+      sf::st_geometry(reach_linestrings)[[part_index]]
     )[, 1:2, drop = FALSE]
     coordinate_differences_m <- coordinates_m[-1, , drop = FALSE] -
       coordinates_m[-nrow(coordinates_m), , drop = FALSE]
@@ -492,10 +492,10 @@ prep_stream_segments <- function(
     }
   }
 
-  stream_segments <- line_parts[source_part_rows, , drop = FALSE]
+  stream_segments <- reach_linestrings[source_part_rows, , drop = FALSE]
   sf::st_geometry(stream_segments) <- sf::st_sfc(
     model_geometries,
-    crs = sf::st_crs(line_parts)
+    crs = sf::st_crs(reach_linestrings)
   )
   reach_segment_numbers <- stats::ave(
     seq_len(nrow(stream_segments)),
