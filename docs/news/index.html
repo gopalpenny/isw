@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">isw</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1.1</span>
       </span>
     </div>
 
@@ -59,21 +59,27 @@
     </div>
 
     <div class="section level2">
-<h2 class="page-header" data-toc-text="0.1.0" id="isw-010">isw 0.1.0<a class="anchor" aria-label="anchor" href="#isw-010"></a></h2>
+<h2 class="page-header" data-toc-text="0.1.1" id="isw-011">isw 0.1.1<a class="anchor" aria-label="anchor" href="#isw-011"></a></h2>
 <div class="section level3">
-<h3 id="numeric-internal-calculations-0-1-0">Numeric internal calculations<a class="anchor" aria-label="anchor" href="#numeric-internal-calculations-0-1-0"></a></h3>
-<ul><li>User-facing functions validate inputs and normalize hydraulic calculations to numeric meters and days. Internal helpers use unit-suffixed numeric fields; user-facing outputs retain their documented physical units and time representations.</li>
-<li>Spatial objects retain <code>sf</code> geometry and CRS metadata. Analysis uses one meter-based UTM CRS, retaining an existing compatible stream CRS or selecting a local zone. Explicit <code>analysis_crs</code> values must be meter-based UTM; study areas may cross zone boundaries.</li>
-<li>Pumping events, spatial distances and response matrices are reused during modeling. Repeated context validation is removed from internal calculations; newly supplied intermediate results still receive input validation. Speed improvements will be assessed with comparable timings and profiles.</li>
+<h3 id="stream-response-representation-0-1-1">Stream response representation<a class="anchor" aria-label="anchor" href="#stream-response-representation-0-1-1"></a></h3>
+<ul><li>Added point-source stream injection with <code>quadrature_order = 0</code>. Each segment’s entire injection rate is applied at its <code>model_point</code>, using <code>stream_width / 2</code> as the minimum response distance. This option applies to constant-head schedule generation and aquifer water-level calculations for either injection method.</li>
+<li>Reduced the default quadrature order from 16 to 4. All positive orders use finite-line Gauss–Legendre quadrature; order 1 places one source at each straight edge midpoint. Changing the order can change calculated injection rates and water-level responses. Higher orders remain available explicitly.</li>
+<li>Supplied constant-head schedules continue to retain their recorded quadrature order when the modeling argument is omitted. Documentation now explains why overriding that order can change head residuals at stream model points.</li>
 </ul></div>
 <div class="section level3">
+<h3 id="internal-calculations-and-performance-0-1-1">Internal calculations and performance<a class="anchor" aria-label="anchor" href="#internal-calculations-and-performance-0-1-1"></a></h3>
+<ul><li>Inputs remain units-aware. User-facing functions validate inputs and units, then prepare numeric hydraulic values in meters and days for internal calculations. User-facing results retain their documented units and time representations.</li>
+<li>Spatial calculations share one meter-based UTM CRS, retaining an existing compatible stream CRS or selecting a local zone. Explicit <code>analysis_crs</code> values must be meter-based UTM; study areas may cross zone boundaries.</li>
+<li>Reuse pumping events, spatial distances, response matrices, cache keys, and matrix factorizations across repeated calculations. Calculate pumping drawdown and stream recovery across observation wells together.</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="page-header" data-toc-text="0.1.0" id="isw-010">isw 0.1.0<a class="anchor" aria-label="anchor" href="#isw-010"></a></h2>
+<div class="section level3">
 <h3 id="finite-line-stream-representation-0-1-0">Finite-line stream representation<a class="anchor" aria-label="anchor" href="#finite-line-stream-representation-0-1-0"></a></h3>
-<ul><li><p>Point representation is now selected with <code>quadrature_order = 0</code> instead of <code>1</code>. All positive orders use Gauss–Legendre quadrature; order 1 places one source at each straight edge midpoint. The default remains 4.</p></li>
-<li><p>Setting <code>quadrature_order = 0</code> now applies each segment’s entire injection rate at its <code>model_point</code>, bypassing line-source construction and quadrature integration. Point sources use <code>stream_width / 2</code> as the minimum response radius. This applies to constant-head schedule generation and to aquifer responses for either injection method. Positive orders retain finite-line integration.</p></li>
-<li><p>The default quadrature order is reduced from 16 to 4. Higher orders remain available through <code>quadrature_order</code>; supplied constant-head schedules still retain their recorded order when the modeling argument is omitted.</p></li>
-<li><p>Stream injection is now distributed uniformly along each stream segment using finite-line response calculations by default. Point injection at segment model points is available with <code>quadrature_order = 0</code>. The representation affects both constant-head injection rates and stream-induced aquifer water-level responses.</p></li>
-<li><p>Constant-head boundary conditions remain imposed at segment <code>model_point</code> locations at each injection interval endpoint.</p></li>
-<li><p>Stream segments now use <code>stream_width</code> instead of an effective injection-well <code>well_diam</code>. Width defaults to 1 m and regularizes near-stream responses using a minimum distance of half the width. Physical pumping wells continue to use <code>well_diam</code>.</p></li>
+<ul><li>Stream injection is now distributed uniformly along each stream segment using finite-line response calculations, replacing injection at discrete segment model points. This changes both constant-head injection rates and stream-induced aquifer water-level responses.</li>
+<li>Constant-head boundary conditions remain imposed at segment <code>model_point</code> locations at each injection interval endpoint.</li>
+<li>Stream segments now use <code>stream_width</code> instead of an effective injection-well <code>well_diam</code>. Width defaults to 1 m and regularizes near-stream responses using a minimum distance of half the width. Physical pumping wells continue to use <code>well_diam</code>.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="function-names-and-argument-changes-0-1-0">Function names and argument changes<a class="anchor" aria-label="anchor" href="#function-names-and-argument-changes-0-1-0"></a></h3>
@@ -93,17 +99,17 @@
 <td>None.</td>
 </tr><tr><td><code>get_stream_injection_schedule()</code></td>
 <td><code><a href="../reference/generate_stream_injection_schedule.html">generate_stream_injection_schedule()</a></code></td>
-<td>Requires <code>stream_segments</code>; replaces <code>allow_many_aquifer_parameter_sets = FALSE</code> with <code>allow_n_aquifer_parameter_sets = 5</code>; adds <code>quadrature_order = 4L</code>.</td>
+<td>Requires <code>stream_segments</code>; replaces <code>allow_many_aquifer_parameter_sets = FALSE</code> with <code>allow_n_aquifer_parameter_sets = 5</code>; adds <code>quadrature_order = 16L</code>.</td>
 </tr><tr><td><code>get_aquifer_water_level_change()</code></td>
 <td><code><a href="../reference/model_aquifer_water_level_change.html">model_aquifer_water_level_change()</a></code></td>
-<td>Replaces <code>allow_many_aquifer_parameter_sets = FALSE</code> with <code>allow_n_aquifer_parameter_sets = 5</code>; adds <code>quadrature_order = 4L</code>.</td>
+<td>Replaces <code>allow_many_aquifer_parameter_sets = FALSE</code> with <code>allow_n_aquifer_parameter_sets = 5</code>; adds <code>quadrature_order = 16L</code>.</td>
 </tr><tr><td><code>generate_segment_sample_points()</code></td>
 <td><code><a href="../reference/prep_stream_sample_points.html">prep_stream_sample_points()</a></code></td>
 <td>None.</td>
 </tr></tbody></table></li>
-<li><p>Reversed the user-facing <code>injection_rate</code> sign convention: positive values now represent water moving from the stream into the aquifer. Calculate total stream depletion with <code>sum(injection_rate)</code> rather than <code>-sum(injection_rate)</code>. The <code>water_level_change</code> sign convention remains unchanged: negative values indicate decline.</p></li>
+<li><p>Reversed the public <code>injection_rate</code> sign convention: positive values now represent water moving from the stream into the aquifer. Calculate total stream depletion with <code>sum(injection_rate)</code> rather than <code>-sum(injection_rate)</code>. The <code>water_level_change</code> sign convention remains unchanged: negative values indicate decline.</p></li>
 <li><p>In <code><a href="../reference/prep_stream_segments.html">prep_stream_segments()</a></code>, a supplied scalar <code>stream_width</code> applies to all reaches; otherwise reach-level widths are retained, defaulting to 1 m when absent. Stream-reach and stream-segment inputs no longer accept <code>well_diam</code>.</p></li>
-<li><p>In <code><a href="../reference/generate_stream_injection_schedule.html">generate_stream_injection_schedule()</a></code> and <code><a href="../reference/model_aquifer_water_level_change.html">model_aquifer_water_level_change()</a></code>, <code>quadrature_order</code> controls the number of Gauss–Legendre points per straight edge for positive orders; order 0 selects one injection source per segment at its model point. The default is 4.</p></li>
+<li><p>In <code><a href="../reference/generate_stream_injection_schedule.html">generate_stream_injection_schedule()</a></code> and <code><a href="../reference/model_aquifer_water_level_change.html">model_aquifer_water_level_change()</a></code>, <code>quadrature_order</code> controls the number of Gauss–Legendre points per straight edge of each stream segment. The default is 16.</p></li>
 <li><p>The default constant-head limit changes from ten unique aquifer parameter sets to five. Set <code>allow_n_aquifer_parameter_sets = Inf</code> for unrestricted calculations, replacing the former <code>allow_many_aquifer_parameter_sets = TRUE</code>.</p></li>
 <li><p>For <code>method = "adf"</code>, <code><a href="../reference/generate_stream_injection_schedule.html">generate_stream_injection_schedule()</a></code> now requires stream geometry through <code>stream_segments</code>. Unlike the former <code>get_stream_injection_schedule()</code>, it does not accept an apportionment object as the third argument or recover geometry from <code>stream_apportionment</code>.</p></li>
 <li><p><code><a href="../reference/prep_adf_stream_apportionment.html">prep_adf_stream_apportionment()</a></code> returns a relationship tibble without duplicated stream geometry or segment attributes. Join results to <code>stream_segments</code> when spatial geometry is needed.</p></li>
@@ -111,7 +117,7 @@
 <div class="section level3">
 <h3 id="schedule-reuse-0-1-0">Schedule reuse<a class="anchor" aria-label="anchor" href="#schedule-reuse-0-1-0"></a></h3>
 <ul><li>
-<code>generate_stream_injection_schedule(method = "adf")</code> now accepts partially precomputed <code>adf_stream_depletion</code>. Available stream depletion rates at required injection times are reused, and rates at missing times are calculated internally with a warning.</li>
+<code>generate_stream_injection_schedule(method = "adf")</code> now accepts partially precomputed <code>adf_stream_depletion</code>. Available boundary values are reused, and missing times are calculated internally with a warning.</li>
 <li>Generated schedules record their injection method and quadrature order. When a constant-head schedule is supplied to <code><a href="../reference/model_aquifer_water_level_change.html">model_aquifer_water_level_change()</a></code>, its quadrature order is reused unless explicitly overridden. A different supplied order produces a warning.</li>
 </ul></div>
 <div class="section level3">

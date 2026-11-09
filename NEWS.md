@@ -1,41 +1,41 @@
+# isw 0.1.1
+
+## Stream response representation
+
+* Added point-source stream injection with `quadrature_order = 0`. Each
+  segment's entire injection rate is applied at its `model_point`, using
+  `stream_width / 2` as the minimum response distance. This option applies to
+  constant-head schedule generation and aquifer water-level calculations for
+  either injection method.
+* Reduced the default quadrature order from 16 to 4. All positive orders use
+  finite-line Gauss--Legendre quadrature; order 1 places one source at each
+  straight edge midpoint. Changing the order can change calculated injection
+  rates and water-level responses. Higher orders remain available explicitly.
+* Supplied constant-head schedules continue to retain their recorded quadrature
+  order when the modeling argument is omitted. Documentation now explains why
+  overriding that order can change head residuals at stream model points.
+
+## Internal calculations and performance
+
+* Inputs remain units-aware. User-facing functions validate inputs and units,
+  then prepare numeric hydraulic values in meters and days for internal
+  calculations. User-facing results retain their documented units and time
+  representations.
+* Spatial calculations share one meter-based UTM CRS, retaining an existing
+  compatible stream CRS or selecting a local zone. Explicit `analysis_crs`
+  values must be meter-based UTM; study areas may cross zone boundaries.
+* Reuse pumping events, spatial distances, response matrices, cache keys, and
+  matrix factorizations across repeated calculations. Calculate pumping
+  drawdown and stream recovery across observation wells together.
+
 # isw 0.1.0
-
-## Numeric internal calculations
-
-* User-facing functions validate inputs and normalize hydraulic calculations to
-  numeric meters and days. Internal helpers use unit-suffixed numeric fields;
-  user-facing outputs retain their documented physical units and time representations.
-* Spatial objects retain `sf` geometry and CRS metadata. Analysis uses one
-  meter-based UTM CRS, retaining an existing compatible stream CRS or selecting
-  a local zone. Explicit `analysis_crs` values must be meter-based UTM; study
-  areas may cross zone boundaries.
-* Pumping events, spatial distances and response matrices are reused during
-  modeling. Repeated context validation is removed from internal calculations;
-  newly supplied intermediate results still receive input validation.
-  Speed improvements will be assessed with comparable timings and profiles.
 
 ## Finite-line stream representation
 
-* Point representation is now selected with `quadrature_order = 0` instead of
-  `1`. All positive orders use Gauss--Legendre quadrature; order 1 places one
-  source at each straight edge midpoint. The default remains 4.
-
-* Setting `quadrature_order = 0` now applies each segment's entire injection
-  rate at its `model_point`, bypassing line-source construction and quadrature
-  integration. Point sources use `stream_width / 2` as the minimum response
-  radius. This applies to constant-head schedule generation and to aquifer
-  responses for either injection method. Positive orders retain finite-line
-  integration.
-
-* The default quadrature order is reduced from 16 to 4. Higher orders remain
-  available through `quadrature_order`; supplied constant-head schedules still
-  retain their recorded order when the modeling argument is omitted.
-
 * Stream injection is now distributed uniformly along each stream segment using
-  finite-line response calculations by default. Point injection at segment
-  model points is available with `quadrature_order = 0`. The representation
-  affects both constant-head injection rates and stream-induced aquifer
-  water-level responses.
+  finite-line response calculations, replacing injection at discrete segment
+  model points. This changes both constant-head injection rates and
+  stream-induced aquifer water-level responses.
 * Constant-head boundary conditions remain imposed at segment `model_point`
   locations at each injection interval endpoint.
 * Stream segments now use `stream_width` instead of an effective injection-well
@@ -53,11 +53,11 @@
   | `get_stream_segments()` | `prep_stream_segments()` | Adds `stream_width = NULL`. |
   | `get_adf_stream_apportionment()` | `prep_adf_stream_apportionment()` | None. |
   | `get_adf_stream_depletion()` | `model_adf_stream_depletion()` | None. |
-  | `get_stream_injection_schedule()` | `generate_stream_injection_schedule()` | Requires `stream_segments`; replaces `allow_many_aquifer_parameter_sets = FALSE` with `allow_n_aquifer_parameter_sets = 5`; adds `quadrature_order = 4L`. |
-  | `get_aquifer_water_level_change()` | `model_aquifer_water_level_change()` | Replaces `allow_many_aquifer_parameter_sets = FALSE` with `allow_n_aquifer_parameter_sets = 5`; adds `quadrature_order = 4L`. |
+  | `get_stream_injection_schedule()` | `generate_stream_injection_schedule()` | Requires `stream_segments`; replaces `allow_many_aquifer_parameter_sets = FALSE` with `allow_n_aquifer_parameter_sets = 5`; adds `quadrature_order = 16L`. |
+  | `get_aquifer_water_level_change()` | `model_aquifer_water_level_change()` | Replaces `allow_many_aquifer_parameter_sets = FALSE` with `allow_n_aquifer_parameter_sets = 5`; adds `quadrature_order = 16L`. |
   | `generate_segment_sample_points()` | `prep_stream_sample_points()` | None. |
 
-* Reversed the user-facing `injection_rate` sign convention: positive values now
+* Reversed the public `injection_rate` sign convention: positive values now
   represent water moving from the stream into the aquifer. Calculate total
   stream depletion with `sum(injection_rate)` rather than
   `-sum(injection_rate)`. The `water_level_change` sign convention remains
@@ -67,8 +67,8 @@
   absent. Stream-reach and stream-segment inputs no longer accept `well_diam`.
 * In `generate_stream_injection_schedule()` and
   `model_aquifer_water_level_change()`, `quadrature_order` controls the number
-  of Gauss--Legendre points per straight edge for positive orders; order 0
-  selects one injection source per segment at its model point. The default is 4.
+  of Gauss--Legendre points per straight edge of each stream segment. The
+  default is 16.
 * The default constant-head limit changes from ten unique aquifer parameter
   sets to five. Set `allow_n_aquifer_parameter_sets = Inf` for unrestricted
   calculations, replacing the former
@@ -84,9 +84,8 @@
 ## Schedule reuse
 
 * `generate_stream_injection_schedule(method = "adf")` now accepts partially
-  precomputed `adf_stream_depletion`. Available stream depletion rates at
-  required injection times are reused, and rates at missing times are calculated
-  internally with a warning.
+  precomputed `adf_stream_depletion`. Available boundary values are reused, and
+  missing times are calculated internally with a warning.
 * Generated schedules record their injection method and quadrature order. When
   a constant-head schedule is supplied to `model_aquifer_water_level_change()`,
   its quadrature order is reused unless explicitly overridden. A different
