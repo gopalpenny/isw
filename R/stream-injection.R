@@ -368,7 +368,7 @@ generate_stream_injection_schedule <- function(
     )
   }
 
-  expected_reaches <- stats::setNames(
+  expected_reach_ids <- stats::setNames(
     stream_segments$reach_id[segment_rows],
     expected_keys
   )
@@ -380,7 +380,7 @@ generate_stream_injection_schedule <- function(
 
     if (any(
       stream_injection_schedule$reach_id[pair_rows] !=
-        expected_reaches[[pair_key]]
+        expected_reach_ids[[pair_key]]
     )) {
       stop(
         "stream_injection_schedule$reach_id must match each reach_segment_id ",

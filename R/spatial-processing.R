@@ -551,17 +551,17 @@ prep_stream_segments <- function(
   }
 
   coordinate_indices <- seq_along(cumulative_length_m)
-  segment_index <- max(which(
+  edge_index <- max(which(
     cumulative_length_m <= distance_m &
       coordinate_indices < length(cumulative_length_m)
   ))
-  segment_length_m <- cumulative_length_m[[segment_index + 1]] -
-    cumulative_length_m[[segment_index]]
-  fraction <- (distance_m - cumulative_length_m[[segment_index]]) /
-    segment_length_m
+  edge_length_m <- cumulative_length_m[[edge_index + 1]] -
+    cumulative_length_m[[edge_index]]
+  fraction_along_edge <- (distance_m - cumulative_length_m[[edge_index]]) /
+    edge_length_m
 
-  coordinates_m[segment_index, ] + fraction * (
-    coordinates_m[segment_index + 1, ] - coordinates_m[segment_index, ]
+  coordinates_m[edge_index, ] + fraction_along_edge * (
+    coordinates_m[edge_index + 1, ] - coordinates_m[edge_index, ]
   )
 }
 

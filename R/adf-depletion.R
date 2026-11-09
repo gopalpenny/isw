@@ -164,7 +164,7 @@ model_adf_stream_depletion <- function(
   
   apportionment_table <- sf::st_drop_geometry(stream_apportionment)
   expected_keys <- character()
-  expected_reaches <- character()
+  expected_reach_ids <- character()
   
   # Build the complete set of pump, segment, and evaluation-time combinations
   # required in the supplied depletion table.
@@ -185,7 +185,7 @@ model_adf_stream_depletion <- function(
           sep = "\r"
         )
       )
-      expected_reaches <- c(expected_reaches, pump_segments$reach_id)
+      expected_reach_ids <- c(expected_reach_ids, pump_segments$reach_id)
     }
   }
   
@@ -200,7 +200,7 @@ model_adf_stream_depletion <- function(
   
   if (!identical(
     stream_depletion$reach_id[matched_rows],
-    expected_reaches
+    expected_reach_ids
   )) {
     stop(
       "stream_depletion$reach_id must match each reach_segment_id in ",
@@ -247,14 +247,14 @@ model_adf_stream_depletion <- function(
     pump_responses <- pumping_response_times[
       pumping_response_times$pump_id == pump_id,
     ]
-    pump_lookup <- depletion_fraction_lookup[
+    pump_fraction_lookup <- depletion_fraction_lookup[
       depletion_fraction_lookup$pump_id == pump_id,
     ]
-    elapsed_time_day <- unique(pump_lookup$elapsed_time_day)
+    elapsed_time_day <- unique(pump_fraction_lookup$elapsed_time_day)
 
     # Fraction rows match this pump's segments; columns identify distinct event ages.
     stream_depletion_fractions <- matrix(
-      pump_lookup$stream_depletion_fraction,
+      pump_fraction_lookup$stream_depletion_fraction,
       nrow = nrow(pump_apportionment)
     )
     elapsed_indices <- match(pump_responses$elapsed_time_day, elapsed_time_day)

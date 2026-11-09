@@ -139,13 +139,13 @@
   if (!"interval_start_day" %in% names(x)) return(x)
   missing_time_day <- attr(x, "isw_missing_time_day")
   if (length(missing_time_day)) {
-    labels <- trimws(format(.restore_time_values(
+    missing_time_labels <- trimws(format(.restore_time_values(
       missing_time_day, times$output_schedule_times, times$time_origin
     )))
-    warning("adf_stream_depletion is missing ", length(labels), " required schedule ",
-            if (length(labels) == 1L) "boundary" else "boundaries", " (",
-            paste(utils::head(labels, 5L), collapse = ", "),
-            if (length(labels) > 5L) ", ..." else "",
+    warning("adf_stream_depletion is missing ", length(missing_time_labels), " required schedule ",
+            if (length(missing_time_labels) == 1L) "boundary" else "boundaries", " (",
+            paste(utils::head(missing_time_labels, 5L), collapse = ", "),
+            if (length(missing_time_labels) > 5L) ", ..." else "",
             "). Depletion at missing times will be calculated internally.", call. = FALSE)
   }
   for (column in c("interval_start", "interval_end")) {

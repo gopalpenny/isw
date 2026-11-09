@@ -115,17 +115,17 @@
     pump_id <- pumping_wells$pump_id[[pump_row]]
 
     # Reuse event selections across observations; boundary preparation owns validation.
-    pumping_rows <- lapply(seq_len(number_of_times), function(index) {
+    pumping_rows_by_time <- lapply(seq_len(number_of_times), function(index) {
       which(pumping_responses$pump_id == pump_id & pumping_responses$evaluation_index == index)
     })
-    injection_rows <- lapply(evaluation_time_day, function(time_day) {
+    injection_rows_by_time <- lapply(evaluation_time_day, function(time_day) {
       which(injection_events$pump_id == pump_id & injection_events$injection_time_day < time_day)
     })
 
     # Prepare string keys before evaluations; event selection and response
     # matrices are shared across observations.
     injection_elapsed_times_day <- unlist(lapply(seq_len(number_of_times), function(index) {
-      evaluation_time_day[[index]] - injection_events$injection_time_day[injection_rows[[index]]]
+      evaluation_time_day[[index]] - injection_events$injection_time_day[injection_rows_by_time[[index]]]
     }), use.names = FALSE)
     prepared_response_keys <- .prepare_line_response_keys(
       pumping_wells$K_m_per_day[[pump_row]], pumping_wells$D_m[[pump_row]],
@@ -133,7 +133,7 @@
     )
 
     for (time_index in seq_len(number_of_times)) {
-      pumping_response_rows <- pumping_rows[[time_index]]
+      pumping_response_rows <- pumping_rows_by_time[[time_index]]
       for (observation_index in seq_len(number_of_observations)) {
         result_index <- ((pump_row - 1L) * number_of_observations +
           observation_index - 1L) * number_of_times + time_index
@@ -155,7 +155,7 @@
 
       # Earlier injection events remain active as their elapsed ages increase.
       # Apply each age's matrix once for every observation, retaining pump attribution.
-      injection_event_rows <- injection_rows[[time_index]]
+      injection_event_rows <- injection_rows_by_time[[time_index]]
       if (length(injection_event_rows) > 0) {
         result_indices <- ((pump_row - 1L) * number_of_observations +
           seq_len(number_of_observations) - 1L) * number_of_times + time_index

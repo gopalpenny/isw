@@ -135,17 +135,17 @@
   geometry <- sf::st_geometry(stream_segments)
   quadrature_coordinates_m <- list()
   quadrature_weights <- numeric()
-  segment_index <- integer()
+  source_segment_indices <- integer()
   point_index <- 0L
 
   # A stream segment may contain multiple straight sections between vertices.
   # Place `quadrature_order` points along each positive-length straight section
   # and scale their weights by the section's share of the total segment length.
-  for (index in seq_len(nrow(stream_segments))) {
-    coordinates_m <- sf::st_coordinates(geometry[[index]])[, 1:2, drop = FALSE]
-    starts_m <- coordinates_m[-nrow(coordinates_m), , drop = FALSE]
-    ends_m <- coordinates_m[-1L, , drop = FALSE]
-    edge_vectors_m <- ends_m - starts_m
+  for (segment_index in seq_len(nrow(stream_segments))) {
+    coordinates_m <- sf::st_coordinates(geometry[[segment_index]])[, 1:2, drop = FALSE]
+    edge_starts_m <- coordinates_m[-nrow(coordinates_m), , drop = FALSE]
+    edge_ends_m <- coordinates_m[-1L, , drop = FALSE]
+    edge_vectors_m <- edge_ends_m - edge_starts_m
     edge_lengths_m <- sqrt(rowSums(edge_vectors_m^2))
     positive_edges <- which(edge_lengths_m > 0)
     total_length_m <- sum(edge_lengths_m[positive_edges])
@@ -157,7 +157,7 @@
     # Place the quadrature rule along each edge and scale its weights by the
     # fraction of the segment's total length represented by that edge.
     for (edge_index in positive_edges) {
-      edge_midpoint_m <- (starts_m[edge_index, ] + ends_m[edge_index, ]) / 2
+      edge_midpoint_m <- (edge_starts_m[edge_index, ] + edge_ends_m[edge_index, ]) / 2
       edge_points_m <- sweep(
         outer(rule$node, edge_vectors_m[edge_index, ]),
         2,
@@ -175,9 +175,9 @@
         quadrature_weights,
         rule$weight * edge_lengths_m[[edge_index]] / total_length_m
       )
-      segment_index <- c(
-        segment_index,
-        rep(index, nrow(edge_points_m))
+      source_segment_indices <- c(
+        source_segment_indices,
+        rep(segment_index, nrow(edge_points_m))
       )
     }
   }
@@ -189,9 +189,9 @@
     crs = sf::st_crs(stream_segments)
   )
   quadrature_points <- sf::st_sf(
-    segment_index = segment_index,
+    segment_index = source_segment_indices,
     weight = quadrature_weights,
-    stream_width_m = stream_segments$stream_width_m[segment_index],
+    stream_width_m = stream_segments$stream_width_m[source_segment_indices],
     geometry = quadrature_geometry
   )
 

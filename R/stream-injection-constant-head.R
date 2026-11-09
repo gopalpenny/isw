@@ -125,7 +125,7 @@
   )
 
   pumping_events <- attr(pumping_schedules, "isw_pumping_events", exact = TRUE)
-  pump_events <- lapply(prepared_pumping_wells$pump_id, function(id) {
+  pumping_events_by_pump <- lapply(prepared_pumping_wells$pump_id, function(id) {
     pumping_events[pumping_events$pump_id == id, , drop = FALSE]
   })
 
@@ -208,7 +208,7 @@
         pump_row <- pump_rows[[group_pump_index]]
         pumping_head_m[, group_pump_index] <- .get_pumping_head_at_stream(
           group_pumps[group_pump_index, , drop = FALSE],
-          pump_events[[pump_row]], pump_to_stream_distances_m[pump_row, ], interval_end_day
+          pumping_events_by_pump[[pump_row]], pump_to_stream_distances_m[pump_row, ], interval_end_day
         )
       }
 
@@ -377,26 +377,26 @@
     quadrature_order,
     quadrature_order_supplied) {
 
-  schedule_order <- .get_metadata_quadrature_order(
+  schedule_quadrature_order <- .get_metadata_quadrature_order(
     stream_injection_schedule
   )
-  if (is.null(schedule_order)) {
+  if (is.null(schedule_quadrature_order)) {
     return(quadrature_order)
   }
 
   if (!quadrature_order_supplied) {
-    return(schedule_order)
+    return(schedule_quadrature_order)
   }
 
   supplied_order_is_valid <- length(quadrature_order) == 1L &&
     !is.na(quadrature_order) && is.finite(quadrature_order) &&
     quadrature_order >= 0 && quadrature_order == as.integer(quadrature_order)
   if (supplied_order_is_valid &&
-      as.integer(quadrature_order) != schedule_order) {
+      as.integer(quadrature_order) != schedule_quadrature_order) {
     warning(
       "quadrature_order = ", as.integer(quadrature_order),
       " differs from the value used to construct the constant-head ",
-      "stream_injection_schedule (", schedule_order, ").",
+      "stream_injection_schedule (", schedule_quadrature_order, ").",
       call. = FALSE
     )
   }
