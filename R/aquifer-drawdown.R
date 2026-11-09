@@ -1,3 +1,187 @@
+#' Model aquifer water-level change
+#'
+#' Superimpose physical pumping and stream-injection responses at observation
+#' wells using a general stream-segment representation.
+#'
+#' @param pumping_wells A nonempty `sf` object with one point per pumping well.
+#'   It must contain unique character `pump_id` values, `K` and `D` with
+#'   physical units, dimensionless `V`, and optionally `well_diam` with length
+#'   units.
+#' @param pumping_schedules A wide data frame with a strictly increasing `t`
+#'   column and one consistently unit-bearing pumping-rate column for every
+#'   `pump_id`.
+#' @param observation_wells A nonempty `sf` object with point geometry and a
+#'   unique, nonmissing character `observation_id` column.
+#' @param stream_segments A projected stream-segment object returned by
+#'   [prep_stream_segments()].
+#' @param evaluation_times Either `NULL`, a `Date` vector, or a `units` time
+#'   vector giving the requested response times. When `NULL`, pumping-schedule
+#'   times are used.
+#' @param injection_times Optional `Date` or `units` time values refining the
+#'   internally generated injection grid.
+#' @param stream_injection_schedule Either `NULL` or a completed schedule from
+#'   [generate_stream_injection_schedule()].
+#' @param injection_method Character string selecting `"adf"` or
+#'   `"constant_head"` when a schedule is not supplied. `"adf"` is the
+#'   default.
+#' @param stream_apportionment An object returned by
+#'   [prep_adf_stream_apportionment()]. It is required when an ADF schedule is
+#'   generated internally.
+#' @param allow_n_aquifer_parameter_sets Positive whole-number scalar giving
+#'   the maximum number of unique aquifer parameter sets allowed when a
+#'   constant-head schedule is generated internally. The default is 5. Use
+#'   `Inf` to impose no limit.
+#' @param quadrature_order Nonnegative integer controlling stream injection sources.
+#'   With `0`, each segment injects its total rate at its `model_point`, using
+#'   `stream_width / 2` as the minimum response radius. Positive values give the
+#'   number of Gauss--Legendre points per straight edge of each finite line
+#'   element. The default is 4.
+#'   When a completed constant-head schedule is supplied and this argument is
+#'   omitted, the order recorded in the schedule metadata is reused. Supplying
+#'   a different order raises a warning and uses the supplied value. This can
+#'   change head responses, including the constant-head boundary residuals,
+#'   while preserving each segment's total injection rate.
+#'
+#' @return A tibble with one row for every `pump_id`, `observation_id`, and
+#'   requested `evaluation_time`. `pumping_drawdown` is the positive decline
+#'   caused by pumping, `stream_recovery` is the positive recovery caused by
+#'   stream injection, and `water_level_change` is `-pumping_drawdown +
+#'   stream_recovery`. All three response columns retain length units.
+#'
+#' @details
+#' Results remain pump-specific so contributions can be inspected individually
+#' or summed by observation and evaluation time. When no schedule is supplied,
+#' [generate_stream_injection_schedule()] generates one using
+#' `injection_method`. A supplied schedule reuses its stored method and
+#' quadrature metadata; `injection_times` must then be `NULL`.
+#'
+#' The ADF path apportions each pump's analytical stream depletion among stream
+#' segments and therefore requires `stream_apportionment`. The constant-head
+#' path solves segment injection rates that keep segment model points as close
+#' as practical to zero head change. Pumping and stream responses are then
+#' superimposed at each observation well. With `quadrature_order = 0`, the
+#' entire segment rate is applied at its `model_point`; positive orders integrate
+#' uniform injection along the segment. Both representations use a minimum
+#' response radius of `stream_width / 2`. ADF injection rates are independent
+#' of quadrature order. Positive pumping rates produce
+#' positive `pumping_drawdown`; injection produces positive `stream_recovery`.
+#'
+#' @seealso [generate_stream_injection_schedule()],
+#'   [model_adf_stream_depletion()]
+#'
+#' @examples
+#' stream_segments <- prep_stream_segments(
+#'   example_stream_reaches,
+#'   reach_spacing = units::set_units(100, "m")
+#' )
+#' stream_apportionment <- prep_adf_stream_apportionment(
+#'   example_pumping_wells,
+#'   stream_segments,
+#'   sample_spacing = units::set_units(25, "m")
+#' )
+#' pumping_schedules <- tibble::tibble(
+#'   t = units::set_units(c(0, 10, 20), "days"),
+#'   pump_1 = units::set_units(c(100, 100, 0), "m^3/day"),
+#'   pump_2 = units::set_units(c(0, 75, 0), "m^3/day")
+#' )
+#' model_aquifer_water_level_change(
+#'   example_pumping_wells,
+#'   pumping_schedules,
+#'   example_observation_wells,
+#'   stream_segments,
+#'   stream_apportionment = stream_apportionment
+#' )
+#'
+#' @export
+model_aquifer_water_level_change <- function(
+    pumping_wells,
+    pumping_schedules,
+    observation_wells,
+    stream_segments,
+    evaluation_times = NULL,
+    injection_times = NULL,
+    stream_injection_schedule = NULL,
+    injection_method = c("adf", "constant_head"),
+    stream_apportionment = NULL,
+    allow_n_aquifer_parameter_sets = 5,
+    quadrature_order = 4L) {
+
+  # Validate original inputs, including supplied intermediates, before stripping units.
+  injection_method <- match.arg(injection_method)
+  aquifer_groups <- NULL
+  prepared_stream_segments <- .prepare_numeric_segments(stream_segments)
+  prepared_pumping_wells <- .prepare_numeric_pumping_wells(pumping_wells, sf::st_crs(prepared_stream_segments))
+  .validate_pumping_schedules(pumping_schedules, pumping_wells)
+  if (is.null(observation_wells)) {
+    stop("observation_wells must be a nonempty sf object.")
+  }
+  .validate_observation_wells(observation_wells)
+  .validate_quadrature_order(quadrature_order)
+  if (!is.null(stream_injection_schedule) && !is.null(injection_times)) {
+    stop("injection_times must be NULL when a stream-injection schedule is supplied.")
+  }
+  prepared_model_times <- .prepare_numeric_model_times(
+    pumping_schedules, evaluation_times, injection_times
+  )
+  if (!is.null(stream_injection_schedule)) {
+    quadrature_order <- .resolve_schedule_quadrature_order(
+      stream_injection_schedule, quadrature_order, !missing(quadrature_order)
+    )
+    injection_schedule <- .prepare_numeric_injection(
+      stream_injection_schedule, pumping_wells, pumping_schedules,
+      stream_segments, evaluation_times, prepared_model_times$time_origin
+    )
+    prepared_stream_apportionment <- NULL
+  } else if (injection_method == "adf") {
+    if (is.null(stream_apportionment)) {
+      stop('stream_apportionment is required when method = "adf".')
+    }
+    .validate_stream_depletion_apportionment(stream_apportionment, pumping_wells)
+    .validate_stream_apportionment_segments(stream_apportionment, stream_segments)
+    prepared_stream_apportionment <- .prepare_numeric_apportionment(stream_apportionment, pumping_wells)
+    injection_schedule <- NULL
+  } else {
+    aquifer_groups <- .prepare_aquifer_groups(prepared_pumping_wells, allow_n_aquifer_parameter_sets)
+    prepared_stream_apportionment <- NULL
+    injection_schedule <- NULL
+  }
+  attr(prepared_pumping_wells, "isw_aquifer_groups") <- aquifer_groups
+  result <- .model_aquifer_water_level_change(
+    prepared_pumping_wells,
+    .prepare_numeric_schedule(pumping_schedules, pumping_wells, prepared_model_times),
+    .transform_spatial_geometry(observation_wells, sf::st_crs(prepared_stream_segments)),
+    prepared_stream_segments,
+    prepared_model_times$evaluation_time_day, prepared_model_times$injection_time_day,
+    injection_schedule, injection_method, prepared_stream_apportionment,
+    allow_n_aquifer_parameter_sets, quadrature_order
+  )
+  .restore_aquifer_output(result, prepared_model_times, units::deparse_unit(pumping_wells$D))
+}
+
+# Coordinate numeric schedule generation and observation superposition.
+.model_aquifer_water_level_change <- function(
+    pumping_wells, pumping_schedules, observation_wells, stream_segments,
+    evaluation_time_day, injection_time_day = NULL,
+    stream_injection_schedule = NULL, injection_method = "adf",
+    stream_apportionment = NULL, allow_n_aquifer_parameter_sets = 5,
+    quadrature_order = 4L) {
+  # Prepared hydraulic quantities use numeric meters/days; spatial objects retain CRS.
+  if (is.null(stream_injection_schedule)) {
+    stream_injection_schedule <- .generate_stream_injection_schedule(
+      pumping_wells, pumping_schedules, stream_segments, evaluation_time_day,
+      injection_time_day, method = injection_method,
+      stream_apportionment = stream_apportionment,
+      allow_n_aquifer_parameter_sets = allow_n_aquifer_parameter_sets,
+      quadrature_order = quadrature_order
+    )
+  }
+  .superimpose_aquifer_responses(
+    pumping_wells, pumping_schedules, observation_wells, evaluation_time_day,
+    stream_injection_schedule, quadrature_order, stream_segments
+  )
+}
+
+
 # Return one response per contributing injection event at the current observation.
 # The operator stores effective source distances in meters and, for lines,
 # quadrature weights and segment indices. Its response matrix
@@ -183,188 +367,5 @@
     pumping_drawdown_m = pumping_drawdown_m,
     stream_recovery_m = stream_recovery_m,
     water_level_change_m = -pumping_drawdown_m + stream_recovery_m
-  )
-}
-
-#' Model aquifer water-level change
-#'
-#' Superimpose physical pumping and stream-injection responses at observation
-#' wells using a general stream-segment representation.
-#'
-#' @param pumping_wells A nonempty `sf` object with one point per pumping well.
-#'   It must contain unique character `pump_id` values, `K` and `D` with
-#'   physical units, dimensionless `V`, and optionally `well_diam` with length
-#'   units.
-#' @param pumping_schedules A wide data frame with a strictly increasing `t`
-#'   column and one consistently unit-bearing pumping-rate column for every
-#'   `pump_id`.
-#' @param observation_wells A nonempty `sf` object with point geometry and a
-#'   unique, nonmissing character `observation_id` column.
-#' @param stream_segments A projected stream-segment object returned by
-#'   [prep_stream_segments()].
-#' @param evaluation_times Either `NULL`, a `Date` vector, or a `units` time
-#'   vector giving the requested response times. When `NULL`, pumping-schedule
-#'   times are used.
-#' @param injection_times Optional `Date` or `units` time values refining the
-#'   internally generated injection grid.
-#' @param stream_injection_schedule Either `NULL` or a completed schedule from
-#'   [generate_stream_injection_schedule()].
-#' @param injection_method Character string selecting `"adf"` or
-#'   `"constant_head"` when a schedule is not supplied. `"adf"` is the
-#'   default.
-#' @param stream_apportionment An object returned by
-#'   [prep_adf_stream_apportionment()]. It is required when an ADF schedule is
-#'   generated internally.
-#' @param allow_n_aquifer_parameter_sets Positive whole-number scalar giving
-#'   the maximum number of unique aquifer parameter sets allowed when a
-#'   constant-head schedule is generated internally. The default is 5. Use
-#'   `Inf` to impose no limit.
-#' @param quadrature_order Nonnegative integer controlling stream injection sources.
-#'   With `0`, each segment injects its total rate at its `model_point`, using
-#'   `stream_width / 2` as the minimum response radius. Positive values give the
-#'   number of Gauss--Legendre points per straight edge of each finite line
-#'   element. The default is 4.
-#'   When a completed constant-head schedule is supplied and this argument is
-#'   omitted, the order recorded in the schedule metadata is reused. Supplying
-#'   a different order raises a warning and uses the supplied value. This can
-#'   change head responses, including the constant-head boundary residuals,
-#'   while preserving each segment's total injection rate.
-#'
-#' @return A tibble with one row for every `pump_id`, `observation_id`, and
-#'   requested `evaluation_time`. `pumping_drawdown` is the positive decline
-#'   caused by pumping, `stream_recovery` is the positive recovery caused by
-#'   stream injection, and `water_level_change` is `-pumping_drawdown +
-#'   stream_recovery`. All three response columns retain length units.
-#'
-#' @details
-#' Results remain pump-specific so contributions can be inspected individually
-#' or summed by observation and evaluation time. When no schedule is supplied,
-#' [generate_stream_injection_schedule()] generates one using
-#' `injection_method`. A supplied schedule reuses its stored method and
-#' quadrature metadata; `injection_times` must then be `NULL`.
-#'
-#' The ADF path apportions each pump's analytical stream depletion among stream
-#' segments and therefore requires `stream_apportionment`. The constant-head
-#' path solves segment injection rates that keep segment model points as close
-#' as practical to zero head change. Pumping and stream responses are then
-#' superimposed at each observation well. With `quadrature_order = 0`, the
-#' entire segment rate is applied at its `model_point`; positive orders integrate
-#' uniform injection along the segment. Both representations use a minimum
-#' response radius of `stream_width / 2`. ADF injection rates are independent
-#' of quadrature order. Positive pumping rates produce
-#' positive `pumping_drawdown`; injection produces positive `stream_recovery`.
-#'
-#' @seealso [generate_stream_injection_schedule()],
-#'   [model_adf_stream_depletion()]
-#'
-#' @examples
-#' stream_segments <- prep_stream_segments(
-#'   example_stream_reaches,
-#'   reach_spacing = units::set_units(100, "m")
-#' )
-#' stream_apportionment <- prep_adf_stream_apportionment(
-#'   example_pumping_wells,
-#'   stream_segments,
-#'   sample_spacing = units::set_units(25, "m")
-#' )
-#' pumping_schedules <- tibble::tibble(
-#'   t = units::set_units(c(0, 10, 20), "days"),
-#'   pump_1 = units::set_units(c(100, 100, 0), "m^3/day"),
-#'   pump_2 = units::set_units(c(0, 75, 0), "m^3/day")
-#' )
-#' model_aquifer_water_level_change(
-#'   example_pumping_wells,
-#'   pumping_schedules,
-#'   example_observation_wells,
-#'   stream_segments,
-#'   stream_apportionment = stream_apportionment
-#' )
-#'
-#' @export
-model_aquifer_water_level_change <- function(
-    pumping_wells,
-    pumping_schedules,
-    observation_wells,
-    stream_segments,
-    evaluation_times = NULL,
-    injection_times = NULL,
-    stream_injection_schedule = NULL,
-    injection_method = c("adf", "constant_head"),
-    stream_apportionment = NULL,
-    allow_n_aquifer_parameter_sets = 5,
-    quadrature_order = 4L) {
-
-  # Validate original inputs, including supplied intermediates, before stripping units.
-  injection_method <- match.arg(injection_method)
-  aquifer_groups <- NULL
-  prepared_stream_segments <- .prepare_numeric_segments(stream_segments)
-  prepared_pumping_wells <- .prepare_numeric_pumping_wells(pumping_wells, sf::st_crs(prepared_stream_segments))
-  .validate_pumping_schedules(pumping_schedules, pumping_wells)
-  if (is.null(observation_wells)) {
-    stop("observation_wells must be a nonempty sf object.")
-  }
-  .validate_observation_wells(observation_wells)
-  .validate_quadrature_order(quadrature_order)
-  if (!is.null(stream_injection_schedule) && !is.null(injection_times)) {
-    stop("injection_times must be NULL when a stream-injection schedule is supplied.")
-  }
-  prepared_model_times <- .prepare_numeric_model_times(
-    pumping_schedules, evaluation_times, injection_times
-  )
-  if (!is.null(stream_injection_schedule)) {
-    quadrature_order <- .resolve_schedule_quadrature_order(
-      stream_injection_schedule, quadrature_order, !missing(quadrature_order)
-    )
-    injection_schedule <- .prepare_numeric_injection(
-      stream_injection_schedule, pumping_wells, pumping_schedules,
-      stream_segments, evaluation_times, prepared_model_times$time_origin
-    )
-    prepared_stream_apportionment <- NULL
-  } else if (injection_method == "adf") {
-    if (is.null(stream_apportionment)) {
-      stop('stream_apportionment is required when method = "adf".')
-    }
-    .validate_stream_depletion_apportionment(stream_apportionment, pumping_wells)
-    .validate_stream_apportionment_segments(stream_apportionment, stream_segments)
-    prepared_stream_apportionment <- .prepare_numeric_apportionment(stream_apportionment, pumping_wells)
-    injection_schedule <- NULL
-  } else {
-    aquifer_groups <- .prepare_aquifer_groups(prepared_pumping_wells, allow_n_aquifer_parameter_sets)
-    prepared_stream_apportionment <- NULL
-    injection_schedule <- NULL
-  }
-  attr(prepared_pumping_wells, "isw_aquifer_groups") <- aquifer_groups
-  result <- .model_aquifer_water_level_change(
-    prepared_pumping_wells,
-    .prepare_numeric_schedule(pumping_schedules, pumping_wells, prepared_model_times),
-    .transform_spatial_geometry(observation_wells, sf::st_crs(prepared_stream_segments)),
-    prepared_stream_segments,
-    prepared_model_times$evaluation_time_day, prepared_model_times$injection_time_day,
-    injection_schedule, injection_method, prepared_stream_apportionment,
-    allow_n_aquifer_parameter_sets, quadrature_order
-  )
-  .restore_aquifer_output(result, prepared_model_times, units::deparse_unit(pumping_wells$D))
-}
-
-# Coordinate numeric schedule generation and observation superposition.
-.model_aquifer_water_level_change <- function(
-    pumping_wells, pumping_schedules, observation_wells, stream_segments,
-    evaluation_time_day, injection_time_day = NULL,
-    stream_injection_schedule = NULL, injection_method = "adf",
-    stream_apportionment = NULL, allow_n_aquifer_parameter_sets = 5,
-    quadrature_order = 4L) {
-  # Prepared hydraulic quantities use numeric meters/days; spatial objects retain CRS.
-  if (is.null(stream_injection_schedule)) {
-    stream_injection_schedule <- .generate_stream_injection_schedule(
-      pumping_wells, pumping_schedules, stream_segments, evaluation_time_day,
-      injection_time_day, method = injection_method,
-      stream_apportionment = stream_apportionment,
-      allow_n_aquifer_parameter_sets = allow_n_aquifer_parameter_sets,
-      quadrature_order = quadrature_order
-    )
-  }
-  .superimpose_aquifer_responses(
-    pumping_wells, pumping_schedules, observation_wells, evaluation_time_day,
-    stream_injection_schedule, quadrature_order, stream_segments
   )
 }
