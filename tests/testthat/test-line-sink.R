@@ -318,7 +318,7 @@ test_that("prepared geometry and distances are reusable across evaluations", {
 
 test_that("prepared response keys preserve scalar precision and distinct ages", {
   elapsed_times_day <- c(0.1, 0.1 + .Machine$double.eps, 10, 1e-8, 1e8, 0.1)
-  prepared <- isw:::.prepare_line_response_keys(10, 20, 0.15, elapsed_times_day)
+  prepared <- isw:::.prepare_response_cache_keys(10, 20, 0.15, elapsed_times_day)
   expected_keys <- vapply(unique(elapsed_times_day), function(age_day) {
     paste(format(10, digits = 17), format(20, digits = 17),
           format(0.15, digits = 17), format(age_day, digits = 17), sep = "\r")
@@ -326,7 +326,7 @@ test_that("prepared response keys preserve scalar precision and distinct ages", 
   expect_identical(prepared$elapsed_times_day, unique(elapsed_times_day))
   expect_identical(prepared$response_keys, expected_keys)
   expect_length(unique(prepared$response_keys), length(unique(elapsed_times_day)))
-  expect_identical(isw:::.prepare_line_response_keys(10, 20, 0.15, numeric())$response_keys,
+  expect_identical(isw:::.prepare_response_cache_keys(10, 20, 0.15, numeric())$response_keys,
                    character())
 })
 
@@ -410,7 +410,7 @@ test_that("cached line responses support injection-event extraction", {
   )
   expect_length(ls(envir = response_cache, all.names = TRUE), 2)
 
-  prepared <- isw:::.prepare_line_response_keys(10, 20, 0.15, c(10, 1))
+  prepared <- isw:::.prepare_response_cache_keys(10, 20, 0.15, c(10, 1))
   prepared_ratios <- isw:::.get_response_ratios_for_injection_events(
     operator, response_cache, 10, 20, 0.15, 1L, c(10, 1, 10), c(1L, 1L, 1L),
     prepared_response_keys = prepared
@@ -436,7 +436,7 @@ test_that("batched recovery matches event superposition for all observations", {
   elapsed_times_day <- c(10, 1, 10, 1, 10)
   segment_columns <- c(2L, 1L, 2L, 2L, 1L)
   injection_rate_change_m3_per_day <- c(20, -5, -7, 3, 4)
-  prepared <- isw:::.prepare_line_response_keys(10, 20, 0.15, elapsed_times_day)
+  prepared <- isw:::.prepare_response_cache_keys(10, 20, 0.15, elapsed_times_day)
   cache <- new.env(parent = emptyenv())
   # Independent event-by-event superposition includes repeated segments/ages,
   # negative changes and nonconsecutive event ordering.

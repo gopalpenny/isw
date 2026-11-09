@@ -514,3 +514,27 @@ test_that("aquifer numeric superposition regularizes collocated wells and zero e
   zero <- run_model(zero_schedule)
   expect_equal(as.numeric(zero$water_level_change), c(0, 0, 0))
 })
+
+test_that("pumping drawdown across observations preserves event superposition", {
+  # Include a point inside the well radius and a later reduction in pumping.
+  distances_m <- c(0, 25, 200)
+  elapsed_times_day <- c(20, 5)
+  rate_changes_m3_per_day <- c(100, -40)
+  expected <- vapply(distances_m, function(distance_m) {
+    sum(rate_changes_m3_per_day * expint::expint_E1(
+      pmax(distance_m, 1)^2 * 0.15 / (4 * 200 * elapsed_times_day)
+    ) / (4 * pi * 200))
+  }, numeric(1))
+
+  actual <- isw:::.calculate_pumping_drawdown_at_observations(
+    distances_m, 10, 20, 0.15, elapsed_times_day, rate_changes_m3_per_day, 2
+  )
+  expect_equal(actual, expected)
+  expect_equal(isw:::.calculate_pumping_drawdown_at_observations(
+    distances_m[2], 10, 20, 0.15, elapsed_times_day, rate_changes_m3_per_day, 2
+  ), expected[2])
+  expect_equal(isw:::.calculate_pumping_drawdown_at_observations(
+    distances_m, 10, 20, 0.15, 20, 100, 2
+  ), 100 * expint::expint_E1(pmax(distances_m, 1)^2 * 0.15 / (4 * 200 * 20)) /
+    (4 * pi * 200))
+})

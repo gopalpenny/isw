@@ -175,7 +175,7 @@ model_aquifer_water_level_change <- function(
       quadrature_order = quadrature_order
     )
   }
-  .superimpose_aquifer_responses(
+  .calculate_aquifer_water_level_change_at_observations(
     pumping_wells, pumping_schedules, observation_wells, evaluation_time_day,
     stream_injection_schedule, quadrature_order, stream_segments
   )
@@ -221,6 +221,23 @@ model_aquifer_water_level_change <- function(
   unname(response_ratios_day_per_m2)
 }
 
+# Calculate direct pumping drawdown across all observations for one pump and time.
+.calculate_pumping_drawdown_at_observations <- function(
+    pump_to_observation_distances_m, K_m_per_day, D_m, V,
+    elapsed_times_day, pumping_rate_change_m3_per_day, well_diam_m) {
+  # Matrix rows are observations; columns are earlier pumping-rate changes.
+  number_of_observations <- length(pump_to_observation_distances_m)
+  response_day_per_m2 <- matrix(.theis_aquifer_drawdown_ratio(
+    distance_m = rep(pump_to_observation_distances_m, times = length(elapsed_times_day)),
+    K_m_per_day = K_m_per_day, D_m = D_m, V = V,
+    t_day = rep(elapsed_times_day, each = number_of_observations),
+    well_diam_m = well_diam_m
+  ), nrow = number_of_observations, ncol = length(elapsed_times_day))
+
+  # The response ratios are negative; report pumping drawdown as a positive decline.
+  -rowSums(sweep(response_day_per_m2, 2, pumping_rate_change_m3_per_day, "*"))
+}
+
 # Accumulate each response age across all observations using segment rate changes.
 .calculate_stream_recovery_at_observations <- function(
     response_operator, response_cache, K_m_per_day, D_m, V,
@@ -261,7 +278,7 @@ model_aquifer_water_level_change <- function(
 }
 
 # Superimpose pumping and point or finite-line injection responses at observations.
-.superimpose_aquifer_responses <- function(
+.calculate_aquifer_water_level_change_at_observations <- function(
     pumping_wells, pumping_schedules, observation_wells, evaluation_time_day,
     stream_injection_schedule, quadrature_order, stream_segments) {
   # Validated numeric hydraulic inputs use m, m/day, day and m3/day; sf retains CRS.
@@ -311,38 +328,33 @@ model_aquifer_water_level_change <- function(
     injection_elapsed_times_day <- unlist(lapply(seq_len(number_of_times), function(index) {
       evaluation_time_day[[index]] - injection_events$injection_time_day[injection_rows_by_time[[index]]]
     }), use.names = FALSE)
-    prepared_response_keys <- .prepare_line_response_keys(
+    prepared_response_keys <- .prepare_response_cache_keys(
       pumping_wells$K_m_per_day[[pump_row]], pumping_wells$D_m[[pump_row]],
       pumping_wells$V[[pump_row]], injection_elapsed_times_day
     )
 
+    # Calculate this pump's drawdown and stream recovery at each requested time.
     for (time_index in seq_len(number_of_times)) {
-      pumping_response_rows <- pumping_rows_by_time[[time_index]]
-      for (observation_index in seq_len(number_of_observations)) {
-        result_index <- ((pump_row - 1L) * number_of_observations +
-          observation_index - 1L) * number_of_times + time_index
+      result_indices <- ((pump_row - 1L) * number_of_observations +
+        seq_len(number_of_observations) - 1L) * number_of_times + time_index
 
-        # Sum direct drawdown from all earlier pumping-rate changes.
-        if (length(pumping_response_rows) > 0) {
-          response_day_per_m2 <- .theis_aquifer_drawdown_ratio(
-            distance_m = pump_to_observation_distances_m[pump_row, observation_index],
-            K_m_per_day = pumping_wells$K_m_per_day[[pump_row]],
-            D_m = pumping_wells$D_m[[pump_row]], V = pumping_wells$V[[pump_row]],
-            t_day = pumping_responses$elapsed_time_day[pumping_response_rows],
-            well_diam_m = pumping_wells$well_diam_m[[pump_row]]
-          )
-          pumping_drawdown_m[[result_index]] <- -sum(
-            pumping_responses$pumping_rate_change_m3_per_day[pumping_response_rows] * response_day_per_m2
-          )
-        }
+      # Sum direct drawdown from all earlier pumping-rate changes across observations.
+      pumping_response_rows <- pumping_rows_by_time[[time_index]]
+      if (length(pumping_response_rows) > 0) {
+        pumping_drawdown_m[result_indices] <- .calculate_pumping_drawdown_at_observations(
+          pump_to_observation_distances_m[pump_row, ],
+          pumping_wells$K_m_per_day[[pump_row]], pumping_wells$D_m[[pump_row]],
+          pumping_wells$V[[pump_row]],
+          pumping_responses$elapsed_time_day[pumping_response_rows],
+          pumping_responses$pumping_rate_change_m3_per_day[pumping_response_rows],
+          pumping_wells$well_diam_m[[pump_row]]
+        )
       }
 
       # Earlier injection events remain active as their elapsed ages increase.
       # Apply each age's matrix once for every observation, retaining pump attribution.
       injection_event_rows <- injection_rows_by_time[[time_index]]
       if (length(injection_event_rows) > 0) {
-        result_indices <- ((pump_row - 1L) * number_of_observations +
-          seq_len(number_of_observations) - 1L) * number_of_times + time_index
         stream_recovery_m[result_indices] <- .calculate_stream_recovery_at_observations(
           observation_response_operator, injection_response_cache,
           pumping_wells$K_m_per_day[[pump_row]], pumping_wells$D_m[[pump_row]],

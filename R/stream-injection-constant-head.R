@@ -168,7 +168,7 @@
     # Caches belong to this aquifer group and are reused across its intervals.
     response_cache <- new.env(parent = emptyenv())
     factor_cache <- new.env(parent = emptyenv())
-    prepared_response_keys <- .prepare_line_response_keys(
+    prepared_response_keys <- .prepare_response_cache_keys(
       group_pumps$K_m_per_day[[1]], group_pumps$D_m[[1]],
       group_pumps$V[[1]], response_elapsed_times_day
     )

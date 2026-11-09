@@ -255,7 +255,7 @@
 }
 
 # Prepare exact cache keys once for an aquifer and its distinct response ages.
-.prepare_line_response_keys <- function(K_m_per_day, D_m, V, elapsed_times_day) {
+.prepare_response_cache_keys <- function(K_m_per_day, D_m, V, elapsed_times_day) {
   # Validated numeric inputs use m/day, m and day; keys are dimensionless identifiers.
   elapsed_times_day <- unique(elapsed_times_day)
   aquifer_key <- paste(format(K_m_per_day, digits = 17), format(D_m, digits = 17),
