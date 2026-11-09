@@ -425,12 +425,12 @@ prep_stream_segments <- function(
 
   # sf measurements have explicit units; normalize and strip once for numeric spacing.
   part_length_m <- as.numeric(units::set_units(sf::st_length(line_parts), "m"))
-  model_reaches_per_part <- ceiling(part_length_m / reach_spacing_m)
+  segments_per_part <- ceiling(part_length_m / reach_spacing_m)
 
-  total_model_reaches <- sum(model_reaches_per_part)
-  source_part_rows <- integer(total_model_reaches)
-  model_geometries <- vector("list", total_model_reaches)
-  model_points <- vector("list", total_model_reaches)
+  total_segments <- sum(segments_per_part)
+  source_part_rows <- integer(total_segments)
+  model_geometries <- vector("list", total_segments)
+  model_points <- vector("list", total_segments)
   output_index <- 0L
 
   # Split each input linestring part into approximately equal-length model
@@ -446,11 +446,11 @@ prep_stream_segments <- function(
     break_distances_m <- seq(
       0,
       cumulative_length_m[[length(cumulative_length_m)]],
-      length.out = model_reaches_per_part[[part_index]] + 1
+      length.out = segments_per_part[[part_index]] + 1
     )
 
     # Construct each segment geometry and its along-line midpoint.
-    for (segment_number in seq_len(model_reaches_per_part[[part_index]])) {
+    for (segment_number in seq_len(segments_per_part[[part_index]])) {
       output_index <- output_index + 1L
       start_distance_m <- break_distances_m[[segment_number]]
       end_distance_m <- break_distances_m[[segment_number + 1]]
@@ -492,47 +492,47 @@ prep_stream_segments <- function(
     }
   }
 
-  model_reaches <- line_parts[source_part_rows, , drop = FALSE]
-  sf::st_geometry(model_reaches) <- sf::st_sfc(
+  stream_segments <- line_parts[source_part_rows, , drop = FALSE]
+  sf::st_geometry(stream_segments) <- sf::st_sfc(
     model_geometries,
     crs = sf::st_crs(line_parts)
   )
   reach_segment_numbers <- stats::ave(
-    seq_len(nrow(model_reaches)),
-    model_reaches$reach_id,
+    seq_len(nrow(stream_segments)),
+    stream_segments$reach_id,
     FUN = seq_along
   )
-  model_reaches$reach_segment_id <- paste0(
-    model_reaches$reach_id,
+  stream_segments$reach_segment_id <- paste0(
+    stream_segments$reach_id,
     "_segment_",
     reach_segment_numbers
   )
-  model_reaches$represented_length_m <- as.numeric(units::set_units(sf::st_length(model_reaches), "m"))
-  model_reaches$model_point <- sf::st_sfc(
+  stream_segments$represented_length_m <- as.numeric(units::set_units(sf::st_length(stream_segments), "m"))
+  stream_segments$model_point <- sf::st_sfc(
     model_points,
-    crs = sf::st_crs(model_reaches)
+    crs = sf::st_crs(stream_segments)
   )
 
-  geometry_column <- attr(model_reaches, "sf_column")
+  geometry_column <- attr(stream_segments, "sf_column")
   identifying_columns <- c(
     "reach_id",
     "reach_segment_id",
     "represented_length_m"
   )
   additional_columns <- setdiff(
-    names(model_reaches),
+    names(stream_segments),
     c(identifying_columns, "model_point", geometry_column)
   )
 
-  model_reaches <- model_reaches[c(
+  stream_segments <- stream_segments[c(
     identifying_columns,
     additional_columns,
     "model_point",
     geometry_column
   )]
 
-  row.names(model_reaches) <- NULL
-  model_reaches
+  row.names(stream_segments) <- NULL
+  stream_segments
 }
 
 # Return coordinates at a distance measured along a LINESTRING.
