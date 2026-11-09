@@ -156,19 +156,19 @@ generate_stream_injection_schedule <- function(
     allow_n_aquifer_parameter_sets = 5, adf_stream_depletion = NULL, quadrature_order = 4L) {
   # All physical inputs are prepared numeric meters/days; sf geometry retains its shared CRS.
   # Combine pumping changes, evaluations and optional refinement times into intervals.
-  grid <- .get_stream_injection_times(pumping_schedules, evaluation_time_day, injection_time_day)
+  injection_time_grid <- .get_stream_injection_times(pumping_schedules, evaluation_time_day, injection_time_day)
   missing_time_day <- numeric()
   if (method == "adf") {
     if (is.null(adf_stream_depletion)) {
       depletion <- .model_adf_stream_depletion(
-        pumping_wells, pumping_schedules, stream_apportionment, grid$boundary_time_day
+        pumping_wells, pumping_schedules, stream_apportionment, injection_time_grid$boundary_time_day
       )
     } else {
       adf_stream_depletion <- adf_stream_depletion[c(
         "pump_id", "evaluation_time_day", "reach_id", "reach_segment_id", "stream_depletion_rate_m3_per_day"
       )]
-      missing_time_day <- grid$boundary_time_day[!grid$boundary_time_day %in% adf_stream_depletion$evaluation_time_day]
-      depletion <- adf_stream_depletion[adf_stream_depletion$evaluation_time_day %in% grid$boundary_time_day, ]
+      missing_time_day <- injection_time_grid$boundary_time_day[!injection_time_grid$boundary_time_day %in% adf_stream_depletion$evaluation_time_day]
+      depletion <- adf_stream_depletion[adf_stream_depletion$evaluation_time_day %in% injection_time_grid$boundary_time_day, ]
       if (length(missing_time_day)) {
         depletion <- rbind(depletion, .model_adf_stream_depletion(
           pumping_wells, pumping_schedules, stream_apportionment, missing_time_day
@@ -183,7 +183,7 @@ generate_stream_injection_schedule <- function(
     # Solve coupled segment rates to maintain zero head at stream model points,
     # accounting for pumping and all preceding injection intervals.
     stream_injection_schedule <- .generate_constant_head_injection_schedule(
-      pumping_wells, pumping_schedules, stream_segments, grid,
+      pumping_wells, pumping_schedules, stream_segments, injection_time_grid,
       quadrature_order = quadrature_order
     )
   }

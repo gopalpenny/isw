@@ -10,8 +10,9 @@
   schedule_start_day <- pumping_schedules$t_day[[1]]
   prepend_zero <- length(boundary_time_day) > 0 && boundary_time_day[[1]] > schedule_start_day
   time_day <- if (prepend_zero) c(schedule_start_day, boundary_time_day) else boundary_time_day
+  number_of_intervals <- length(time_day) - 1L
 
-  template <- tibble::tibble(
+  empty_injection_schedule <- tibble::tibble(
     pump_id = character(),
     reach_id = character(),
     reach_segment_id = character(),
@@ -19,29 +20,29 @@
     interval_end_day = numeric(),
     injection_rate_m3_per_day = numeric()
   )
-  keys <- unique(depletion_at_schedule_boundaries[c("pump_id", "reach_segment_id")])
+  pump_segment_pairs <- unique(depletion_at_schedule_boundaries[c("pump_id", "reach_segment_id")])
 
   # Convert boundary depletion to interval rates separately for each pump-segment pair.
-  injection_schedules_by_pump_segment <- vector("list", nrow(keys))
-  for (index in seq_len(nrow(keys))) {
-    rows <- which(
-      depletion_at_schedule_boundaries$pump_id == keys$pump_id[[index]] &
-        depletion_at_schedule_boundaries$reach_segment_id == keys$reach_segment_id[[index]]
+  injection_schedules_by_pump_segment <- vector("list", nrow(pump_segment_pairs))
+  for (pair_index in seq_len(nrow(pump_segment_pairs))) {
+    pair_rows <- which(
+      depletion_at_schedule_boundaries$pump_id == pump_segment_pairs$pump_id[[pair_index]] &
+        depletion_at_schedule_boundaries$reach_segment_id == pump_segment_pairs$reach_segment_id[[pair_index]]
     )
 
     # Order endpoint rates chronologically before averaging adjacent boundaries.
-    rows <- rows[order(depletion_at_schedule_boundaries$schedule_boundary_day[rows])]
-    endpoint_rate_m3_per_day <- depletion_at_schedule_boundaries$stream_depletion_rate_m3_per_day[rows]
+    pair_rows <- pair_rows[order(depletion_at_schedule_boundaries$schedule_boundary_day[pair_rows])]
+    endpoint_rate_m3_per_day <- depletion_at_schedule_boundaries$stream_depletion_rate_m3_per_day[pair_rows]
     if (prepend_zero) endpoint_rate_m3_per_day <- c(0, endpoint_rate_m3_per_day)
     if (length(endpoint_rate_m3_per_day) < 2) {
-      injection_schedules_by_pump_segment[[index]] <- template
+      injection_schedules_by_pump_segment[[pair_index]] <- empty_injection_schedule
       next
     }
 
-    injection_schedules_by_pump_segment[[index]] <- tibble::tibble(
-      pump_id = rep(keys$pump_id[[index]], length(time_day) - 1L),
-      reach_id = rep(depletion_at_schedule_boundaries$reach_id[rows[[1]]], length(time_day) - 1L),
-      reach_segment_id = rep(keys$reach_segment_id[[index]], length(time_day) - 1L),
+    injection_schedules_by_pump_segment[[pair_index]] <- tibble::tibble(
+      pump_id = rep(pump_segment_pairs$pump_id[[pair_index]], number_of_intervals),
+      reach_id = rep(depletion_at_schedule_boundaries$reach_id[pair_rows[[1]]], number_of_intervals),
+      reach_segment_id = rep(pump_segment_pairs$reach_segment_id[[pair_index]], number_of_intervals),
       interval_start_day = utils::head(time_day, -1L),
       interval_end_day = utils::tail(time_day, -1L),
       injection_rate_m3_per_day = (
@@ -51,7 +52,7 @@
     )
   }
 
-  do.call(rbind, c(list(template), injection_schedules_by_pump_segment))
+  do.call(rbind, c(list(empty_injection_schedule), injection_schedules_by_pump_segment))
 }
 
 .get_interval_average_injection_rate_changes <- function(stream_depletion, pumping_schedules) {
