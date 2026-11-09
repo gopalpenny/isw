@@ -263,14 +263,14 @@ model_adf_stream_depletion <- function(
     stream_depletion_rates_m3_per_day <- matrix(
       0, nrow(pump_apportionment), length(evaluation_time_day)
     )
-    for (event in seq_len(nrow(pump_responses))) {
-      column <- pump_responses$evaluation_index[[event]]
+    for (event_row in seq_len(nrow(pump_responses))) {
+      evaluation_column <- pump_responses$evaluation_index[[event_row]]
 
       # Scale each event by its temporal response and static spatial apportionment,
       # adding one segment vector to the requested evaluation column.
-      stream_depletion_rates_m3_per_day[, column] <- stream_depletion_rates_m3_per_day[, column] +
-        pump_responses$pumping_rate_change_m3_per_day[[event]] *
-        stream_depletion_fractions[, elapsed_indices[[event]]] *
+      stream_depletion_rates_m3_per_day[, evaluation_column] <- stream_depletion_rates_m3_per_day[, evaluation_column] +
+        pump_responses$pumping_rate_change_m3_per_day[[event_row]] *
+        stream_depletion_fractions[, elapsed_indices[[event_row]]] *
         pump_apportionment$apportionment_fraction
     }
 

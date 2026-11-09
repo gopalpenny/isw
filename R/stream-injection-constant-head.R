@@ -200,7 +200,7 @@
         nrow = number_of_segments,
         ncol = number_of_pumps
       )
-      historical_head_m <- pumping_head_m
+      previous_injection_head_m <- pumping_head_m
 
       # Calculate direct pumping head at every stream collocation point for
       # each pump in this aquifer group.
@@ -223,7 +223,7 @@
             get_response_matrix(
               interval_end_day - time_nodes_day[[previous_index + 1L]]
             )
-          historical_head_m <- historical_head_m +
+          previous_injection_head_m <- previous_injection_head_m +
             pulse_response_day_per_m2 %*% matrix(
               solved_rates_m3_per_day[, , previous_index],
               nrow = number_of_segments, ncol = number_of_pumps
@@ -258,7 +258,7 @@
 
       # Current injection must offset the combined head change from pumping
       # and injection during all preceding intervals.
-      right_hand_side_m <- -(pumping_head_m + historical_head_m)
+      right_hand_side_m <- -(pumping_head_m + previous_injection_head_m)
 
       # Use the QR decomposition to solve for the segment injection rates that
       # produce the required head correction at every collocation point.
@@ -286,7 +286,7 @@
       # Retain these rates for later intervals, calculate the remaining head
       # error after current injection, and record the matrix diagnostic.
       solved_rates_m3_per_day[, , interval_index] <- interval_rates_m3_per_day
-      residual_m <- pumping_head_m + historical_head_m +
+      residual_m <- pumping_head_m + previous_injection_head_m +
         response_matrix_day_per_m2 %*% interval_rates_m3_per_day
       condition_diagnostics[[length(condition_diagnostics) + 1L]] <-
         tibble::tibble(
@@ -328,7 +328,7 @@
   diagnostics <- do.call(rbind, condition_diagnostics)
 
   if (any(diagnostics$matrix_condition_number > 1e6)) {
-    affected <- diagnostics[
+    ill_conditioned_diagnostics <- diagnostics[
       diagnostics$matrix_condition_number > 1e6,
       ,
       drop = FALSE
@@ -336,9 +336,9 @@
     warning(
       "Constant-head response-matrix condition number exceeded 1e6. ",
       "Maximum: ",
-      format(max(affected$matrix_condition_number), digits = 5),
-      "; affected aquifer_id values: ",
-      paste(unique(affected$aquifer_id), collapse = ", "),
+      format(max(ill_conditioned_diagnostics$matrix_condition_number), digits = 5),
+      "; ill_conditioned_diagnostics aquifer_id values: ",
+      paste(unique(ill_conditioned_diagnostics$aquifer_id), collapse = ", "),
       ". Inspect stream spacing and stream_width values.",
       call. = FALSE
     )

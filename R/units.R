@@ -33,14 +33,14 @@ check_dimensionality <- function(object, desired_units, variable_name = NULL) {
   }
   tryCatch(
     expr = {
-      test <- units::set_units(object, desired_units, mode = "standard")
+      converted_object <- units::set_units(object, desired_units, mode = "standard")
     },
     error = function(cond) {
-      message1 <- paste(variable_name,"is",object,".",
+      conversion_message <- paste(variable_name,"is",object,".",
                         "It should have units that can be converted to",desired_units,
                         "but the conversion failed\n")
-      message2 <- paste("Here's the original error message:", conditionMessage(cond))
-      stop(paste(message1, message2))
+      original_error_message <- paste("Here's the original error message:", conditionMessage(cond))
+      stop(paste(conversion_message, original_error_message))
       NA
     })
 }

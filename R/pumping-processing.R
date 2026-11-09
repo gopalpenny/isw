@@ -18,12 +18,12 @@
 
   rate_m3_per_day <- pumping_schedules[[paste0(pump_id, "_m3_per_day")]]
   change_m3_per_day <- diff(c(0, rate_m3_per_day))
-  changed <- which(change_m3_per_day != 0)
+  rate_change_rows <- which(change_m3_per_day != 0)
 
   tibble::tibble(
-    pump_id = rep(pump_id, length(changed)),
-    pumping_time_day = pumping_schedules$t_day[changed],
-    pumping_rate_change_m3_per_day = change_m3_per_day[changed]
+    pump_id = rep(pump_id, length(rate_change_rows)),
+    pumping_time_day = pumping_schedules$t_day[rate_change_rows],
+    pumping_rate_change_m3_per_day = change_m3_per_day[rate_change_rows]
   )
 }
 
