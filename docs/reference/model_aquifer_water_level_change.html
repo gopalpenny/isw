@@ -77,7 +77,7 @@ wells using a general stream-segment representation.</p>
 <span>  injection_method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"adf"</span>, <span class="st">"constant_head"</span><span class="op">)</span>,</span>
 <span>  stream_apportionment <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  allow_n_aquifer_parameter_sets <span class="op">=</span> <span class="fl">5</span>,</span>
-<span>  quadrature_order <span class="op">=</span> <span class="fl">16L</span></span>
+<span>  quadrature_order <span class="op">=</span> <span class="fl">4L</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -144,11 +144,16 @@ constant-head schedule is generated internally. The default is 5. Use
 
 
 <dt id="arg-quadrature-order">quadrature_order<a class="anchor" aria-label="anchor" href="#arg-quadrature-order"></a></dt>
-<dd><p>Positive integer number of Gauss–Legendre points
-used per straight edge of each finite line element. The default is 16.
+<dd><p>Nonnegative integer controlling stream injection sources.
+With <code>0</code>, each segment injects its total rate at its <code>model_point</code>, using
+<code>stream_width / 2</code> as the minimum response radius. Positive values give the
+number of Gauss–Legendre points per straight edge of each finite line
+element. The default is 4.
 When a completed constant-head schedule is supplied and this argument is
 omitted, the order recorded in the schedule metadata is reused. Supplying
-a different order raises a warning and uses the supplied value.</p></dd>
+a different order raises a warning and uses the supplied value. This can
+change head responses, including the constant-head boundary residuals,
+while preserving each segment's total injection rate.</p></dd>
 
 </dl></div>
     <div id="value">
@@ -169,7 +174,11 @@ quadrature metadata; <code>injection_times</code> must then be <code>NULL</code>
 segments and therefore requires <code>stream_apportionment</code>. The constant-head
 path solves segment injection rates that keep segment model points as close
 as practical to zero head change. Pumping and stream responses are then
-superimposed at each observation well. Positive pumping rates produce
+superimposed at each observation well. With <code>quadrature_order = 0</code>, the
+entire segment rate is applied at its <code>model_point</code>; positive orders integrate
+uniform injection along the segment. Both representations use a minimum
+response radius of <code>stream_width / 2</code>. ADF injection rates are independent
+of quadrature order. Positive pumping rates produce
 positive <code>pumping_drawdown</code>; injection produces positive <code>stream_recovery</code>.</p>
     </div>
     <div id="see-also">

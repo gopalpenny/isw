@@ -91,10 +91,10 @@ model segment.</p></dd>
 
 
 <dt id="arg-analysis-crs">analysis_crs<a class="anchor" aria-label="anchor" href="#arg-analysis-crs"></a></dt>
-<dd><p>Either <code>NULL</code> or a projected coordinate reference
-system accepted by <code><a href="https://r-spatial.github.io/sf/reference/st_crs.html" class="external-link">sf::st_crs()</a></code>. When <code>NULL</code>, an existing projected
-stream CRS is retained; geographic streams are transformed to a local UTM
-CRS selected from their extent.</p></dd>
+<dd><p>Either <code>NULL</code> or a UTM coordinate reference system in
+meters accepted by <code><a href="https://r-spatial.github.io/sf/reference/st_crs.html" class="external-link">sf::st_crs()</a></code>. When <code>NULL</code>, an existing UTM stream CRS
+is retained; other input CRSs are transformed to a local UTM CRS selected
+from their extent. Crossing a zone boundary does not trigger a warning.</p></dd>
 
 
 <dt id="arg-stream-width">stream_width<a class="anchor" aria-label="anchor" href="#arg-stream-width"></a></dt>
@@ -113,11 +113,12 @@ It contains <code>reach_id</code>, <code>reach_segment_id</code>, <code>represen
     <div id="details">
     <h2>Details</h2>
     <p><code>model_point</code> is the along-line midpoint used as the constant-head
-collocation location. Injection is distributed uniformly along the active
-line geometry. Stream validation requires it to be a finite point in the
+collocation location and, with <code>quadrature_order = 0</code>, the injection source.
+Positive orders distribute injection uniformly along the active line geometry.
+Stream validation requires it to be a finite point in the
 segment CRS and on the active line, and warns if it differs from the
 along-line midpoint. Input objects are not modified.
-<code>stream_width</code> regularizes responses on and very near a line element using
+<code>stream_width</code> regularizes responses near point or line sources using
 an effective minimum radius of half the width.
 <code>well_diam</code> is reserved for pumping-well objects and is not accepted on
 stream-reach or stream-segment inputs.</p>
