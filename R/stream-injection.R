@@ -1,3 +1,201 @@
+#' Construct a stream-injection schedule
+#'
+#' Calculate piecewise-constant stream injection using ADF depletion or an
+#' endpoint-collocated constant-head boundary.
+#'
+#' @param pumping_wells A nonempty `sf` object with one point per pumping well.
+#'   It must contain unique character `pump_id` values, `K` and `D` with
+#'   physical units, and dimensionless `V`. An optional `well_diam` length may
+#'   be supplied.
+#' @param pumping_schedules A wide data frame with a strictly increasing `t`
+#'   column and one consistently unit-bearing pumping-rate column for every
+#'   `pump_id`.
+#' @param stream_segments A projected stream-segment object returned by
+#'   [prep_stream_segments()].
+#' @param evaluation_times Either `NULL`, a `Date` vector, or a `units` time
+#'   vector giving the times that the schedule must span. When `NULL`, the
+#'   pumping-schedule times are used.
+#' @param injection_times Optional `Date` or `units` time values that refine the
+#'   injection interval grid.
+#' @param method Character string selecting `"adf"` or `"constant_head"`.
+#'   `"adf"` is the default.
+#' @param stream_apportionment An ADF apportionment returned by
+#'   [prep_adf_stream_apportionment()]. Required for the ADF method.
+#' @param allow_n_aquifer_parameter_sets Positive whole-number scalar giving
+#'   the maximum number of unique aquifer parameter sets allowed in a
+#'   constant-head calculation. The default is 5. Use `Inf` to impose no
+#'   limit.
+#' @param adf_stream_depletion Optional output from
+#'   [model_adf_stream_depletion()]. When supplied with `method = "adf"`, rates
+#'   at required schedule boundaries are reused and results at additional times
+#'   are ignored. If required boundaries are missing, a warning is issued and
+#'   depletion is calculated internally only for the missing times.
+#' @param quadrature_order Nonnegative integer controlling stream injection sources.
+#'   With `0`, each segment injects its total rate at its `model_point`, using
+#'   `stream_width / 2` as the minimum response radius. Positive values give the
+#'   number of Gauss--Legendre points per straight edge of each finite line
+#'   element. The default is 4.
+#'
+#' @return A tibble with one row per `pump_id`, `reach_segment_id`, and
+#'   injection interval. `interval_start` and `interval_end` retain the time
+#'   representation used by `pumping_schedules$t`. `injection_rate` is positive
+#'   when water moves from the stream to the aquifer. Constant-head schedules
+#'   additionally
+#'   contain `aquifer_id`, `boundary_residual`, and
+#'   `matrix_condition_number`.
+#'   Generated schedules carry an `isw_schedule_metadata` attribute recording
+#'   the injection method and, for constant-head schedules, quadrature order.
+#'
+#' @details
+#' The default injection grid contains every pumping-schedule time through the
+#' final evaluation time. Evaluation times are also included so the final
+#' requested result is an interval boundary. Optional `injection_times` add
+#' refinement boundaries; they never remove pumping-schedule boundaries.
+#'
+#' With `method = "adf"`, [model_adf_stream_depletion()] evaluates stream
+#' depletion at every schedule boundary. The arithmetic mean of adjacent
+#' endpoint rates is applied over each interval.
+#' To precompute a complete `adf_stream_depletion` input, evaluate depletion at
+#' every `evaluation_times` value and at every `pumping_schedules$t` and
+#' `injection_times` value through the final evaluation time. A supplied table
+#' that omits required boundaries is reused where possible, but generates a
+#' warning while the missing values are calculated internally.
+#'
+#' With `method = "constant_head"`, segment model points are constant-head
+#' collocation points. Injection uses those points when `quadrature_order = 0`,
+#' and uniform finite-line sources otherwise. One coupled response matrix is
+#' factored for each aquifer parameter set and interval duration.
+#' Pump-specific right-hand sides preserve attribution while sharing that
+#' factorization. Rates are solved so the signed boundary residual is zero at
+#' each interval endpoint after accounting for all preceding injection.
+#'
+#' @examples
+#' pumping_wells <- example_pumping_wells
+#' stream_reaches <- example_stream_reaches
+#' pumping_schedules <- tibble::tibble(
+#'   t = units::set_units(c(0, 10, 20), "days"),
+#'   pump_1 = units::set_units(c(100, 100, 0), "m^3/day"),
+#'   pump_2 = units::set_units(c(0, 75, 0), "m^3/day")
+#' )
+#' stream_segments <- prep_stream_segments(
+#'   stream_reaches,
+#'   reach_spacing = units::set_units(100, "m"),
+#'   analysis_crs = 32615
+#' )
+#' stream_apportionment <- prep_adf_stream_apportionment(
+#'   pumping_wells,
+#'   stream_segments,
+#'   sample_spacing = units::set_units(25, "m")
+#' )
+#' generate_stream_injection_schedule(
+#'   pumping_wells, pumping_schedules, stream_segments,
+#'   evaluation_times = units::set_units(30, "days"),
+#'   stream_apportionment = stream_apportionment
+#' )
+#'
+#' @importFrom utils head
+#' @export
+generate_stream_injection_schedule <- function(
+    pumping_wells,
+    pumping_schedules,
+    stream_segments,
+    evaluation_times = NULL,
+    injection_times = NULL,
+    method = c("adf", "constant_head"),
+    stream_apportionment = NULL,
+    allow_n_aquifer_parameter_sets = 5,
+    adf_stream_depletion = NULL,
+    quadrature_order = 4L) {
+  
+  # Validate external tables/units before preparing numeric meters, days and rates.
+  method <- match.arg(method)
+  aquifer_groups <- NULL
+  prepared_stream_segments <- .prepare_numeric_segments(stream_segments)
+  prepared_pumping_wells <- .prepare_numeric_pumping_wells(pumping_wells, sf::st_crs(prepared_stream_segments))
+  .validate_pumping_schedules(pumping_schedules, pumping_wells)
+  .validate_quadrature_order(quadrature_order)
+  prepared_model_times <- .prepare_numeric_model_times(
+    pumping_schedules, evaluation_times, injection_times
+  )
+  if (method == "adf") {
+    if (is.null(stream_apportionment)) {
+      stop('stream_apportionment is required when method = "adf".')
+    }
+    .validate_stream_depletion_apportionment(stream_apportionment, pumping_wells)
+    .validate_stream_apportionment_segments(stream_apportionment, stream_segments)
+    prepared_stream_apportionment <- .prepare_numeric_apportionment(stream_apportionment, pumping_wells)
+    depletion <- if (!is.null(adf_stream_depletion)) {
+      .prepare_numeric_depletion(
+        adf_stream_depletion, pumping_wells, pumping_schedules,
+        stream_apportionment, prepared_model_times$time_origin
+      )
+    } else NULL
+  } else {
+    if (!is.null(adf_stream_depletion)) {
+      stop('adf_stream_depletion can only be supplied when method = "adf".')
+    }
+    aquifer_groups <- .prepare_aquifer_groups(prepared_pumping_wells, allow_n_aquifer_parameter_sets)
+    prepared_stream_apportionment <- NULL
+    depletion <- NULL
+  }
+  attr(prepared_pumping_wells, "isw_aquifer_groups") <- aquifer_groups
+  result <- .generate_stream_injection_schedule(
+    prepared_pumping_wells,
+    .prepare_numeric_schedule(pumping_schedules, pumping_wells, prepared_model_times),
+    prepared_stream_segments,
+    prepared_model_times$evaluation_time_day, prepared_model_times$injection_time_day, method,
+    prepared_stream_apportionment, allow_n_aquifer_parameter_sets, depletion, quadrature_order
+  )
+  # Restore user-facing interval times/rates; warnings use caller-facing time labels.
+  .restore_injection_output(result, prepared_model_times, units::deparse_unit(pumping_schedules[[pumping_wells$pump_id[[1]]]]))
+}
+
+.generate_stream_injection_schedule <- function(
+    pumping_wells, pumping_schedules, stream_segments, evaluation_time_day = NULL,
+    injection_time_day = NULL, method = "adf", stream_apportionment = NULL,
+    allow_n_aquifer_parameter_sets = 5, adf_stream_depletion = NULL, quadrature_order = 4L) {
+  # All physical inputs are prepared numeric meters/days; sf geometry retains its shared CRS.
+  # Combine pumping changes, evaluations and optional refinement times into intervals.
+  grid <- .get_stream_injection_times(pumping_schedules, evaluation_time_day, injection_time_day)
+  missing_time_day <- numeric()
+  if (method == "adf") {
+    if (is.null(adf_stream_depletion)) {
+      depletion <- .model_adf_stream_depletion(
+        pumping_wells, pumping_schedules, stream_apportionment, grid$boundary_time_day
+      )
+    } else {
+      adf_stream_depletion <- adf_stream_depletion[c(
+        "pump_id", "evaluation_time_day", "reach_id", "reach_segment_id", "stream_depletion_rate_m3_per_day"
+      )]
+      missing_time_day <- grid$boundary_time_day[!grid$boundary_time_day %in% adf_stream_depletion$evaluation_time_day]
+      depletion <- adf_stream_depletion[adf_stream_depletion$evaluation_time_day %in% grid$boundary_time_day, ]
+      if (length(missing_time_day)) {
+        depletion <- rbind(depletion, .model_adf_stream_depletion(
+          pumping_wells, pumping_schedules, stream_apportionment, missing_time_day
+        ))
+      }
+    }
+    names(depletion)[names(depletion) == "evaluation_time_day"] <- "schedule_boundary_day"
+    # For each pump-segment pair, average adjacent depletion rates to assign
+    # one constant injection rate to the interval between them.
+    stream_injection_schedule <- .get_interval_average_injection_schedule(depletion, pumping_schedules)
+  } else {
+    # Solve coupled segment rates to maintain zero head at stream model points,
+    # accounting for pumping and all preceding injection intervals.
+    stream_injection_schedule <- .generate_constant_head_injection_schedule(
+      pumping_wells, pumping_schedules, stream_segments, grid,
+      quadrature_order = quadrature_order
+    )
+  }
+  attr(stream_injection_schedule, "isw_schedule_metadata") <- list(
+    injection_method = method,
+    quadrature_order = if (method == "constant_head") as.integer(quadrature_order) else NULL
+  )
+  attr(stream_injection_schedule, "isw_missing_time_day") <- missing_time_day
+  stream_injection_schedule
+}
+
+
 # Validate a user-supplied stream-injection schedule.
 .validate_stream_injection_schedule <- function(
     stream_injection_schedule,
@@ -269,199 +467,3 @@
   )
 }
 
-#' Construct a stream-injection schedule
-#'
-#' Calculate piecewise-constant stream injection using ADF depletion or an
-#' endpoint-collocated constant-head boundary.
-#'
-#' @param pumping_wells A nonempty `sf` object with one point per pumping well.
-#'   It must contain unique character `pump_id` values, `K` and `D` with
-#'   physical units, and dimensionless `V`. An optional `well_diam` length may
-#'   be supplied.
-#' @param pumping_schedules A wide data frame with a strictly increasing `t`
-#'   column and one consistently unit-bearing pumping-rate column for every
-#'   `pump_id`.
-#' @param stream_segments A projected stream-segment object returned by
-#'   [prep_stream_segments()].
-#' @param evaluation_times Either `NULL`, a `Date` vector, or a `units` time
-#'   vector giving the times that the schedule must span. When `NULL`, the
-#'   pumping-schedule times are used.
-#' @param injection_times Optional `Date` or `units` time values that refine the
-#'   injection interval grid.
-#' @param method Character string selecting `"adf"` or `"constant_head"`.
-#'   `"adf"` is the default.
-#' @param stream_apportionment An ADF apportionment returned by
-#'   [prep_adf_stream_apportionment()]. Required for the ADF method.
-#' @param allow_n_aquifer_parameter_sets Positive whole-number scalar giving
-#'   the maximum number of unique aquifer parameter sets allowed in a
-#'   constant-head calculation. The default is 5. Use `Inf` to impose no
-#'   limit.
-#' @param adf_stream_depletion Optional output from
-#'   [model_adf_stream_depletion()]. When supplied with `method = "adf"`, rates
-#'   at required schedule boundaries are reused and results at additional times
-#'   are ignored. If required boundaries are missing, a warning is issued and
-#'   depletion is calculated internally only for the missing times.
-#' @param quadrature_order Nonnegative integer controlling stream injection sources.
-#'   With `0`, each segment injects its total rate at its `model_point`, using
-#'   `stream_width / 2` as the minimum response radius. Positive values give the
-#'   number of Gauss--Legendre points per straight edge of each finite line
-#'   element. The default is 4.
-#'
-#' @return A tibble with one row per `pump_id`, `reach_segment_id`, and
-#'   injection interval. `interval_start` and `interval_end` retain the time
-#'   representation used by `pumping_schedules$t`. `injection_rate` is positive
-#'   when water moves from the stream to the aquifer. Constant-head schedules
-#'   additionally
-#'   contain `aquifer_id`, `boundary_residual`, and
-#'   `matrix_condition_number`.
-#'   Generated schedules carry an `isw_schedule_metadata` attribute recording
-#'   the injection method and, for constant-head schedules, quadrature order.
-#'
-#' @details
-#' The default injection grid contains every pumping-schedule time through the
-#' final evaluation time. Evaluation times are also included so the final
-#' requested result is an interval boundary. Optional `injection_times` add
-#' refinement boundaries; they never remove pumping-schedule boundaries.
-#'
-#' With `method = "adf"`, [model_adf_stream_depletion()] evaluates stream
-#' depletion at every schedule boundary. The arithmetic mean of adjacent
-#' endpoint rates is applied over each interval.
-#' To precompute a complete `adf_stream_depletion` input, evaluate depletion at
-#' every `evaluation_times` value and at every `pumping_schedules$t` and
-#' `injection_times` value through the final evaluation time. A supplied table
-#' that omits required boundaries is reused where possible, but generates a
-#' warning while the missing values are calculated internally.
-#'
-#' With `method = "constant_head"`, segment model points are constant-head
-#' collocation points. Injection uses those points when `quadrature_order = 0`,
-#' and uniform finite-line sources otherwise. One coupled response matrix is
-#' factored for each aquifer parameter set and interval duration.
-#' Pump-specific right-hand sides preserve attribution while sharing that
-#' factorization. Rates are solved so the signed boundary residual is zero at
-#' each interval endpoint after accounting for all preceding injection.
-#'
-#' @examples
-#' pumping_wells <- example_pumping_wells
-#' stream_reaches <- example_stream_reaches
-#' pumping_schedules <- tibble::tibble(
-#'   t = units::set_units(c(0, 10, 20), "days"),
-#'   pump_1 = units::set_units(c(100, 100, 0), "m^3/day"),
-#'   pump_2 = units::set_units(c(0, 75, 0), "m^3/day")
-#' )
-#' stream_segments <- prep_stream_segments(
-#'   stream_reaches,
-#'   reach_spacing = units::set_units(100, "m"),
-#'   analysis_crs = 32615
-#' )
-#' stream_apportionment <- prep_adf_stream_apportionment(
-#'   pumping_wells,
-#'   stream_segments,
-#'   sample_spacing = units::set_units(25, "m")
-#' )
-#' generate_stream_injection_schedule(
-#'   pumping_wells, pumping_schedules, stream_segments,
-#'   evaluation_times = units::set_units(30, "days"),
-#'   stream_apportionment = stream_apportionment
-#' )
-#'
-#' @importFrom utils head
-#' @export
-generate_stream_injection_schedule <- function(
-    pumping_wells,
-    pumping_schedules,
-    stream_segments,
-    evaluation_times = NULL,
-    injection_times = NULL,
-    method = c("adf", "constant_head"),
-    stream_apportionment = NULL,
-    allow_n_aquifer_parameter_sets = 5,
-    adf_stream_depletion = NULL,
-    quadrature_order = 4L) {
-
-  # Validate external tables/units before preparing numeric meters, days and rates.
-  method <- match.arg(method)
-  aquifer_groups <- NULL
-  prepared_stream_segments <- .prepare_numeric_segments(stream_segments)
-  prepared_pumping_wells <- .prepare_numeric_pumping_wells(pumping_wells, sf::st_crs(prepared_stream_segments))
-  .validate_pumping_schedules(pumping_schedules, pumping_wells)
-  .validate_quadrature_order(quadrature_order)
-  prepared_model_times <- .prepare_numeric_model_times(
-    pumping_schedules, evaluation_times, injection_times
-  )
-  if (method == "adf") {
-    if (is.null(stream_apportionment)) {
-      stop('stream_apportionment is required when method = "adf".')
-    }
-    .validate_stream_depletion_apportionment(stream_apportionment, pumping_wells)
-    .validate_stream_apportionment_segments(stream_apportionment, stream_segments)
-    prepared_stream_apportionment <- .prepare_numeric_apportionment(stream_apportionment, pumping_wells)
-    depletion <- if (!is.null(adf_stream_depletion)) {
-      .prepare_numeric_depletion(
-        adf_stream_depletion, pumping_wells, pumping_schedules,
-        stream_apportionment, prepared_model_times$time_origin
-      )
-    } else NULL
-  } else {
-    if (!is.null(adf_stream_depletion)) {
-      stop('adf_stream_depletion can only be supplied when method = "adf".')
-    }
-    aquifer_groups <- .prepare_aquifer_groups(prepared_pumping_wells, allow_n_aquifer_parameter_sets)
-    prepared_stream_apportionment <- NULL
-    depletion <- NULL
-  }
-  attr(prepared_pumping_wells, "isw_aquifer_groups") <- aquifer_groups
-  result <- .generate_stream_injection_schedule(
-    prepared_pumping_wells,
-    .prepare_numeric_schedule(pumping_schedules, pumping_wells, prepared_model_times),
-    prepared_stream_segments,
-    prepared_model_times$evaluation_time_day, prepared_model_times$injection_time_day, method,
-    prepared_stream_apportionment, allow_n_aquifer_parameter_sets, depletion, quadrature_order
-  )
-  # Restore user-facing interval times/rates; warnings use caller-facing time labels.
-  .restore_injection_output(result, prepared_model_times, units::deparse_unit(pumping_schedules[[pumping_wells$pump_id[[1]]]]))
-}
-
-.generate_stream_injection_schedule <- function(
-    pumping_wells, pumping_schedules, stream_segments, evaluation_time_day = NULL,
-    injection_time_day = NULL, method = "adf", stream_apportionment = NULL,
-    allow_n_aquifer_parameter_sets = 5, adf_stream_depletion = NULL, quadrature_order = 4L) {
-  # All physical inputs are prepared numeric meters/days; sf geometry retains its shared CRS.
-  # Combine pumping changes, evaluations and optional refinement times into intervals.
-  grid <- .get_stream_injection_times(pumping_schedules, evaluation_time_day, injection_time_day)
-  missing_time_day <- numeric()
-  if (method == "adf") {
-    if (is.null(adf_stream_depletion)) {
-      depletion <- .model_adf_stream_depletion(
-        pumping_wells, pumping_schedules, stream_apportionment, grid$boundary_time_day
-      )
-    } else {
-      adf_stream_depletion <- adf_stream_depletion[c(
-        "pump_id", "evaluation_time_day", "reach_id", "reach_segment_id", "stream_depletion_rate_m3_per_day"
-      )]
-      missing_time_day <- grid$boundary_time_day[!grid$boundary_time_day %in% adf_stream_depletion$evaluation_time_day]
-      depletion <- adf_stream_depletion[adf_stream_depletion$evaluation_time_day %in% grid$boundary_time_day, ]
-      if (length(missing_time_day)) {
-        depletion <- rbind(depletion, .model_adf_stream_depletion(
-          pumping_wells, pumping_schedules, stream_apportionment, missing_time_day
-        ))
-      }
-    }
-    names(depletion)[names(depletion) == "evaluation_time_day"] <- "schedule_boundary_day"
-    # For each pump-segment pair, average adjacent depletion rates to assign
-    # one constant injection rate to the interval between them.
-    stream_injection_schedule <- .get_interval_average_injection_schedule(depletion, pumping_schedules)
-  } else {
-    # Solve coupled segment rates to maintain zero head at stream model points,
-    # accounting for pumping and all preceding injection intervals.
-    stream_injection_schedule <- .generate_constant_head_injection_schedule(
-      pumping_wells, pumping_schedules, stream_segments, grid,
-      quadrature_order = quadrature_order
-    )
-  }
-  attr(stream_injection_schedule, "isw_schedule_metadata") <- list(
-    injection_method = method,
-    quadrature_order = if (method == "constant_head") as.integer(quadrature_order) else NULL
-  )
-  attr(stream_injection_schedule, "isw_missing_time_day") <- missing_time_day
-  stream_injection_schedule
-}
