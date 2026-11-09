@@ -188,7 +188,7 @@ independently. The baseline for this checkpoint is `49d11ae`; the commit include
 the cache-key code, regression coverage, benchmark scripts and analysis notes.
 
 Preparing keys introduces a list of distinct response ages and identifiers.
-Constant-head preparation enumerates interval-to-earlier-boundary ages before
+Constant-head preparation enumerates elapsed times from earlier injection times to each interval end before
 deduplicating them, so its temporary age vector can grow quadratically with the
 number of intervals. This study does not establish memory behavior for very
 long schedules. No observation-by-event-by-time response array is introduced.

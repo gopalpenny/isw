@@ -314,14 +314,14 @@ injection_times <- set_units(seq(0, 180, by = 15), "days")
 stream-depletion schedule must extend through all of these times.
 
 `injection_times` controls the internal time resolution of that schedule. It
-adds boundaries between piecewise-constant injection intervals but does not
-request more water-level output. Pumping-schedule times and evaluation times
-are always included as interval boundaries, whether or not `injection_times`
+subdivides injection intervals but does not request more water-level output.
+Pumping-schedule and evaluation times through the final evaluation time are
+always included in the injection time grid, whether or not `injection_times`
 is supplied.
 
-For ADF, stream depletion changes continuously. The schedule approximates this
-change with a constant rate in each interval, using the average depletion at
-the interval's two endpoints. Shorter intervals improve this approximation.
+ADF stream depletion changes continuously. The schedule approximates this
+change with a constant rate in each interval, using the average ADF stream depletion rate at
+the start and end of the interval. Shorter intervals improve this approximation.
 
 For constant head, the model solves one set of injection rates for each
 interval and holds those rates constant until the next interval begins. The
@@ -343,7 +343,7 @@ same. The
 [temporal-input discussion](adf-modeling-internals.html#what-happens-to-the-temporal-inputs)
 provides more detail about evaluation times, and the
 [schedule-grid walkthrough](adf-modeling-internals.html#what-happens-inside-generate_stream_injection_schedule)
-shows how optional injection times are merged with required boundaries.
+shows how optional injection times are merged with required injection times.
 
 The ADF workflow first calculates pump-specific weights for the stream
 segments, then passes those weights to `generate_stream_injection_schedule()`. The

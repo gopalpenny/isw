@@ -105,7 +105,7 @@ test_that("output formatting restores Date origins and caller time units", {
   expect_identical(units::deparse_unit(restored), units::deparse_unit(hours))
 })
 
-test_that("numeric injection grids handle defaults and a single initial boundary", {
+test_that("numeric injection grids handle defaults and a single initial injection time", {
   schedule <- tibble::tibble(t_day = c(1, 2, 3))
   grid <- isw:::.get_stream_injection_times(schedule)
   expect_equal(grid$boundary_time_day, c(1, 2, 3))

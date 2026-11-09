@@ -134,7 +134,7 @@ test_that("straight-stream drawdown is the real well minus its image", {
   )
 })
 
-test_that("injection grids distinguish boundaries from evaluation times", {
+test_that("injection time grids include required times beyond evaluation times", {
   schedule_grid <- isw:::.get_stream_injection_times(
     tibble::tibble(t_day = c(0, 10, 30)),
     evaluation_time_day = c(0, 20, 40), injection_time_day = c(5, 25, 50)
@@ -179,7 +179,7 @@ test_that("interval injection rates average depletion endpoints", {
   )
 })
 
-test_that("zero depletion is assumed at an unevaluated initial boundary", {
+test_that("zero ADF stream depletion is assumed at an unevaluated initial injection time", {
   pumping_schedules <- tibble::tibble(
     t_day = c(0, 10),
     pump_1_m3_per_day = c(100, 0)

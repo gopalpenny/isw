@@ -172,7 +172,7 @@ specific two-pump setup. Different pump counts, aquifer groups and geometry
 can change the result; extrapolating the earlier short-run timings was avoided.
 
 Actual calendar months have unequal lengths. This grid has 486 distinct positive
-interval-end-to-earlier-boundary ages, versus 120 on a uniform 30-day grid.
+elapsed times from earlier injection times to each interval end, versus 120 on a uniform 30-day grid.
 Thus a nominally similar number of steps can require substantially different
 response-cache work. This is an age-count calculation, not a separately timed
 30-day-grid comparison. No profile was collected for this larger case.

@@ -173,11 +173,12 @@ which to generate outputs. But if other times are desired,
 water-level results are
 returned.
 
-Pumping-schedule times and evaluation times are always included as
-boundaries of the piecewise-constant stream-injection schedule.
-The optional `injection_times` argument can add schedule boundaries without
+The injection time grid contains the start and end times of every injection
+interval. Pumping-schedule and evaluation times are included in this grid
+through the final evaluation time.
+The optional `injection_times` argument can subdivide injection intervals without
 requesting additional water-level output. This can improve the interval-average
-approximation to continuously changing ADF depletion, but it increases
+approximation to continuously changing ADF stream depletion, but it increases
 computation for both methods. Constant-head rates are solved to satisfy the
 boundary at each interval end. Very short intervals can therefore require large
 corrective rates, especially when a regular refinement grid is combined with
@@ -281,16 +282,16 @@ to the stream injection schedule.
 
 We can now construct these two interval schedules, using the same function and
 time grid. With `method = "adf"`, `generate_stream_injection_schedule()` uses
-the same ADF depletion calculation as `model_adf_stream_depletion()` at every
-schedule boundary and averages depletion at adjacent boundaries. It reports the
-resulting `injection_rate` as positive
+the same ADF stream depletion calculation as `model_adf_stream_depletion()` at
+every injection time, then averages the rates at the start and end of each
+interval. It reports the resulting `injection_rate` as positive
 when water moves from the stream to the aquifer. This rate is the stream-
 depletion rate applied over the interval.
-Precalculated ADF depletion can be supplied through the
+Precalculated ADF stream depletion rates can be supplied through the
 `adf_stream_depletion` argument to avoid recalculation. Here, the supplied
 result contains only the monthly evaluation times and omits the optional
-refinement boundaries. `generate_stream_injection_schedule()` issues a
-warning to make the mismatch explicit, reuses the supplied values, and
+refinement times. `generate_stream_injection_schedule()` issues a
+warning to make the mismatch explicit, reuses the supplied rates, and
 fills in the missing times by calculating them within the function.
 
 ```{r adf-injection-schedule, warning = TRUE}

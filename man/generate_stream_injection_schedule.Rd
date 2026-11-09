@@ -49,10 +49,10 @@ constant-head calculation. The default is 5. Use \code{Inf} to impose no
 limit.}
 
 \item{adf_stream_depletion}{Optional output from
-\code{\link[=model_adf_stream_depletion]{model_adf_stream_depletion()}}. When supplied with \code{method = "adf"}, rates
-at required schedule boundaries are reused and results at additional times
-are ignored. If required boundaries are missing, a warning is issued and
-depletion is calculated internally only for the missing times.}
+\code{\link[=model_adf_stream_depletion]{model_adf_stream_depletion()}}. When supplied with \code{method = "adf"},
+ADF stream depletion rates at required injection times are reused and results at additional times
+are ignored. If ADF stream depletion rates are missing at required injection
+times, a warning is issued and those rates are calculated internally.}
 
 \item{quadrature_order}{Nonnegative integer controlling stream injection sources.
 With \code{0}, each segment injects its total rate at its \code{model_point}, using
@@ -76,19 +76,23 @@ Calculate piecewise-constant stream injection using ADF depletion or an
 endpoint-collocated constant-head boundary.
 }
 \details{
-The default injection grid contains every pumping-schedule time through the
-final evaluation time. Evaluation times are also included so the final
-requested result is an interval boundary. Optional \code{injection_times} add
-refinement boundaries; they never remove pumping-schedule boundaries.
+The injection time grid contains the start and end times of every injection
+interval. By default, it includes every pumping-schedule time through the
+final evaluation time, together with the evaluation times. The final
+evaluation time ends an injection interval. Optional \code{injection_times}
+subdivide intervals; all pumping-schedule times through the final evaluation
+time remain in the grid.
 
-With \code{method = "adf"}, \code{\link[=model_adf_stream_depletion]{model_adf_stream_depletion()}} evaluates stream
-depletion at every schedule boundary. The arithmetic mean of adjacent
-endpoint rates is applied over each interval.
-To precompute a complete \code{adf_stream_depletion} input, evaluate depletion at
+With \code{method = "adf"}, ADF stream depletion rates are calculated at every
+time in the injection time grid, using the same calculation as
+\code{\link[=model_adf_stream_depletion]{model_adf_stream_depletion()}}. The rates at the start and end of each
+interval are averaged to obtain its stream injection rate.
+To precompute a complete \code{adf_stream_depletion} input, evaluate ADF stream
+depletion rates at
 every \code{evaluation_times} value and at every \code{pumping_schedules$t} and
 \code{injection_times} value through the final evaluation time. A supplied table
-that omits required boundaries is reused where possible, but generates a
-warning while the missing values are calculated internally.
+that omits required injection times is reused where possible, but generates
+a warning while the missing ADF stream depletion rates are calculated internally.
 
 With \code{method = "constant_head"}, segment model points are constant-head
 collocation points. Injection uses those points when \code{quadrature_order = 0},

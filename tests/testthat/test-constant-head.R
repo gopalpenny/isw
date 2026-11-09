@@ -346,7 +346,7 @@ test_that("ADF remains the default injection method", {
         evaluation_time != units::set_units(20, "days")
       )
     ),
-    "missing 1 required schedule boundary"
+    "missing ADF stream depletion rates at 1 required injection time"
   )
   expect_equal(completed_schedule, explicit_schedule)
 
@@ -379,7 +379,7 @@ test_that("ADF remains the default injection method", {
       stream_apportionment = stream_apportionment,
       adf_stream_depletion = evaluation_only_depletion
     ),
-    "missing 2 required schedule boundaries.*7 \\[d\\].*14 \\[d\\]"
+    "missing ADF stream depletion rates at 2 required injection times.*7 \\[d\\].*14 \\[d\\]"
   )
   expect_equal(
     completed_nonmatching_schedule,
@@ -438,7 +438,7 @@ test_that("injection schedules report stream-to-aquifer flow as positive", {
   expect_true(all(as.numeric(schedule$injection_rate[1:2]) > 0))
 })
 
-test_that("constant-head schedules retain Date interval boundaries", {
+test_that("constant-head schedules retain Date interval start and end times", {
   inputs <- make_constant_head_inputs()
   inputs$pumping_schedules$t <- as.Date("2025-01-01") + c(0, 10)
   evaluation_dates <- as.Date("2025-01-01") + c(10, 20)

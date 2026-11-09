@@ -84,8 +84,9 @@
 ## Schedule reuse
 
 * `generate_stream_injection_schedule(method = "adf")` now accepts partially
-  precomputed `adf_stream_depletion`. Available boundary values are reused, and
-  missing times are calculated internally with a warning.
+  precomputed `adf_stream_depletion`. Available ADF stream depletion rates at
+  required injection times are reused, and rates at missing times are calculated
+  internally with a warning.
 * Generated schedules record their injection method and quadrature order. When
   a constant-head schedule is supplied to `model_aquifer_water_level_change()`,
   its quadrature order is reused unless explicitly overridden. A different

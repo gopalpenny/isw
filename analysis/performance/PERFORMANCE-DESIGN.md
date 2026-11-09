@@ -48,7 +48,7 @@ boundary and retains original output times/origin as metadata. Prepared numeric
 schedules carry reusable pumping-event and event/evaluation-pair tables. Events
 use explicit day and m3_per_day column suffixes, preserve signed changes, omit
 unchanged rates, and contribute only at strictly later evaluations. Numeric
-injection grids merge pumping/evaluation/refinement boundaries. Aquifer grouping
+injection time grids merge pumping-schedule, evaluation and refinement times. Aquifer grouping
 uses normalized numeric properties; its relationship checks, limits and warnings
 live in the boundary preparer, and prepared groups are retained for reuse.
 
@@ -61,8 +61,8 @@ accumulated into preallocated segment-by-evaluation arrays, and prepared pumping
 events/pairs are reused. Interval averaging and injection-rate changes operate
 on numeric days and m3_per_day columns, retaining the existing sign convention.
 The private coordinator no longer calls user-facing validating functions. User-facing
-formatters restore original time/rate units and Date values. Supplied depletion
-is reused, extra times are ignored, and missing boundaries alone are calculated;
+formatters restore original time/rate units and Date values. Supplied ADF stream depletion rates
+are reused, extra times are ignored, and rates at missing injection times alone are calculated;
 warnings format those missing times in the caller's representation.
 
 Existing ADF tests and 29 new workflow expectations pass. Independent comparisons
@@ -372,7 +372,7 @@ not assume every user-facing function currently validates its full intended cont
 | `.get_stream_depletion_fraction_lookup` | Unit-bearing elapsed times, distances and hydraulic values; no top-level validator | Use numeric aquifer parameters, distances and unique elapsed days | Unchecked ADF calculation receives prepared inputs from ADF/schedule/model user-facing boundary |
 | `.model_adf_stream_depletion` | Checks schedules, evaluation times and apportionment; units arithmetic | Remove validators; numeric event superposition and numeric rate table | User-facing ADF preparer or private schedule coordinator using already-prepared data |
 | `.get_stream_injection_times` | Checks evaluation/injection times; repeats time normalization | Numeric union of prepared pumping/evaluation/refinement times | User-facing schedule/model preparer validates time representations and relationships |
-| `.get_interval_average_injection_schedule` | Re-normalizes time; uses units-bearing rate/time columns | Numeric averaging on prepared schedule boundaries | Private ADF schedule branch; supplied depletion validated/converted at entry |
+| `.get_interval_average_injection_schedule` | Re-normalizes time; uses units-bearing rate/time columns | Average ADF stream depletion rates at prepared injection times | Private ADF schedule branch; supplied depletion validated/converted at entry |
 | `.get_injection_rate_changes` | Units-bearing event construction | Numeric rates and days; preserve ordering and signs | Private schedule construction or validated/normalized supplied schedule |
 | `.get_interval_average_injection_rate_changes` | Composes interval averaging and rate-change helpers | Compose numeric helpers; no validation or units conversion | Currently test-only; migrate test fixtures to prepared numeric tables or test via user-facing boundary |
 | `.get_metadata_quadrature_order` | Reads/validates user-visible metadata | Keep metadata interpretation at boundary; carry resolved integer into prepared data | User-facing model boundary handling supplied schedule metadata |

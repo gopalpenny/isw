@@ -12,19 +12,19 @@ make_adf_workflow_inputs <- function(dates = FALSE, zero = FALSE) {
   list(wells = example_pumping_wells, segments = segments, schedules = pumping_schedules,
        apportionment = prep_adf_stream_apportionment(example_pumping_wells, segments, units::set_units(100, "m")),
        evaluate = times(c(0, 5, 20, 30)), refine = times(c(2, 12)),
-       boundaries = times(c(0, 2, 5, 10, 12, 20, 30)), times = times)
+       time_boundaries = times(c(0, 2, 5, 10, 12, 20, 30)), times = times)
 }
 
 test_that("ADF schedules preserve dates, time units, rate units and endpoint averaging", {
   for (dates in c(FALSE, TRUE)) {
     x <- make_adf_workflow_inputs(dates)
-    depletion <- model_adf_stream_depletion(x$wells, x$schedules, x$apportionment, x$boundaries)
+    depletion <- model_adf_stream_depletion(x$wells, x$schedules, x$apportionment, x$time_boundaries)
     schedule <- generate_stream_injection_schedule(x$wells, x$schedules, x$segments, x$evaluate,
                                                    x$refine, stream_apportionment = x$apportionment)
     expect_identical(units::deparse_unit(depletion$stream_depletion_rate), "L s-1")
     expect_identical(units::deparse_unit(schedule$injection_rate), "L s-1")
-    expect_identical(sort(unique(depletion$evaluation_time)), x$boundaries)
-    expect_identical(sort(unique(schedule$interval_end)), x$boundaries[-1])
+    expect_identical(sort(unique(depletion$evaluation_time)), x$time_boundaries)
+    expect_identical(sort(unique(schedule$interval_end)), x$time_boundaries[-1])
     first_pair <- depletion[depletion$pump_id == "pump_1" &
                               depletion$reach_segment_id == x$segments$reach_segment_id[[1]], ]
     first_schedule <- schedule[schedule$pump_id == "pump_1" &
@@ -35,10 +35,10 @@ test_that("ADF schedules preserve dates, time units, rate units and endpoint ave
   }
 })
 
-test_that("supplied ADF values are reused and only missing boundaries are filled", {
+test_that("supplied ADF stream depletion rates are reused and rates at missing injection times are calculated", {
   for (dates in c(FALSE, TRUE)) {
     x <- make_adf_workflow_inputs(dates)
-    complete <- model_adf_stream_depletion(x$wells, x$schedules, x$apportionment, x$boundaries)
+    complete <- model_adf_stream_depletion(x$wells, x$schedules, x$apportionment, x$time_boundaries)
     supplied <- complete[complete$evaluation_time %in% x$times(c(0, 20, 30)), ]
     supplied$stream_depletion_rate <- supplied$stream_depletion_rate + units::set_units(.1, "L/s")
     supplied$extra_note <- "unused attribute"
@@ -51,7 +51,7 @@ test_that("supplied ADF values are reused and only missing boundaries are filled
     expect_warning(actual <- generate_stream_injection_schedule(
       x$wells, x$schedules, x$segments, x$evaluate, x$refine,
       stream_apportionment = x$apportionment, adf_stream_depletion = supplied
-    ), "missing 4 required schedule boundaries")
+    ), "missing ADF stream depletion rates at 4 required injection times")
     expect_equal(actual, expected)
     extra <- model_adf_stream_depletion(x$wells, x$schedules, x$apportionment, x$times(c(0, 2, 5, 10, 12, 20, 30, 40)))
     expect_silent(reused <- generate_stream_injection_schedule(

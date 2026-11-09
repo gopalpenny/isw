@@ -578,8 +578,8 @@ total-rate schedule derived from the depletion apportioned to that segment.
 `generate_stream_injection_schedule()` returns one row per pumping well, stream reach segment, and time
 interval. Each row specifies the stream injection rate represented
 during that interval; positive values indicate water entering the aquifer.
-The previously calculated depletion includes every schedule boundary in this
-example, and we can supply it to avoid recalculation.
+The previously calculated ADF stream depletion rates cover every required
+injection time in this example, and we can supply them to avoid recalculation.
 
 ```{r construct-stream-depletion-schedule}
 stream_injection_schedule <- generate_stream_injection_schedule(
@@ -613,7 +613,7 @@ in these calculations when constant-head injection is requested.
 
 ### What happens inside `generate_stream_injection_schedule()`
 
-#### 1. Construct the schedule-boundary grid
+#### 1. Construct the injection time grid
 
 `generate_stream_injection_schedule()` first prepares an internal
 schedule grid, using `.get_stream_injection_times()`, combining all
@@ -622,8 +622,9 @@ pumping-schedule times, requested evaluation times (optional), and injection tim
 
 `.get_stream_injection_times()` returns `schedule_grid`, a list containing
 numeric `boundary_time_day`, `interval_start_day`, `interval_end_day` and
-`interval_duration_day` vectors. These boundaries, rather than the requested
-evaluation times alone, define the intervals used below.
+`interval_duration_day` vectors. The injection time grid contains the start
+and end times of every injection interval. These injection times, rather than
+the requested evaluation times alone, define the intervals used below.
 
 ```{r injection-time-grid}
 schedule_grid <- isw:::.get_stream_injection_times(
@@ -640,10 +641,10 @@ head(schedule_grid$boundary_time_day)
 tail(schedule_grid$boundary_time_day)
 ```
 
-#### 2. Approximate continuously changing depletion by intervals
+#### 2. Approximate continuously changing ADF stream depletion by intervals
 
-For the ADF approach, depletion is evaluated at the start and end of each interval.
-The arithmetic mean of those two rates defines the depletion magnitude for that interval.
+ADF stream depletion rates are evaluated at the start and end of each interval.
+The arithmetic mean of those two rates defines the stream injection rate for that interval.
 `generate_stream_injection_schedule()` reports that mean as a positive
 `injection_rate`, representing stream water entering the aquifer.
 
@@ -680,11 +681,12 @@ for (column in names(stream_injection_schedule)) {
 }
 ```
 
-`depletion_at_schedule_boundaries` contains the segment-level depletion rates at the
-start and end of each interval. The user-facing depletion function returns its time
+`depletion_at_schedule_boundaries` contains the ADF stream depletion rates for each segment at the
+start and end of each interval. The user-facing ADF stream depletion function returns its time
 column as `evaluation_time`; the numeric calculation uses `evaluation_time_day`,
 renamed `schedule_boundary_day` for interval averaging. The internal schedule
-has numeric day boundaries and `injection_rate_m3_per_day` values. The user-facing
+has interval start and end times in numeric days and
+`injection_rate_m3_per_day` values. The user-facing
 formatter restores the time representation and pumping-rate units in
 `generate_stream_injection_schedule()`.
 

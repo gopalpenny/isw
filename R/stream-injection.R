@@ -26,10 +26,10 @@
 #'   constant-head calculation. The default is 5. Use `Inf` to impose no
 #'   limit.
 #' @param adf_stream_depletion Optional output from
-#'   [model_adf_stream_depletion()]. When supplied with `method = "adf"`, rates
-#'   at required schedule boundaries are reused and results at additional times
-#'   are ignored. If required boundaries are missing, a warning is issued and
-#'   depletion is calculated internally only for the missing times.
+#'   [model_adf_stream_depletion()]. When supplied with `method = "adf"`,
+#'   ADF stream depletion rates at required injection times are reused and results at additional times
+#'   are ignored. If ADF stream depletion rates are missing at required injection
+#'   times, a warning is issued and those rates are calculated internally.
 #' @param quadrature_order Nonnegative integer controlling stream injection sources.
 #'   With `0`, each segment injects its total rate at its `model_point`, using
 #'   `stream_width / 2` as the minimum response radius. Positive values give the
@@ -47,19 +47,23 @@
 #'   the injection method and, for constant-head schedules, quadrature order.
 #'
 #' @details
-#' The default injection grid contains every pumping-schedule time through the
-#' final evaluation time. Evaluation times are also included so the final
-#' requested result is an interval boundary. Optional `injection_times` add
-#' refinement boundaries; they never remove pumping-schedule boundaries.
+#' The injection time grid contains the start and end times of every injection
+#' interval. By default, it includes every pumping-schedule time through the
+#' final evaluation time, together with the evaluation times. The final
+#' evaluation time ends an injection interval. Optional `injection_times`
+#' subdivide intervals; all pumping-schedule times through the final evaluation
+#' time remain in the grid.
 #'
-#' With `method = "adf"`, [model_adf_stream_depletion()] evaluates stream
-#' depletion at every schedule boundary. The arithmetic mean of adjacent
-#' endpoint rates is applied over each interval.
-#' To precompute a complete `adf_stream_depletion` input, evaluate depletion at
+#' With `method = "adf"`, ADF stream depletion rates are calculated at every
+#' time in the injection time grid, using the same calculation as
+#' [model_adf_stream_depletion()]. The rates at the start and end of each
+#' interval are averaged to obtain its stream injection rate.
+#' To precompute a complete `adf_stream_depletion` input, evaluate ADF stream
+#' depletion rates at
 #' every `evaluation_times` value and at every `pumping_schedules$t` and
 #' `injection_times` value through the final evaluation time. A supplied table
-#' that omits required boundaries is reused where possible, but generates a
-#' warning while the missing values are calculated internally.
+#' that omits required injection times is reused where possible, but generates
+#' a warning while the missing ADF stream depletion rates are calculated internally.
 #'
 #' With `method = "constant_head"`, segment model points are constant-head
 #' collocation points. Injection uses those points when `quadrature_order = 0`,
@@ -405,10 +409,10 @@ generate_stream_injection_schedule <- function(
   stream_injection_schedule
 }
 
-# Merge prepared pumping, evaluation and refinement times into interval boundaries.
+# Merge prepared pumping, evaluation and refinement times into an injection time grid.
 .get_stream_injection_times <- function(pumping_schedules, evaluation_time_day = NULL,
                                         injection_time_day = NULL) {
-  # Already-validated numeric times are days; exclude boundaries after final evaluation.
+  # Already-validated numeric times are days; exclude times after final evaluation.
   if (is.null(evaluation_time_day)) evaluation_time_day <- pumping_schedules$t_day
   final_evaluation_day <- max(evaluation_time_day)
   boundary_time_day <- sort(unique(c(
